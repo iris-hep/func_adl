@@ -1,13 +1,7 @@
 import sys
 sys.path += ['.']
-# Code to do the testing starts here.
-# Now the real test code starts.
-# from clientlib.function_simplifier import simplify_chained_calls, convolute
 from func_adl.util_ast_LINQ import ReplaceLINQOperators
-# from clientlib.ast_util import lambda_unwrap
-# from tests.adl_func_client.test_util_ast import *
 import ast
-# import copy
 from func_adl.util_ast_LINQ import parse_as_ast
 from func_adl.util_ast import lambda_unwrap
 

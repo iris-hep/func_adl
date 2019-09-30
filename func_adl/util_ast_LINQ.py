@@ -1,7 +1,7 @@
 # Helpers for LINQ operators and LINQ expressions in AST form.
 # Utility routines to manipulate LINQ expressions.
 from func_adl import Select, SelectMany, Where, First
-from adl_func_client.util_ast import lambda_unwrap
+from func_adl.util_ast import lambda_unwrap
 import ast
 from typing import Union, Optional
 

@@ -1,6 +1,6 @@
 # Event dataset
 from urllib import parse
-from adl_func_client.ObjectStream import ObjectStream
+from func_adl import ObjectStream
 import ast
 from typing import Union, Iterable
 

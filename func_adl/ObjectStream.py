@@ -1,7 +1,7 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
 from func_adl import Select, Where, SelectMany
 from func_adl import ResultTTree, ResultAwkwardArray, ResultPandasDF
-from adl_func_client.util_ast_LINQ import parse_as_ast
+from func_adl.util_ast_LINQ import parse_as_ast
 # import ast
 from typing import Any, Callable
 import asyncio
@@ -119,10 +119,7 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        # By default we use the in-process docker executor which is, relatively speaking
-        # portable as long as you have docker installed.
-        from adl_func_backend.xAODlib.exe_atlas_xaod_docker import use_executor_xaod_docker
-        return use_executor_xaod_docker
+        raise BaseException('No idea what to do for a default executor')
 
     async def _exe_as_task(self, executor: Callable[[ast.AST], Any]) -> Any:
         'Run the executor as a task, no matter if it is a co routine or not'
