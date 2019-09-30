@@ -11,11 +11,13 @@
         "ROOTT",
         "asts",
         "asyncio",
+        "gwatts",
         "iscoroutine",
         "localds",
         "nargs",
         "noqa",
         "numpy",
+        "pytest",
         "xaod",
         "xrootd"
     ],
