@@ -6,6 +6,6 @@ install:
 - pip install ".[test]"
 - pip install pytest coverage codecov flake8
 script:
-- flake8
+- flake8 --exclude=tests/*
 - coverage run -m pytest -s
 - codecov
