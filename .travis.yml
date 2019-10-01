@@ -1,11 +1,10 @@
 language: python
 python:
-- '3.6'
+- '3.7'
 install:
 - pip install -e .
-- pip install ".[test]"
 - pip install pytest coverage codecov flake8
 script:
-- flake8 --exclude=tests/*
+- flake8 --exclude=tests/* --ignore=E501
 - coverage run -m pytest -s
 - codecov
