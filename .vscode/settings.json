@@ -11,6 +11,7 @@
         "ROOTT",
         "asts",
         "asyncio",
+        "codecov",
         "gwatts",
         "iscoroutine",
         "localds",
