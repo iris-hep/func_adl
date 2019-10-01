@@ -41,6 +41,10 @@ def test_Select_in_func():
     ast_s = ast.dump(a)
     assert "Select(source" in ast_s
 
+def test_SelectMany_in_func():
+    a = get_ast("event.SelectMany(lambda x: x.Jets)")
+    ast_s = ast.dump(a)
+    assert "SelectMany(source" in ast_s
 
 #########################
 # Test the util_ast_LINQ functionality

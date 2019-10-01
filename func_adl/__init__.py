@@ -10,7 +10,7 @@ from .query_ast import Select, SelectMany, Where, First
 from .query_result_asts import ResultAwkwardArray, ResultPandasDF, ResultTTree, ROOTTreeFileInfo, ROOTTreeResult
 
 # Main streaming object
-from .ObjectStream import ObjectStream
+from .ObjectStream import ObjectStream, ObjectStreamException
 
 # Dataset accessors
 from .EventDataset import EventDataset, EventDatasetURLException

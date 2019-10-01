@@ -1,8 +1,7 @@
 # Test the object stream
 import sys
 sys.path += ['.']
-from func_adl import ObjectStream
-from func_adl import EventDataset
+from func_adl import ObjectStream, ObjectStreamException, EventDatasetURLException, EventDataset
 import ast
 import asyncio
 import pytest
@@ -21,6 +20,22 @@ def test_simple_query():
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
+        .value(dummy_executor)
+    assert isinstance(r, ast.AST)
+
+def test_simple_query_panda():
+    r = EventDataset("file://junk.root") \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsPandasDF(["analysis", "jetPT"]) \
+        .value(dummy_executor)
+    assert isinstance(r, ast.AST)
+
+def test_simple_query_panda():
+    r = EventDataset("file://junk.root") \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsAwkwardArray(["analysis", "jetPT"]) \
         .value(dummy_executor)
     assert isinstance(r, ast.AST)
 
@@ -51,6 +66,17 @@ async def test_await_exe_from_coroutine():
         .future_value(dummy_executor_coroutine)
     assert isinstance(await r, ast.AST)
 
+@pytest.mark.asyncio
+async def test_fail_await():
+    try:
+        EventDataset("file://junk.root") \
+            .SelectMany("lambda e: e.jets()") \
+            .Select("lambda j: j.pT()") \
+            .AsROOTTTree("junk.root", "analysis", "jetPT") \
+            .value(dummy_executor_coroutine)
+        assert False
+    except ObjectStreamException:
+        pass
 @pytest.mark.asyncio
 async def test_await_exe_from_normal_function():
     r = EventDataset("file://junk.root") \

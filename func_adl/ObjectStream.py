@@ -8,6 +8,9 @@ import asyncio
 import ast
 import os
 
+class ObjectStreamException(BaseException):
+    def __init__ (self, msg):
+        BaseException.__init__(self, msg)
 
 class ObjectStream:
     r'''
@@ -164,11 +167,15 @@ class ObjectStream:
         """
         # Event loops to run async tasks in python are "funny". We can't wait for a task if
         # one of those loops is running. So that is improper use of the library.
+        fail = False
         try:
             loop = asyncio.get_running_loop()
-            raise BaseException('A python async event loop is already running. You must use future_value.')
+            fail = True
         except BaseException:
             pass
+        if fail:
+            raise ObjectStreamException('A python async event loop is already running. You must use future_value.')
+
 
         # Run our own event loop to make sure we get back the result and we are self contained
         # and don't stomp on anyone. Since we aren't just waiting on sockets, we will have to
