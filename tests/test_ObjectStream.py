@@ -15,6 +15,15 @@ async def dummy_executor_coroutine(a: ast.AST) -> asyncio.Future:
     await asyncio.sleep(0.01)
     return a
 
+class MyTestException(BaseException):
+    def __init__(self, msg):
+        BaseException.__init__(self, msg)
+
+async def dummy_executor_coroutine_with_throw(a: ast.AST) -> asyncio.Future:
+    'Called to evaluate a guy - it will throw an exception to make sure it gets picked up.'
+    await asyncio.sleep(0.01)
+    raise MyTestException('this is a test bomb')
+
 def test_simple_query():
     r = EventDataset("file://junk.root") \
         .SelectMany("lambda e: e.jets()") \
@@ -65,6 +74,36 @@ async def test_await_exe_from_coroutine():
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
         .future_value(dummy_executor_coroutine)
     assert isinstance(await r, ast.AST)
+
+@pytest.mark.asyncio
+async def test_await_exe_from_coroutine_with_throw():
+    saw_exception = False
+    try:
+        r = EventDataset("file://junk.root") \
+            .SelectMany("lambda e: e.jets()") \
+            .Select("lambda j: j.pT()") \
+            .AsROOTTTree("junk.root", "analysis", "jetPT") \
+            .future_value(dummy_executor_coroutine_with_throw)
+        result = await r
+        assert result is not None
+    except MyTestException:
+        saw_exception = True
+    
+    assert saw_exception
+
+def test_await_exe_with_throw():
+    saw_exception = False
+    try:
+        r = EventDataset("file://junk.root") \
+            .SelectMany("lambda e: e.jets()") \
+            .Select("lambda j: j.pT()") \
+            .AsROOTTTree("junk.root", "analysis", "jetPT") \
+            .value(dummy_executor_coroutine_with_throw)
+        assert r is not None
+    except MyTestException:
+        saw_exception = True
+    
+    assert saw_exception
 
 @pytest.mark.asyncio
 async def test_fail_await():

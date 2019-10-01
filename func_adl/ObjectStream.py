@@ -152,7 +152,7 @@ class ObjectStream:
         exe = self._get_executor(executor)
 
         # We do not know if this thing is synchronous or not, so we have to wrap it in a task.
-        return await asyncio.create_task(self._exe_as_task(exe))
+        return await self._exe_as_task(exe)
 
     def value(self, executor: Callable[[ast.AST], Any] = None) -> Any:
         r"""
