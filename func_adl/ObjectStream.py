@@ -8,9 +8,12 @@ import asyncio
 import ast
 import os
 
+
 class ObjectStreamException(BaseException):
-    def __init__ (self, msg):
+    'Exception thrown by the ObjectStream object.'
+    def __init__(self, msg):
         BaseException.__init__(self, msg)
+
 
 class ObjectStream:
     r'''
@@ -175,7 +178,6 @@ class ObjectStream:
             pass
         if fail:
             raise ObjectStreamException('A python async event loop is already running. You must use future_value.')
-
 
         # Run our own event loop to make sure we get back the result and we are self contained
         # and don't stomp on anyone. Since we aren't just waiting on sockets, we will have to

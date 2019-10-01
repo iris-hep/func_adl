@@ -31,7 +31,7 @@ def test_simple_query_panda():
         .value(dummy_executor)
     assert isinstance(r, ast.AST)
 
-def test_simple_query_panda():
+def test_simple_query_awkward():
     r = EventDataset("file://junk.root") \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
