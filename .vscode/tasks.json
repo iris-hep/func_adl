@@ -16,6 +16,13 @@
             "command": "${config:python.pythonPath}",
             "args": ["-m", "pip", "wheel", "."],
             "problemMatcher": []
+        },
+        {
+            "label": "Upload to pypi",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-Command", "& .vscode/push-to-pypi.ps1"],
+            "problemMatcher": []
         }
     ]
 }

@@ -1,18 +1,22 @@
 from setuptools import find_packages
 from distutils.core import setup
 
+# Use the readme as the long description.
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(name="func_adl",
-      version='1.0.0-alpha.1',
+      version='1.0.0-alpha.2',
       packages=find_packages(exclude=['tests']),
       scripts=[],
       description="Functional Analysis Description Language Base Package",
-      long_description='Front-end UI for SQL like query language. Use a backend for full access.',
-      author="G. Watts (IRIS-HEP)",
+      long_description=long_description,
+      long_description_content_type="text/markdown",
+      author="G. Watts (IRIS-HEP/UW Seattle)",
       author_email="gwatts@uw.edu",
-      maintainer="Gordon Watts (IRIS-HEP)",
+      maintainer="Gordon Watts (IRIS-HEP/UW Seattle)",
       maintainer_email="gwatts@uw.edu",
-      url="http://iris-hep.org",
-      download_url="http://iris-hep.org",
+      url="https://github.com/iris-hep/func_adl",
       license="TBD",
       test_suite="tests",
       install_requires=[],
@@ -30,9 +34,9 @@ setup(name="func_adl",
                    "Programming Language :: Python",
                    "Programming Language :: Python :: 3.7",
                    "Topic :: Software Development",
-                   "Topic :: Data Analysis",
                    "Topic :: Utilities",
       ],
       data_files=[],
+      python_requires='>=3.6',
       platforms="Any",
       )
