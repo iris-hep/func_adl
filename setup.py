@@ -5,6 +5,9 @@ from distutils.core import setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+extras_require = {'develop': ['pytest', 'pytest-cov', 'flake8', 'coverage', 'twine']}
+extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))
+
 setup(name="func_adl",
       version='1.0.0-alpha.2',
       packages=find_packages(exclude=['tests']),
@@ -22,6 +25,7 @@ setup(name="func_adl",
       install_requires=[],
       setup_requires=["pytest-runner"],
       tests_require=["pytest>=3.9"],
+      extras_require=extras_require,
       classifiers=[
                    # "Development Status :: 1 - Planning",
                    "Development Status :: 2 - Pre-Alpha",
