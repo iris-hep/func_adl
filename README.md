@@ -3,7 +3,7 @@
 
 [![Travis Build Badge](https://travis-ci.org/iris-hep/func_adl.svg?branch=master)](https://travis-ci.org/iris-hep/func_adl)
 [![Code Coverage](https://codecov.io/gh/iris-hep/func_adl/graph/badge.svg)](https://codecov.io/gh/iris-hep/func_adl)
-[![Actions Status](https://github.com/{owner}/{repo}/workflows/{workflow_name}/badge.svg)](https://github.com/{owner}/{repo}/actions)
+[![Actions Status](https://github.com/iris-hep/func_adl/workflows/CICD/badge.svg)](https://github.com/iris-hep/func_adl/actions)
 
 [![PyPI version](https://badge.fury.io/py/func-adl.svg)](https://badge.fury.io/py/func-adl)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/func-adl.svg)](https://pypi.org/project/func-adl/)
