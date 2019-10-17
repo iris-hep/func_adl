@@ -3,7 +3,6 @@
  Construct hierarchical data queries using SQL-like concepts in python
 
 [![GitHub Actions Status](https://github.com/iris-hep/func_adl/workflows/CI/CD/badge.svg)](https://github.com/iris-hep/func_adl/actions)
-[![Travis Build Badge](https://travis-ci.org/iris-hep/func_adl.svg?branch=master)](https://travis-ci.org/iris-hep/func_adl)
 [![Code Coverage](https://codecov.io/gh/iris-hep/func_adl/graph/badge.svg)](https://codecov.io/gh/iris-hep/func_adl)
 
 [![PyPI version](https://badge.fury.io/py/func-adl.svg)](https://badge.fury.io/py/func-adl)
