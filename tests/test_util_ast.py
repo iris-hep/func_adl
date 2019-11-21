@@ -1,7 +1,7 @@
 # Tests for ast_util.py
 
 # Now the real test code starts.
-from func_adl.util_ast import lambda_is_identity, lambda_test, lambda_is_true, lambda_unwrap, lambda_body_replace
+from func_adl.util_ast import lambda_is_identity, lambda_test, lambda_is_true, lambda_unwrap, lambda_body_replace, lambda_args, lambda_call, lambda_build
 import ast
 
 # Identity
@@ -30,13 +30,38 @@ def test_lambda_assure_expression():
 
 def test_lambda_assure_lambda():
     try:
-        lambda_test(ast.parse("lambda:x : x+1"))
+        lambda_test(ast.parse("lambda x : x+1"))
         assert False
     except:
         pass
 
+def test_lambda_args():
+    args = lambda_args(ast.parse("lambda x: x+1"))
+    assert len(args.args)==1
+    assert args.args[0].arg == 'x'
+
 def test_lambda_simple_ast_expr():
     assert lambda_test(ast.Not()) == False
+
+def test_lambda_build_single_arg():
+    expr = ast.parse("x+1")
+    l = lambda_build("x", expr)
+    assert isinstance(l, ast.Lambda)
+
+def test_lambda_build_list_arg():
+    expr = ast.parse("x+1")
+    l = lambda_build(["x"], expr)
+    assert isinstance(l, ast.Lambda)
+
+def test_call_wrap_list_arg():
+    l = ast.parse('lambda x: x+1')
+    c = lambda_call(['x'], l)
+    assert isinstance(c, ast.Call)
+
+def test_call_wrap_single_arg():
+    l = ast.parse('lambda x: x+1')
+    c = lambda_call('x', l)
+    assert isinstance(c, ast.Call)
 
 def test_lambda_test_lambda_module():
     assert lambda_test(ast.parse('lambda x: x')) == True
