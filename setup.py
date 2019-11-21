@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name="func_adl",
-      version='1.0.0-alpha.2',
+      version='1.0.0-alpha.3',
       packages=find_packages(exclude=['tests']),
       scripts=[],
       description="Functional Analysis Description Language Base Package",
