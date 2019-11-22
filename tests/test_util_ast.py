@@ -1,8 +1,29 @@
 # Tests for ast_util.py
 
 # Now the real test code starts.
-from func_adl.util_ast import lambda_is_identity, lambda_test, lambda_is_true, lambda_unwrap, lambda_body_replace, lambda_args, lambda_call, lambda_build
+from func_adl.util_ast import lambda_is_identity, lambda_test, lambda_is_true, lambda_unwrap, lambda_body_replace, lambda_args, lambda_call, lambda_build, as_ast, function_call
 import ast
+
+# Ast parsing
+def test_as_ast_integer():
+    assert "Num(n=1)" == ast.dump(as_ast(1))
+
+def test_as_ast_string():
+    assert "Str(s='hi there')" == ast.dump(as_ast("hi there"))
+
+def test_as_ast_string_var():
+    s = "hi there"
+    assert "Str(s='hi there')" == ast.dump(as_ast(s))
+
+def test_as_ast_list():
+    assert "List(elts=[Str(s='one'), Str(s='two')], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
+
+# Fucntion Calling
+def test_function_call_simple():
+    a = function_call('dude', [as_ast(1)])
+    print (ast.dump(ast.parse('dude(1)')))
+    expected = "Call(func=Name(id='dude', ctx=Load()), args=[Num(n=1)], keywords=[])"
+    assert expected == ast.dump(a)
 
 # Identity
 def test_identity_is():

@@ -1,7 +1,40 @@
 # Some ast utils
 import ast
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Any
 
+
+def as_ast(p_var: Any) -> ast.AST:
+    '''Convert any python constant into an ast
+
+    Args:
+        p_var   Some python variable that can be rendered with str(p_var)
+                in a way the ast parse module will be able to ingest it.
+
+    Returns:
+        A python AST representing the object. For example, if a list is passed in, then
+        the result will be an AST node of type ast.List.
+
+    '''
+    # If we are dealing with a string, we have to special case this.
+    if isinstance(p_var, str):
+        p_var = f"'{p_var}'"
+    a = ast.parse(str(p_var))
+
+    # Life out the thing inside the expression.
+    return a.body[0].value
+
+
+def function_call(function_name: str, args: List[ast.AST]) -> ast.AST:
+    '''
+    Generate a function call to `function_name` with a list of `args`.
+
+    Args:
+        function_name   String that is the function name
+        args            List of ast's, each one is an argument.
+    '''
+    return ast.Call(ast.Name(function_name, ast.Load()),
+        args,
+        [])
 
 # TODO: lambda_unwrap should only be used in the parse_ast code, no where else - we should be moving
 # Lambda AST's around, not Module AST's.
