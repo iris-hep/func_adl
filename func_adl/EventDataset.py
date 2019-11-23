@@ -1,6 +1,7 @@
 # Event dataset
 from urllib import parse
 from func_adl import ObjectStream
+from func_adl.util_ast import function_call, as_ast
 import ast
 from typing import Union, Iterable
 
@@ -78,5 +79,4 @@ class EventDataset(ObjectStream, ast.AST):
 
         # We participate in the AST parsing - as a node. So make sure the fields that should be traversed are
         # set.
-        self._ast = self
-        self._fields = ('url',)
+        self._ast = function_call('EventDataset', [as_ast(self.url), ])
