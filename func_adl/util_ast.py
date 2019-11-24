@@ -33,8 +33,9 @@ def function_call(function_name: str, args: List[ast.AST]) -> ast.AST:
         args            List of ast's, each one is an argument.
     '''
     return ast.Call(ast.Name(function_name, ast.Load()),
-        args,
-        [])
+                    args,
+                    [])
+
 
 # TODO: lambda_unwrap should only be used in the parse_ast code, no where else - we should be moving
 # Lambda AST's around, not Module AST's.
