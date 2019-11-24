@@ -19,6 +19,7 @@
         "noqa",
         "numpy",
         "pytest",
+        "url's",
         "xaod",
         "xrootd"
     ],
@@ -33,5 +34,7 @@
         "**/.git/objects/**",
         ".vscode",
         "tests/**"
-    ]
+    ],
+    "pyright.openFilesOnly": false,
+    "python.analysis.openFilesOnly": false
 }
