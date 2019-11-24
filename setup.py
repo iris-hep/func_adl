@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setup(name="func_adl",
       version='1.0.0a6',
-      packages=find_packages(exclude=['tests']),
+      packages=['func_adl'],
       scripts=[],
       description="Functional Analysis Description Language Base Package",
       long_description=long_description,
