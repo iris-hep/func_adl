@@ -1,5 +1,5 @@
 import ast
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 
 def is_call_of(node: ast.AST, func_name: str) -> bool:
@@ -13,13 +13,14 @@ def is_call_of(node: ast.AST, func_name: str) -> bool:
 
     return node.func.id == func_name
 
-def unpack_Call(node: ast.Call) -> Tuple[str, List[ast.AST]]:
+
+def unpack_Call(node: ast.Call) -> Tuple[Optional[str], Optional[List[ast.AST]]]:
     '''
     Unpack the contents of a call ast.
 
     Args:
         node        An ast.Call node to unpack
-    
+
     Returns:
         name        Name fo the function to call. None if it isn't a function call.
         args        List of arguments, None if this isn't a function call.
@@ -28,7 +29,8 @@ def unpack_Call(node: ast.Call) -> Tuple[str, List[ast.AST]]:
     if not isinstance(node.func, ast.Name):
         return (None, None)
 
-    return (node.func.id, node.args)
+    args = node.args  # type: List[ast.AST]
+    return (node.func.id, args)
 
 
 class FuncADLNodeTransformer (ast.NodeTransformer):

@@ -12,6 +12,7 @@
         "asts",
         "asyncio",
         "codecov",
+        "elts",
         "gwatts",
         "iscoroutine",
         "localds",

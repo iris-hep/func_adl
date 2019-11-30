@@ -269,6 +269,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         '''
         source = args[0]
         filter = args[1]
+        assert isinstance(filter, ast.Lambda)
 
         parent_where = self.visit(source)
         if is_call_of(parent_where, 'Where'):
