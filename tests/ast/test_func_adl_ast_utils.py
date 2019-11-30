@@ -14,27 +14,27 @@ class my_call_catcher(FuncADLNodeTransformer):
         return node
 
 
-def test_node_tranform_method_ast():
+def test_node_transform_method_ast():
     start = ast.parse('a.dude()')
     expected = ast.dump(start)
     e = FuncADLNodeTransformer()
     assert expected == ast.dump(e.visit(start))
 
-def test_node_tranform_method_ast_with_object():
+def test_node_transform_method_ast_with_object():
     start = ast.parse('a.dude()')
     expected = ast.dump(start)
     e = my_call_catcher()
     assert expected == ast.dump(e.visit(start))
     assert e.count == 0
 
-def test_node_tranform_function_ast_with_object():
+def test_node_transform_function_ast_with_object():
     start = ast.parse('dude()')
     expected = ast.dump(start)
     e = my_call_catcher()
     assert expected == ast.dump(e.visit(start))
     assert e.count == 1
 
-def test_node_tranform_function_ast_with_object_args():
+def test_node_transform_function_ast_with_object_args():
     start = ast.parse('dude(10)')
     expected = ast.dump(start)
     e = my_call_catcher()
@@ -44,12 +44,19 @@ def test_node_tranform_function_ast_with_object_args():
     assert isinstance(e.args[0], ast.Num)
     assert e.args[0].n == 10
 
-def test_node_tranform_function_ast_with_object_args_norec():
+def test_node_transform_function_ast_with_object_args_norec():
     start = ast.parse('dude1(10)')
     expected = ast.dump(start)
     e = my_call_catcher()
     assert expected == ast.dump(e.visit(start))
     assert e.count == 0
+
+def test_node_transform_function_deep():
+    start = ast.parse('dork(dude(10))')
+    expected = ast.dump(start)
+    e = my_call_catcher()
+    assert expected == ast.dump(e.visit(start))
+    assert e.count == 1
 
 def _parse_ast (e : str) -> ast.AST:
     a = ast.parse(e)

@@ -1,5 +1,5 @@
 # Various node visitors to clean up nested function calls of various types.
-from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, is_call_of
+from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, is_call_of, unpack_Call
 from func_adl.util_ast import lambda_body, lambda_body_replace, lambda_unwrap, lambda_call, lambda_build, lambda_is_identity, lambda_test, lambda_is_true, function_call
 from func_adl.ast.call_stack import argument_stack, stack_frame
 import copy
@@ -18,7 +18,7 @@ def arg_name():
     return n
 
 
-def convolute(ast_g, ast_f):
+def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     'Return an AST that represents g(f(args))'
     # TODO: fix up the ast.Calls to use lambda_call if possible
 
@@ -57,7 +57,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
     def __init__(self):
         self._arg_stack = argument_stack()
 
-    def visit_Select_of_Select(self, parent, selection):
+    def visit_Select_of_Select(self, parent: ast.Call, selection: ast.Lambda):
         r'''
         seq.Select(x: f(x)).Select(y: g(y))
         => Select(Select(seq, x: f(x)), y: g(y))
@@ -65,15 +65,18 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.Select(x: g(f(x)))
         => Select(seq, x: g(f(x)))
         '''
+        _, args = unpack_Call(parent)
+        source = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
         func_g = selection
-        func_f = parent.selection
 
         # Convolute the two functions
         # TODO: should this be generic of just visit?
         new_selection = self.visit(convolute(func_g, func_f))
 
         # And return the parent select with the new selection function
-        return make_Select(parent.source, new_selection)
+        return make_Select(source, new_selection)
 
     def visit_Select_of_SelectMany(self, parent, selection):
         r'''
@@ -83,10 +86,14 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.SelectMany(x: f(x).Select(y: g(y)))
         => SelectMany(seq, x: Select(f(x), y: g(y)))
         '''
+        (_, args) = unpack_Call(parent)
+        source = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
         func_g = selection
-        func_f = parent.selection
 
-        return self.visit(SelectMany(parent.source, lambda_body_replace(func_f, make_Select(lambda_body(func_f), func_g))))
+        lambda_select = lambda_body_replace(func_f, make_Select(lambda_body(func_f), func_g))  # type: ast.AST
+        return self.visit(function_call('SelectMany', [source, lambda_select]))
 
     def call_Select(self, node: ast.Call, args: List[ast.AST]):
         r'''
@@ -111,6 +118,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         '''
         source = args[0]
         transform = args[1]
+        assert isinstance(transform, ast.Lambda)
 
         parent_select = self.visit(source)
         if is_call_of(parent_select, 'Select'):
@@ -152,7 +160,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return self.visit(SelectMany(parent.source, lambda_body_replace(func_f, SelectMany(lambda_body(func_f), func_g))))
 
-    def visit_SelectMany(self, node):
+    def call_SelectMany(self, node: ast.Call, args: List[ast.AST]):
         r'''
         Transformation #1:
         seq.SelectMany(x: f(x)).SelectMany(y: f(y))
@@ -171,15 +179,15 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         Transformation #3:
         seq.Where(x: f(x)).SelectMany(y: g(y))
         '''
-        parent_select = self.visit(node.source)
-        if type(parent_select) is SelectMany:
-            return self.visit_SelectMany_of_SelectMany(parent_select, node.selection)
-        elif type(parent_select) is Select:
-            return self.visit_SelectMany_of_Select(parent_select, node.selection)
+        parent_select = self.visit(args[0])
+        if is_call_of(parent_select, 'SelectMany'):
+            return self.visit_SelectMany_of_SelectMany(parent_select, args[1])
+        elif is_call_of(parent_select, 'Select'):
+            return self.visit_SelectMany_of_Select(parent_select, args[1])
         else:
-            return SelectMany(parent_select, self.visit(node.selection))
+            return function_call('SelectMany', [parent_select, self.visit(args[1])])
 
-    def visit_Where_of_Where(self, parent, filter):
+    def visit_Where_of_Where(self, parent: ast.Call, filter: ast.Lambda):
         '''
         seq.Where(x: f(x)).Where(x: g(x))
         => Where(Where(seq, x: f(x)), y: g(y))
@@ -187,11 +195,16 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.Where(x: f(x) and g(y))
         => Where(seq, x: f(x) and g(y))
         '''
-        func_f = parent.filter
+        # Unpack arguments and f and g functions
+        _, args = unpack_Call(parent)
+        source = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
         func_g = filter
 
         arg = arg_name()
-        return self.visit(Where(parent.source, lambda_build(arg, ast.BoolOp(ast.And(), [lambda_call(arg, func_f), lambda_call(arg, func_g)]))))
+        convolution = lambda_build(arg, ast.BoolOp(ast.And(), [lambda_call(arg, func_f), lambda_call(arg, func_g)]))  # type: ast.AST
+        return self.visit(function_call('Where', [source, convolution]))
 
     def visit_Where_of_Select(self, parent, filter):
         '''
@@ -201,11 +214,13 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.Where(x: g(f(x))).Select(x: f(x))
         => Select(Where(seq, x: g(f(x)), f(x))
         '''
-        func_f = parent.selection
+        _, args = unpack_Call(parent)
+        source = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
         func_g = filter
-        seq = parent.source
 
-        w = Where(seq, self.visit(convolute(func_g, func_f)))
+        w = function_call('Where', [source, self.visit(convolute(func_g, func_f))])
         s = make_Select(w, func_f)
 
         # Recursively visit this mess to see if the Where needs to move further up.
@@ -219,13 +234,17 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.SelectMany(x: f(x).Where(y: g(y)))
         => SelectMany(seq, x: Where(f(x), g(y)))
         '''
-        func_f = parent.selection
+        _, args = unpack_Call(parent)
+        seq = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
+
         func_g = filter
-        seq = parent.source
+        lambda_where = lambda_body_replace(func_f, function_call("Where", [lambda_body(func_f), func_g]))  # type: ast.AST
 
-        return self.visit(SelectMany(seq, lambda_body_replace(func_f, Where(lambda_body(func_f), func_g))))
+        return self.visit(function_call('SelectMany', [seq, lambda_where]))
 
-    def visit_Where(self, node):
+    def call_Where(self, node: ast.Call, args: List[ast.AST]) -> ast.AST:
         r'''
         Transformation #1:
         seq.Where(x: f(x)).Where(x: g(x))
@@ -248,19 +267,22 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.SelectMany(x: f(x).Where(y: g(y)))
         => SelectMany(seq, x: Where(f(x), g(y)))
         '''
-        parent_where = self.visit(node.source)
-        if type(parent_where) is Where:
-            return self.visit_Where_of_Where(parent_where, node.filter)
-        elif type(parent_where) is Select:
-            return self.visit_Where_of_Select(parent_where, node.filter)
-        elif type(parent_where) is SelectMany:
-            return self.visit_Where_of_SelectMany(parent_where, node.filter)
+        source = args[0]
+        filter = args[1]
+
+        parent_where = self.visit(source)
+        if is_call_of(parent_where, 'Where'):
+            return self.visit_Where_of_Where(parent_where, filter)
+        elif is_call_of(parent_where, 'Select'):
+            return self.visit_Where_of_Select(parent_where, filter)
+        elif is_call_of(parent_where, 'SelectMany'):
+            return self.visit_Where_of_SelectMany(parent_where, filter)
         else:
-            f = self.visit(node.filter)
+            f = self.visit(filter)
             if lambda_is_true(f):
                 return parent_where
             else:
-                return Where(parent_where, f)
+                return function_call('Where', [parent_where, f])
 
     def visit_Call(self, call_node):
         '''We are looking for cases where an argument is another function or expression.
@@ -291,7 +313,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
-    def visit_Subscript_Of_First(self, first, s):
+    def visit_Subscript_Of_First(self, first: ast.AST, s):
         '''
         Convert a seq.First()[0]
         ==>
@@ -299,13 +321,12 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         Other work will do the conversion as needed.
         '''
-        source = first.source
 
         # Build the select that starts from the source and does the slice.
         a = arg_name()
-        select = make_Select(source, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()), s, ast.Load())))
+        select = make_Select(first, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()), s, ast.Load())))
 
-        return self.visit(First(select))
+        return self.visit(function_call('First', [select]))
 
     def visit_Subscript(self, node):
         r'''
@@ -320,8 +341,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         if type(v) is ast.Tuple:
             return self.visit_Subscript_Tuple(v, s)
 
-        if type(v) is First:
-            return self.visit_Subscript_Of_First(v, s)
+        if is_call_of(v, 'First'):
+            return self.visit_Subscript_Of_First(v.args[0], s)
 
         # Nothing interesting, so do the normal thing several levels down.
         return ast.Subscript(v, s, ctx=ast.Load())
