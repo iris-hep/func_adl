@@ -1,8 +1,10 @@
 # We will look for various things in the AST that, in the end, translate to the Aggregate terminal. And then translate them.
 import ast
+from func_adl.util_ast import function_call
+from typing import cast
 
 
-def generate_count_call(seq):
+def _generate_count_call(seq: ast.AST, lambda_string: str = "lambda acc,v: acc+1") -> ast.Call:
     r'''
         Given a sequence, generate an Aggregate call that will count the number
         of items in the sequence.
@@ -12,11 +14,10 @@ def generate_count_call(seq):
         returns:
         agg_ast - An ast call to the Aggregate call.
     '''
-    agg_lambda = ast.parse("lambda acc,v: acc + 1").body[0].value
+    agg_lambda = cast(ast.Expr, ast.parse(lambda_string).body[0]).value
     agg_start = ast.Num(0)
 
-    new_call = ast.Call(func=ast.Attribute(attr="Aggregate", value=seq), args=[agg_start, agg_lambda])
-    return new_call
+    return function_call('Aggregate', [seq, cast(ast.AST, agg_start), cast(ast.AST, agg_lambda)])
 
 
 class aggregate_node_transformer(ast.NodeTransformer):
@@ -28,32 +29,14 @@ class aggregate_node_transformer(ast.NodeTransformer):
     '''
 
     def visit_Call(self, node):
-        if type(node.func) is ast.Attribute:
-            if node.func.attr == "Count":
-                return generate_count_call(node.func.value)
-            elif node.func.attr == "Sum":
-                # The lambda keep a running total.
-                ast_lambda_acc = ast.parse("lambda acc,v: acc + v").body[0].value
-
-                # Use a different flavor of aggregate
-                new_call = ast.Call(ast.Attribute(attr="Aggregate", value=node.func.value), args=[ast_lambda_acc])
-                return new_call
-            elif node.func.attr == "Max":
-                # The lambda will return the accumulator if is larger, otherwise the other guy. Parse b.c. we are lazy.
-                ast_lambda_acc = ast.parse("lambda acc,v: acc if acc > v else v").body[0].value
-
-                # Use a different flavor of aggregate
-                new_call = ast.Call(ast.Attribute(attr="Aggregate", value=node.func.value), args=[ast_lambda_acc])
-                return new_call
-            elif node.func.attr == "Min":
-                # The lambda will return the accumulator if is larger, otherwise the other guy. Parse b.c. we are lazy.
-                ast_lambda_acc = ast.parse("lambda acc,v: acc if acc < v else v").body[0].value
-
-                # Use a different flavor of aggregate
-                new_call = ast.Call(ast.Attribute(attr="Aggregate", value=node.func.value), args=[ast_lambda_acc])
-                return new_call
-        elif type(node.func) is ast.Name:
-            if (node.func.id == 'len') and (len(node.args) == 1):
+        if type(node.func) is ast.Name:
+            if (node.func.id == 'len' or node.func.id == "Count") and (len(node.args) == 1):
                 # This is a len(sequence) call, which should be turned into a .Count() call.
-                return generate_count_call(node.args[0])
+                return _generate_count_call(node.args[0])
+            elif node.func.id == "Sum":
+                return _generate_count_call(node.args[0], "lambda acc,v: acc + v")
+            elif node.func.id == "Max":
+                return _generate_count_call(node.args[0], "lambda acc,v: acc if acc > v else v")
+            elif node.func.id == "Min":
+                return _generate_count_call(node.args[0], "lambda acc,v: acc if acc < v else v")
         return node

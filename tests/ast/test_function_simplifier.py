@@ -1,6 +1,24 @@
 from func_adl.ast.function_simplifier import FuncADLIndexError
-from tests.util_debug_ast import util_process
+from func_adl.ast.function_simplifier import simplify_chained_calls
+from tests.util_debug_ast import normalize_ast
 import ast
+
+def util_process(ast_in, ast_out):
+    'Make sure ast in is the same as out after running through - this is a utility routine for the harness'
+
+    # Make sure the arguments are ok
+    a_source = ast_in if isinstance(ast_in, ast.AST) else ast.parse(ast_in)
+    a_expected = ast_out if isinstance(ast_out, ast.AST) else ast.parse(ast_out)
+
+    a_updated_raw = simplify_chained_calls().visit(a_source)
+
+    s_updated = ast.dump(normalize_ast().visit(a_updated_raw), annotate_fields=False, include_attributes=False)
+    s_expected = ast.dump(normalize_ast().visit(a_expected), annotate_fields=False, include_attributes=False)
+
+    print(s_updated)
+    print(s_expected)
+    assert s_updated == s_expected
+    return a_updated_raw
 
 ################
 # Test convolutions
