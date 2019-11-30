@@ -4,7 +4,7 @@ from func_adl.util_ast import lambda_body, lambda_body_replace, lambda_unwrap, l
 from func_adl.ast.call_stack import argument_stack, stack_frame
 import copy
 import ast
-from typing import List
+from typing import List, cast
 
 
 argument_var_counter = 0
@@ -129,22 +129,29 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             selection = self.visit(transform)
             return make_Select(parent_select, selection)
 
-    def visit_SelectMany_of_Select(self, parent, selection):
+    def visit_SelectMany_of_Select(self, parent: ast.Call, selection: ast.Lambda):
         '''
         seq.Select(x: f(x)).SelectMany(y: g(y))
         => SelectMany(Select(seq, x: f(x)), y:g(y))
         is turned into
-        seq.SelectMany(x: g(f(x)))
-        => SelectMany(seq, x: g(f(x)))
+        seq.SelectMany(x: f(x).Select(y: g(y)))
+        => SelectMany(seq, x: Select(f(x), y: g(y)))
         '''
+        _, args = unpack_Call(parent)
+        assert (args is not None) and len(args) == 2
+        seq = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
         func_g = selection
-        func_f = parent.selection
-        seq = parent.source
 
-        new_selection = self.generic_visit(convolute(func_g, func_f))
-        return self.visit(SelectMany(seq, new_selection))
+        captured_arg = func_f.args.args[0].arg
+        captured_body = func_f.body
+        new_select = function_call('Select', [cast(ast.AST, captured_body), cast(ast.AST, func_g)])
+        new_select_lambda = lambda_build(captured_arg, new_select)
+        new_selectmany = function_call('SelectMany', [seq, cast(ast.AST, new_select_lambda)])
+        return new_selectmany
 
-    def visit_SelectMany_of_SelectMany(self, parent, selection):
+    def visit_SelectMany_of_SelectMany(self, parent: ast.Call, selection: ast.Lambda):
         '''
         Transformation #1:
         seq.SelectMany(x: f(x)).SelectMany(y: f(y))
@@ -153,12 +160,19 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.SelectMany(x: f(x).SelectMany(y: f(y)))
         => SelectMany(seq, x: SelectMany(f(x), y: f(y)))
         '''
-        # TODO: Get to the point we can actually test that this works correctly
-        raise BaseException('untested')
+        _, args = unpack_Call(parent)
+        assert (args is not None) and len(args) == 2
+        seq = args[0]
+        func_f = args[1]
+        assert isinstance(func_f, ast.Lambda)
         func_g = selection
-        func_f = parent.selection
 
-        return self.visit(SelectMany(parent.source, lambda_body_replace(func_f, SelectMany(lambda_body(func_f), func_g))))
+        captured_arg = func_f.args.args[0].arg
+        captured_body = func_f.body
+        new_select = function_call('SelectMany', [cast(ast.AST, captured_body), cast(ast.AST, func_g)])
+        new_select_lambda = lambda_build(captured_arg, new_select)
+        new_selectmany = function_call('SelectMany', [seq, cast(ast.AST, new_select_lambda)])
+        return new_selectmany
 
     def call_SelectMany(self, node: ast.Call, args: List[ast.AST]):
         r'''
@@ -179,13 +193,15 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         Transformation #3:
         seq.Where(x: f(x)).SelectMany(y: g(y))
         '''
+        selection = args[1]
+        assert isinstance(selection, ast.Lambda)
         parent_select = self.visit(args[0])
         if is_call_of(parent_select, 'SelectMany'):
-            return self.visit_SelectMany_of_SelectMany(parent_select, args[1])
+            return self.visit_SelectMany_of_SelectMany(parent_select, selection)
         elif is_call_of(parent_select, 'Select'):
-            return self.visit_SelectMany_of_Select(parent_select, args[1])
+            return self.visit_SelectMany_of_Select(parent_select, selection)
         else:
-            return function_call('SelectMany', [parent_select, self.visit(args[1])])
+            return function_call('SelectMany', [parent_select, self.visit(selection)])
 
     def visit_Where_of_Where(self, parent: ast.Call, filter: ast.Lambda):
         '''
@@ -327,7 +343,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         a = arg_name()
         select = make_Select(first, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()), s, ast.Load())))
 
-        return self.visit(function_call('First', [select]))
+        return self.visit(function_call('First', [cast(ast.AST, select)]))
 
     def visit_Subscript(self, node):
         r'''

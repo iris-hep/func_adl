@@ -1,5 +1,5 @@
 import ast
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, cast
 
 
 def is_call_of(node: ast.AST, func_name: str) -> bool:
@@ -29,7 +29,7 @@ def unpack_Call(node: ast.Call) -> Tuple[Optional[str], Optional[List[ast.AST]]]
     if not isinstance(node.func, ast.Name):
         return (None, None)
 
-    args = node.args  # type: List[ast.AST]
+    args = cast(List[ast.AST], node.args)  # type: List[ast.AST]
     return (node.func.id, args)
 
 

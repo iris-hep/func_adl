@@ -83,6 +83,14 @@ def test_selectmany_where():
     assert zpt_first is not zpt_second
     assert zpt_first.func is not zpt_second.func
 
+def test_selectmany_select():
+    util_process("SelectMany(Select(events, lambda e: e.jets), lambda j: j.pt())",
+                      "SelectMany(events, lambda e: Select(e.jets, lambda j: j.pt()))")
+
+def test_selectmany_selectmany():
+    util_process("SelectMany(SelectMany(events, lambda e: e.jets), lambda j: j.tracks)",
+                 "SelectMany(events, lambda e: SelectMany(e.jets, lambda j: j.tracks))")
+
 ###############
 # Testing first
 

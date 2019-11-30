@@ -60,8 +60,9 @@ def test_node_transform_function_deep():
 
 def _parse_ast (e : str) -> ast.AST:
     a = ast.parse(e)
-    assert isinstance(a.body[0], ast.Expr)
-    return a.body[0].value
+    b = a.body[0]
+    assert isinstance(b, ast.Expr)
+    return b.value
 
 def test_is_call_to_expected_function():
     start = _parse_ast('dude(10)')
