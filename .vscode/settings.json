@@ -37,8 +37,5 @@
         "tests/**"
     ],
     "pyright.openFilesOnly": false,
-    "python.analysis.openFilesOnly": false,
-    "python.testing.pytestArgs": [
-        "--no-cov"
-    ]
+    "python.analysis.openFilesOnly": false
 }

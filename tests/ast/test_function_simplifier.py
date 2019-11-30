@@ -1,7 +1,7 @@
 import sys
 sys.path.append(".")
 #from func_adl.util_ast_LINQ import ReplaceLINQOperators
-from func_adl.ast.function_simplifier import simplify_chained_calls
+from func_adl.ast.function_simplifier import simplify_chained_calls, FuncADLIndexError
 from tests.util_debug_ast import normalize_ast
 import ast
 
@@ -100,8 +100,18 @@ def test_tuple_select():
     # (t1, t2)[0] should be t1.
     util_process('(t1,t2)[0]', 't1')
 
+def test_tuple_select_past_end():
+    # This should cause a crash!
+    try:
+        util_process('(t1,t2)[3]', '0')
+        assert False
+    except FuncADLIndexError:
+        pass
+
+
 def test_tuple_in_lambda():
     util_process('(lambda t: t[0])((j1, j2))', 'j1')
+
 def test_tuple_in_lambda_2deep():
     util_process('(lambda t: t[0])((lambda s: s[1])((j0, (j1, j2))))', 'j1')
 

@@ -1,6 +1,6 @@
 # Various node visitors to clean up nested function calls of various types.
 from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, is_call_of, unpack_Call
-from func_adl.util_ast import lambda_body, lambda_body_replace, lambda_unwrap, lambda_call, lambda_build, lambda_is_identity, lambda_test, lambda_is_true, function_call
+from func_adl.util_ast import lambda_body, lambda_body_replace, lambda_unwrap, lambda_call, lambda_build, lambda_is_identity, lambda_is_true, function_call
 from func_adl.ast.call_stack import argument_stack, stack_frame
 import copy
 import ast
@@ -22,10 +22,6 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     'Return an AST that represents g(f(args))'
     # TODO: fix up the ast.Calls to use lambda_call if possible
 
-    # Sanity checks. For example, g can have only one input argument (e.g. f's result)
-    if (not lambda_test(ast_g)) or (not lambda_test(ast_f)):
-        raise BaseException("Only lambdas in Selects!")
-
     # Combine the lambdas into a single call by calling g with f as an argument
     l_g = copy.deepcopy(lambda_unwrap(ast_g))
     l_f = copy.deepcopy(lambda_unwrap(ast_f))
@@ -45,6 +41,13 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
 def make_Select(source: ast.AST, selection: ast.AST):
     'Make a select, and return source is selection is an identity'
     return source if lambda_is_identity(selection) else function_call('Select', [source, selection])
+
+
+class FuncADLIndexError(BaseException):
+    ''' If we are doing an indexing operation and we are out of range, throw this.
+    '''
+    def __init__(self, msg):
+        BaseException.__init__(self, msg)
 
 
 class simplify_chained_calls(FuncADLNodeTransformer):
@@ -326,7 +329,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             return ast.Subscript(v, s, ast.Load())
         n = s.value.n
         if n >= len(v.elts):
-            raise BaseException("Attempt to access the {0}th element of a tuple only {1} values long.".format(n, len(v.value.elts)))
+            raise FuncADLIndexError(f"Attempt to access the {n}th element of a tuple only {len(v.elts)} values long.")
 
         return v.elts[n]
 
