@@ -365,7 +365,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             return self.visit_Subscript_Of_First(v.args[0], s)
 
         # Nothing interesting, so do the normal thing several levels down.
-        return ast.Subscript(v, s, ctx=ast.Load())
+        return ast.Subscript(v, s, ast.Load())
 
     def visit_Name(self, name_node):
         'Do lookup and see if we should translate or not.'
@@ -373,4 +373,4 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
     def visit_Attribute(self, node):
         'Make sure to make a new version of the Attribute so it does not get reused'
-        return ast.Attribute(value=self.visit(node.value), attr=node.attr, ctx=ast.Load())
+        return ast.Attribute(value=self.visit(node.value), attr=node.attr, ast.Load())
