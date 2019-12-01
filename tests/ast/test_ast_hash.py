@@ -2,7 +2,6 @@
 import ast
 from func_adl.ast import ast_hash
 from func_adl import EventDataset
-from asyncio import create_task
 
 async def do_call (a):
     return a
