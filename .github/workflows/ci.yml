@@ -36,5 +36,8 @@ jobs:
         python -m pytest -r sx
     - name: Report coverage with Codecov
       if: github.event_name == 'push' && matrix.python-version == 3.7 && matrix.os == 'ubuntu-latest'
-      run: |
-        codecov --token=${{ secrets.CODECOV_TOKEN }}
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        flags: unittests
