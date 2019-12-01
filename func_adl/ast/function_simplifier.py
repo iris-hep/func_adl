@@ -373,4 +373,4 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
     def visit_Attribute(self, node):
         'Make sure to make a new version of the Attribute so it does not get reused'
-        return ast.Attribute(value=self.visit(node.value), attr=node.attr, ast.Load())
+        return ast.Attribute(value=self.visit(node.value), attr=node.attr, ctx=ast.Load())
