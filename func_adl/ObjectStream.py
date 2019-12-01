@@ -181,7 +181,7 @@ class ObjectStream:
         # and don't stomp on anyone. Since we aren't just waiting on sockets, we will have to
         # have an OS difference here.
         if os.name == 'nt':
-            loop = asyncio.ProactorEventLoop()   # for subprocess' pipes on Windows
+            loop = asyncio.ProactorEventLoop()   # type: ignore
         else:
             loop = asyncio.get_event_loop()
         return loop.run_until_complete(self.future_value(executor))
