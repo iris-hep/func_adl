@@ -54,3 +54,26 @@ class FuncADLNodeTransformer (ast.NodeTransformer):
 
         visitor = getattr(self, f'call_{func_name}', None)
         return node if visitor is None else visitor(visited_node, args)
+
+
+class FuncADLNodeVisitor (ast.NodeVisitor):
+    ''' Utility class to help with transforming ast's that
+    we typically have to deal with in func_adl. In particular:
+
+        - a ast.Call func_name is turned into a call_func_name(self, node, args)
+    '''
+
+    def visit_Call(self, node: ast.Call):
+        ''' Parse the Call node, split out a function
+        and its arguments if such a call exists.
+        '''
+        # First, visit one down.
+        ast.NodeVisitor.generic_visit(self, node)
+
+        func_name, args = unpack_Call(node)
+        if func_name is None:
+            return
+
+        visitor = getattr(self, f'call_{func_name}', None)
+        if visitor is not None:
+            visitor(node, args)

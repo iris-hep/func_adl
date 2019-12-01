@@ -1,5 +1,5 @@
 # Test out the utility classes.
-from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, is_call_of
+from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, FuncADLNodeVisitor, is_call_of
 import ast
 
 
@@ -79,3 +79,47 @@ def test_is_call_to_expected_method():
 def test_is_call_not_a_call():
     start = _parse_ast('dude1')
     assert not is_call_of(start, 'dude1')
+
+class my_call_vcatcher(FuncADLNodeVisitor):
+    def __init__ (self):
+        self.count = 0
+        self.args = []
+
+    def call_dude(self, node, args):
+        self.count += 1
+        self.args = args
+
+
+def test_node_visit_method_ast_with_object():
+    start = ast.parse('a.dude()')
+    e = my_call_vcatcher()
+    e.visit(start)
+    assert e.count == 0
+
+def test_node_visit_function_ast_with_object():
+    start = ast.parse('dude()')
+    e = my_call_catcher()
+    e.visit(start)
+    assert e.count == 1
+
+def test_node_visit_function_ast_with_object_args():
+    start = ast.parse('dude(10)')
+    e = my_call_vcatcher()
+    e.visit(start)
+    assert e.count == 1
+    assert len(e.args) == 1
+    assert isinstance(e.args[0], ast.Num)
+    assert e.args[0].n == 10
+
+def test_node_visit_function_ast_with_object_args_norec():
+    start = ast.parse('dude1(10)')
+    e = my_call_catcher()
+    e.visit(start)
+    assert e.count == 0
+
+def test_node_visit_function_deep():
+    start = ast.parse('dork(dude(10))')
+    expected = ast.dump(start)
+    e = my_call_catcher()
+    assert expected == ast.dump(e.visit(start))
+    assert e.count == 1
