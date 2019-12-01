@@ -1,6 +1,8 @@
 # Event dataset
 from urllib import parse
+from urllib.parse import ParseResult
 from func_adl import ObjectStream
+from func_adl.util_ast import function_call, as_ast
 import ast
 from typing import Union, Iterable
 
@@ -41,6 +43,27 @@ def _fixup_url(url: str, parsed_url) -> str:
     return f'file:///{path}'
 
 
+def _parse_and_check_dataset_url(u: str) -> ParseResult:
+    '''
+    Returns a parsed URL and the url, after checking the url's to make sure there
+    is enough inforation in them. It throws if there is a problem.
+
+    Args
+        u       String
+
+    Returns:
+        u       The original URL
+        parsed  The URL that was parsed by url2 lib.
+    '''
+    r = parse.urlparse(u)
+    if r.scheme is None or len(r.scheme) == 0:
+        raise EventDatasetURLException(f'EventDataSet({u}) has no scheme (file://, localds://, etc.)')
+    if (r.netloc is None or len(r.netloc) == 0) and len(r.path) == 0:
+        raise EventDatasetURLException(f'EventDataSet({u}) has no dataset or filename')
+
+    return r
+
+
 class EventDataset(ObjectStream, ast.AST):
     r'''
     Represents a stream of events that originates from a dataset specified by some sort of URL.
@@ -66,17 +89,10 @@ class EventDataset(ObjectStream, ast.AST):
                 raise EventDatasetURLException("EventDataset initialized with an empty URL")
 
             # Make sure we can parse this URL. We don't, at some level, care about the actual contents.
-            r_list = [parse.urlparse(u) for u in l_url]
-            for r in r_list:
-                if r.scheme is None or len(r.scheme) == 0:
-                    raise EventDatasetURLException(f'EventDataSet({l_url}) has no scheme (file://, localds://, etc.)')
-                if (r.netloc is None or len(r.netloc) == 0) and len(r.path) == 0:
-                    raise EventDatasetURLException(f'EventDataSet({l_url}) has no dataset or filename')
-            self.url = [_fixup_url(u, r) for u in l_url]
+            self.url = [_fixup_url(u, _parse_and_check_dataset_url(u)) for u in l_url]
         else:
-            self.url = url
+            self.url = None
 
         # We participate in the AST parsing - as a node. So make sure the fields that should be traversed are
         # set.
-        self._ast = self
-        self._fields = ('url',)
+        self._ast = function_call('EventDataset', [as_ast(self.url), ])

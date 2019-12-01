@@ -1,7 +1,6 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
-from func_adl import Select, Where, SelectMany
-from func_adl import ResultTTree, ResultAwkwardArray, ResultPandasDF
 from func_adl.util_ast_LINQ import parse_as_ast
+from func_adl.util_ast import as_ast, function_call
 # import ast
 from typing import Any, Callable
 import asyncio
@@ -42,7 +41,7 @@ class ObjectStream:
         Returns:
             A new ObjectStream.
         """
-        return ObjectStream(SelectMany(self._ast, parse_as_ast(func)))
+        return ObjectStream(function_call("SelectMany", [self._ast, parse_as_ast(func)]))
 
     def Select(self, f):
         r"""
@@ -55,7 +54,7 @@ class ObjectStream:
         Returns:
             A new ObjectStream of the transformed elements.
         """
-        return ObjectStream(Select(self._ast, parse_as_ast(f)))
+        return ObjectStream(function_call("Select", [self._ast, parse_as_ast(f)]))
 
     def Where(self, filter):
         r'''
@@ -67,7 +66,7 @@ class ObjectStream:
         Returns:
             A new ObjectStream that contains only elements that pass the filter function
         '''
-        return ObjectStream(Where(self._ast, parse_as_ast(filter)))
+        return ObjectStream(function_call("Where", [self._ast, parse_as_ast(filter)]))
 
     def AsPandasDF(self, columns=[]):
         r"""
@@ -76,9 +75,8 @@ class ObjectStream:
         columns - Array of names of the columns. Will default to "col0", "call1", etc.
         """
 
-        # We do this by first generating a simple ROOT file, then loading it into a dataframe with
-        # uproot.
-        return ObjectStream(ResultPandasDF(self._ast, columns))
+        # To get Pandas use the ResultPandasDF function call.
+        return ObjectStream(function_call("ResultPandasDF", [self._ast, as_ast(columns)]))
 
     def AsROOTTTree(self, filename, treename, columns=[]):
         r"""
@@ -101,7 +99,7 @@ class ObjectStream:
             may be written by the back end, and need to be concatenated together to get the full
             dataset.
         """
-        return ObjectStream(ResultTTree(self._ast, columns, treename, filename))
+        return ObjectStream(function_call("ResultTTree", [self._ast, as_ast(columns), as_ast(treename), as_ast(filename)]))
 
     def AsAwkwardArray(self, columns=[]):
         r'''
@@ -109,7 +107,7 @@ class ObjectStream:
 
         columns - Array of names of the columns
         '''
-        return ObjectStream(ResultAwkwardArray(self._ast, columns))
+        return ObjectStream(function_call("ResultAwkwardArray", [self._ast, as_ast(columns)]))
 
     def _get_executor(self, executor: Callable[[ast.AST], Any] = None) -> Callable[[ast.AST], Any]:
         r'''

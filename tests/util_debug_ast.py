@@ -114,5 +114,5 @@ class normalize_ast(ast.NodeTransformer):
         return name
 
     def visit_Name(self, node: ast.Name):
-        return self.lookup_name(node.id)
+        return ast.Name(self.lookup_name(node.id), ast.Load())
 

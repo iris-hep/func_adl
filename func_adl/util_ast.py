@@ -1,6 +1,43 @@
 # Some ast utils
 import ast
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Any, cast
+
+
+def as_ast(p_var: Any) -> ast.AST:
+    '''Convert any python constant into an ast
+
+    Args:
+        p_var   Some python variable that can be rendered with str(p_var)
+                in a way the ast parse module will be able to ingest it.
+
+    Returns:
+        A python AST representing the object. For example, if a list is passed in, then
+        the result will be an AST node of type ast.List.
+
+    '''
+    # If we are dealing with a string, we have to special case this.
+    if isinstance(p_var, str):
+        p_var = f"'{p_var}'"
+    a = ast.parse(str(p_var))
+
+    # Life out the thing inside the expression.
+    # assert isinstance(a.body[0], ast.Expr)
+    b = a.body[0]
+    assert isinstance(b, ast.Expr)
+    return b.value
+
+
+def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
+    '''
+    Generate a function call to `function_name` with a list of `args`.
+
+    Args:
+        function_name   String that is the function name
+        args            List of ast's, each one is an argument.
+    '''
+    return ast.Call(ast.Name(function_name, ast.Load()),
+                    args,
+                    [])
 
 
 # TODO: lambda_unwrap should only be used in the parse_ast code, no where else - we should be moving
@@ -19,8 +56,8 @@ def lambda_unwrap(l: ast.AST) -> ast.Lambda:
     Exceptions:
         If the AST node isn't a lambda or a module wrapping a lambda.
     '''
-    lb = l.body[0].value if isinstance(l, ast.Module) else l
-    if type(lb) is not ast.Lambda:
+    lb = cast(ast.Expr, l.body[0]).value if isinstance(l, ast.Module) else l
+    if not isinstance(lb, ast.Lambda):
         raise BaseException('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(l)))
 
     return lb
@@ -143,7 +180,7 @@ def lambda_test(l: ast.AST, nargs: Optional[int] = None) -> bool:
             return False
         if not isinstance(l.body[0], ast.Expr):
             return False
-        if not isinstance(l.body[0].value, ast.Lambda):
+        if not isinstance(cast(ast.Expr, l.body[0]).value, ast.Lambda):
             return False
     rl = lambda_unwrap(l) if type(l) is ast.Module else l
     if type(rl) is not ast.Lambda:

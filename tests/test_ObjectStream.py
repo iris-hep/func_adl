@@ -55,7 +55,7 @@ def test_nested_query_rendered_correctly():
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
         .value(dummy_executor)
     assert isinstance(r, ast.AST)
-    assert "Select(source" in ast.dump(r)
+    assert "Select(source" not in ast.dump(r)
 
 def test_executor_returns_a_coroutine():
     'When the executor returns a future, make sure it waits'
