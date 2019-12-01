@@ -1,16 +1,17 @@
 # Need setuptools even though it isn't used - loads some plugins.
 from setuptools import find_packages  # noqa: F401
 from distutils.core import setup
+from version_info import version_func_adl_ast
 
 # Use the readme as the long description.
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-setup(name="func_adl",
-      version='1.0.0a6',
-      packages=['func_adl'],
+setup(name="func_adl.ast",
+      version=version_func_adl_ast,
+      packages=['func_adl/ast'],
       scripts=[],
-      description="Functional Analysis Description Language Base Package",
+      description="Functional Analysis Description Language - Backend AST Manipulation Packages",
       long_description=long_description,
       long_description_content_type="text/markdown",
       author="G. Watts (IRIS-HEP/UW Seattle)",
@@ -24,8 +25,6 @@ setup(name="func_adl",
       setup_requires=["pytest-runner"],
       tests_require=["pytest>=3.9"],
       classifiers=[
-                   # "Development Status :: 1 - Planning",
-                   "Development Status :: 2 - Pre-Alpha",
                    # "Development Status :: 3 - Alpha",
                    # "Development Status :: 4 - Beta",
                    # "Development Status :: 5 - Production/Stable",
