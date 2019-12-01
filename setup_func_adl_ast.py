@@ -7,6 +7,9 @@ from version_info import version_func_adl_ast, version_func_adl
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+extras_require = {'develop': ['pytest', 'pytest-cov', 'flake8', 'coverage', 'twine']}
+extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))
+
 setup(name="func_adl.ast",
       version=version_func_adl_ast,
       packages=['func_adl/ast'],
@@ -24,6 +27,7 @@ setup(name="func_adl.ast",
       install_requires=[f"func_adl=={version_func_adl}"],
       setup_requires=["pytest-runner"],
       tests_require=["pytest>=3.9"],
+      extras_require=extras_require,
       classifiers=[
                    # "Development Status :: 3 - Alpha",
                    # "Development Status :: 4 - Beta",
