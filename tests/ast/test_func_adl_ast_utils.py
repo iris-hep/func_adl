@@ -88,6 +88,7 @@ class my_call_vcatcher(FuncADLNodeVisitor):
     def call_dude(self, node, args):
         self.count += 1
         self.args = args
+        return 42
 
 
 def test_node_visit_method_ast_with_object():
@@ -98,9 +99,15 @@ def test_node_visit_method_ast_with_object():
 
 def test_node_visit_function_ast_with_object():
     start = ast.parse('dude()')
-    e = my_call_catcher()
+    e = my_call_vcatcher()
     e.visit(start)
     assert e.count == 1
+
+def test_node_visit_with_return():
+    start = ast.parse('dude()')
+    e = my_call_vcatcher()
+    r = e.visit(start.body[0].value)
+    assert r == 42
 
 def test_node_visit_function_ast_with_object_args():
     start = ast.parse('dude(10)')
@@ -113,16 +120,17 @@ def test_node_visit_function_ast_with_object_args():
 
 def test_node_visit_function_ast_with_object_args_norec():
     start = ast.parse('dude1(10)')
-    e = my_call_catcher()
+    e = my_call_vcatcher()
     e.visit(start)
     assert e.count == 0
 
 def test_node_visit_function_deep():
     start = ast.parse('dork(dude(10))')
-    expected = ast.dump(start)
-    e = my_call_catcher()
-    assert expected == ast.dump(e.visit(start))
+    e = my_call_vcatcher()
+    e.visit(start)
     assert e.count == 1
+
+### Parsing exetnsion functions into calls
 
 def test_extension_functions_call():
     source = ast.parse("dude()")

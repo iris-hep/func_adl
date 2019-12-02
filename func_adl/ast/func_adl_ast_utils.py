@@ -1,6 +1,6 @@
 import ast
 from func_adl.util_ast import function_call
-from typing import Tuple, List, Optional, cast
+from typing import Tuple, List, Optional, cast, Any
 
 
 def is_call_of(node: ast.AST, func_name: str) -> bool:
@@ -64,7 +64,7 @@ class FuncADLNodeVisitor (ast.NodeVisitor):
         - a ast.Call func_name is turned into a call_func_name(self, node, args)
     '''
 
-    def visit_Call(self, node: ast.Call):
+    def visit_Call(self, node: ast.Call) -> Any:
         ''' Parse the Call node, split out a function
         and its arguments if such a call exists.
         '''
@@ -73,11 +73,12 @@ class FuncADLNodeVisitor (ast.NodeVisitor):
 
         func_name, args = unpack_Call(node)
         if func_name is None:
-            return
+            return None
 
         visitor = getattr(self, f'call_{func_name}', None)
         if visitor is not None:
-            visitor(node, args)
+            return visitor(node, args)
+        return None
 
 
 default_list_of_functions = [
