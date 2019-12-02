@@ -1,4 +1,5 @@
 import ast
+from func_adl.util_ast import function_call
 from typing import Tuple, List, Optional, cast
 
 
@@ -77,3 +78,29 @@ class FuncADLNodeVisitor (ast.NodeVisitor):
         visitor = getattr(self, f'call_{func_name}', None)
         if visitor is not None:
             visitor(node, args)
+
+
+default_list_of_functions = [
+    'Select', 'SelectMany', 'Where',
+    'First',
+    'ResultTTree', 'ResultAwkwardArray', 'ResultPandasDF',
+]
+
+
+def change_extension_functions_to_calls(a: ast.AST, function_names: List[str] = default_list_of_functions) -> ast.AST:
+    '''Given a call tree for a query, find things that look like
+    `seq.Select(x: f(x))` and change them to `Select(seq, x: f(x))`.
+
+    Do this for the given list of functions.
+    '''
+    class transform_calls(ast.NodeTransformer):
+        def visit_Call(self, call_node: ast.Call) -> Optional[ast.AST]:
+            node = self.generic_visit(call_node)
+            if node is None or not isinstance(node, ast.Call):
+                return node
+            if not isinstance(node.func, ast.Attribute):
+                return node
+            if node.func.attr not in function_names:
+                return node
+            return function_call(node.func.attr, cast(List[ast.AST], [node.func.value] + node.args))
+    return transform_calls().visit(a)

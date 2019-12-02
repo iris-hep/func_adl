@@ -1,5 +1,5 @@
 # Test out the utility classes.
-from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, FuncADLNodeVisitor, is_call_of
+from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, FuncADLNodeVisitor, change_extension_functions_to_calls, is_call_of
 import ast
 
 
@@ -123,3 +123,31 @@ def test_node_visit_function_deep():
     e = my_call_catcher()
     assert expected == ast.dump(e.visit(start))
     assert e.count == 1
+
+def test_extension_functions_call():
+    source = ast.parse("dude()")
+    expected = ast.parse("dude()")
+
+    transform = change_extension_functions_to_calls(source)
+    assert ast.dump(transform) == ast.dump(expected)
+
+def test_extension_functions_select_call():
+    source = ast.parse("Select(jets, lambda b: b.pt())")
+    expected = ast.parse("Select(jets, lambda b: b.pt())")
+
+    transform = change_extension_functions_to_calls(source)
+    assert ast.dump(transform) == ast.dump(expected)
+
+def test_extension_functions_select_extension():
+    source = ast.parse("jets.Select(lambda b: b.pt())")
+    expected = ast.parse("Select(jets, lambda b: b.pt())")
+
+    transform = change_extension_functions_to_calls(source)
+    assert ast.dump(transform) == ast.dump(expected)
+
+def test_extension_functions_select_extension_in_lambda_too():
+    source = ast.parse("jets.Select(lambda b: b.Select(lambda j: jpt()))")
+    expected = ast.parse("Select(jets, lambda b: Select(b, lambda j: jpt()))")
+
+    transform = change_extension_functions_to_calls(source)
+    assert ast.dump(transform) == ast.dump(expected)

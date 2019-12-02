@@ -2,7 +2,7 @@
 from func_adl.util_ast_LINQ import parse_as_ast
 from func_adl.util_ast import as_ast, function_call
 # import ast
-from typing import Any, Callable
+from typing import Any, Callable, cast
 import asyncio
 import ast
 import os
@@ -21,14 +21,14 @@ class ObjectStream:
 
     `ObjectStream` holds onto the AST that will produce this stream of objects.
     '''
-    def __init__(self, the_ast):
+    def __init__(self, the_ast: ast.AST):
         r"""
         Initialize the stream with the ast that will produce this stream of objects.
         The user will almost never use this initializer.
         """
         self._ast = the_ast
 
-    def SelectMany(self, func):
+    def SelectMany(self, func: ast.Lambda):
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -41,9 +41,9 @@ class ObjectStream:
         Returns:
             A new ObjectStream.
         """
-        return ObjectStream(function_call("SelectMany", [self._ast, parse_as_ast(func)]))
+        return ObjectStream(function_call("SelectMany", [self._ast, cast(ast.AST, parse_as_ast(func))]))
 
-    def Select(self, f):
+    def Select(self, f: ast.Lambda):
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object.
@@ -54,7 +54,7 @@ class ObjectStream:
         Returns:
             A new ObjectStream of the transformed elements.
         """
-        return ObjectStream(function_call("Select", [self._ast, parse_as_ast(f)]))
+        return ObjectStream(function_call("Select", [self._ast, cast(ast.AST, parse_as_ast(f))]))
 
     def Where(self, filter):
         r'''
@@ -66,7 +66,7 @@ class ObjectStream:
         Returns:
             A new ObjectStream that contains only elements that pass the filter function
         '''
-        return ObjectStream(function_call("Where", [self._ast, parse_as_ast(filter)]))
+        return ObjectStream(function_call("Where", [self._ast, cast(ast.AST, parse_as_ast(filter))]))
 
     def AsPandasDF(self, columns=[]):
         r"""
