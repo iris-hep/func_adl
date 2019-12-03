@@ -7,11 +7,23 @@ class my_call_catcher(FuncADLNodeTransformer):
     def __init__ (self):
         self.count = 0
         self.args = []
+        self.call_order = []
 
     def call_dude(self, node, args):
         self.count += 1
         self.args = args
         return node
+
+    def call_dude1(self, node, args):
+        self.call_order += ['dude1']
+        for a in args:
+            self.visit(a)
+        return node
+
+    def call_dude2(self, node, args):
+        self.call_order += ['dude2']
+        for a in args:
+            self.visit(a)
 
 
 def test_node_transform_method_ast():
@@ -58,6 +70,15 @@ def test_node_transform_function_deep():
     assert expected == ast.dump(e.visit(start))
     assert e.count == 1
 
+def test_node_transform_arguments_only_done_last():
+    start = ast.parse("dude2(10, 20, dude1(10))")
+    e = my_call_catcher()
+    e.visit(start)
+    dude_order = e.call_order
+    assert len(dude_order) == 2
+    assert dude_order[0] == 'dude2'
+    assert dude_order[1] == 'dude1'
+
 def _parse_ast (e : str) -> ast.AST:
     a = ast.parse(e)
     b = a.body[0]
@@ -84,11 +105,22 @@ class my_call_vcatcher(FuncADLNodeVisitor):
     def __init__ (self):
         self.count = 0
         self.args = []
+        self.call_order = []
 
     def call_dude(self, node, args):
         self.count += 1
         self.args = args
         return 42
+
+    def call_dude1(self, node, args):
+        self.call_order += ['dude1']
+        for a in args:
+            self.visit(a)
+    
+    def call_dude2(self, node, args):
+        self.call_order += ['dude2']
+        for a in args:
+            self.visit(a)
 
 
 def test_node_visit_method_ast_with_object():
@@ -129,6 +161,15 @@ def test_node_visit_function_deep():
     e = my_call_vcatcher()
     e.visit(start)
     assert e.count == 1
+
+def test_node_visit_arguments_only_done_last():
+    start = ast.parse("dude2(10, 20, dude1(10))")
+    e = my_call_vcatcher()
+    e.visit(start)
+    dude_order = e.call_order
+    assert len(dude_order) == 2
+    assert dude_order[0] == 'dude2'
+    assert dude_order[1] == 'dude1'
 
 ### Parsing exetnsion functions into calls
 

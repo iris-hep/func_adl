@@ -45,16 +45,15 @@ class FuncADLNodeTransformer (ast.NodeTransformer):
         ''' Parse the Call node, split out a function
         and its arguments if such a call exists.
         '''
-        # First, visit one down.
-        visited_node = ast.NodeTransformer.generic_visit(self, node)
-        assert isinstance(visited_node, ast.Call)
-
-        func_name, args = unpack_Call(visited_node)
+        func_name, args = unpack_Call(node)
         if func_name is None:
-            return visited_node
+            return self.generic_visit(node)
 
         visitor = getattr(self, f'call_{func_name}', None)
-        return node if visitor is None else visitor(visited_node, args)
+        if visitor is None:
+            return self.generic_visit(node)
+        else:
+            return visitor(node, args)
 
 
 class FuncADLNodeVisitor (ast.NodeVisitor):
@@ -62,23 +61,23 @@ class FuncADLNodeVisitor (ast.NodeVisitor):
     we typically have to deal with in func_adl. In particular:
 
         - a ast.Call func_name is turned into a call_func_name(self, node, args)
+        - If you take over a call, you have to process all dependent ast's it. If you don't, 
+          then generic_visit is used to process the calls.
     '''
 
     def visit_Call(self, node: ast.Call) -> Any:
         ''' Parse the Call node, split out a function
         and its arguments if such a call exists.
         '''
-        # First, visit one down.
-        ast.NodeVisitor.generic_visit(self, node)
-
         func_name, args = unpack_Call(node)
         if func_name is None:
-            return None
+            return self.generic_visit(node)
 
         visitor = getattr(self, f'call_{func_name}', None)
         if visitor is not None:
             return visitor(node, args)
-        return None
+        else:
+            return self.generic_visit(node)
 
 
 default_list_of_functions = [
