@@ -82,8 +82,11 @@ def test_selectmany_where():
     assert zpt_first.func is not zpt_second.func
 
 def test_selectmany_select():
-    util_process("SelectMany(Select(events, lambda e: e.jets), lambda j: j.pt())",
-                      "SelectMany(events, lambda e: Select(e.jets, lambda j: j.pt()))")
+    # This example feels contrived, but that is because it is built to exercise just one part of the transform.
+    # This feature becomes important when dealing with lists (in a monad). There is a test below which combines
+    # this tranform with a tuple index, which is the common usecase you see in the wild.
+    util_process("SelectMany(Select(events, lambda e: Select(e.jets, lambda j: j.pt())), lambda jetpts: jetpts)",
+                 "SelectMany(events, lambda e: Select(e.jets, lambda j: j.pt()))")
 
 def test_selectmany_selectmany():
     util_process("SelectMany(SelectMany(events, lambda e: e.jets), lambda j: j.tracks)",
@@ -106,7 +109,6 @@ def test_tuple_select_past_end():
     except FuncADLIndexError:
         pass
 
-
 def test_tuple_in_lambda():
     util_process('(lambda t: t[0])((j1, j2))', 'j1')
 
@@ -115,3 +117,8 @@ def test_tuple_in_lambda_2deep():
 
 def test_tuple_around_first():
     util_process('Select(events, lambda e: First(Select(e.jets, lambda j: (j, e)))[0])', 'Select(events, lambda e: First(e.jets))')
+
+def test_tuple_in_SelectMany_Select():
+    # A more common use of the SelectMany_Select transform.
+    util_process("SelectMany(Select(events, lambda e: (Select(e.jets, lambda j: j.pt()), e.eventNumber)), lambda jetpts: jetpts[0])",
+                 "SelectMany(events, lambda e: Select(e.jets, lambda j: j.pt()))")
