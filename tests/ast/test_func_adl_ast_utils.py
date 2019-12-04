@@ -1,6 +1,7 @@
 # Test out the utility classes.
 from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, FuncADLNodeVisitor, change_extension_functions_to_calls, is_call_of
 import ast
+from typing import cast
 
 
 class my_call_catcher(FuncADLNodeTransformer):
@@ -138,7 +139,7 @@ def test_node_visit_function_ast_with_object():
 def test_node_visit_with_return():
     start = ast.parse('dude()')
     e = my_call_vcatcher()
-    r = e.visit(start.body[0].value)
+    r = e.visit(cast(ast.Expr, start.body[0]).value)
     assert r == 42
 
 def test_node_visit_function_ast_with_object_args():

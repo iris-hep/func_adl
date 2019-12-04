@@ -61,7 +61,7 @@ class FuncADLNodeVisitor (ast.NodeVisitor):
     we typically have to deal with in func_adl. In particular:
 
         - a ast.Call func_name is turned into a call_func_name(self, node, args)
-        - If you take over a call, you have to process all dependent ast's it. If you don't, 
+        - If you take over a call, you have to process all dependent ast's it. If you don't,
           then generic_visit is used to process the calls.
     '''
 
@@ -84,6 +84,7 @@ default_list_of_functions = [
     'Select', 'SelectMany', 'Where',
     'First',
     'ResultTTree', 'ResultAwkwardArray', 'ResultPandasDF',
+    'Min', 'Max', 'Sum', 'Aggregate', 'Count',              # It could be these should be via plug-in somewhere else.
 ]
 
 

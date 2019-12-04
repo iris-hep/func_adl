@@ -32,11 +32,11 @@ class aggregate_node_transformer(ast.NodeTransformer):
         if type(node.func) is ast.Name:
             if (node.func.id == 'len' or node.func.id == "Count") and (len(node.args) == 1):
                 # This is a len(sequence) call, which should be turned into a .Count() call.
-                return _generate_count_call(node.args[0])
+                return _generate_count_call(self.visit(node.args[0]))
             elif node.func.id == "Sum":
-                return _generate_count_call(node.args[0], "lambda acc,v: acc + v")
+                return _generate_count_call(self.visit(node.args[0]), "lambda acc,v: acc + v")
             elif node.func.id == "Max":
-                return _generate_count_call(node.args[0], "lambda acc,v: acc if acc > v else v")
+                return _generate_count_call(self.visit(node.args[0]), "lambda acc,v: acc if acc > v else v")
             elif node.func.id == "Min":
-                return _generate_count_call(node.args[0], "lambda acc,v: acc if acc < v else v")
+                return _generate_count_call(self.visit(node.args[0]), "lambda acc,v: acc if acc < v else v")
         return node

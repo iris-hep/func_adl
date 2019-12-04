@@ -37,3 +37,6 @@ def test_min_of_sequence():
 
 def test_max_of_sequence():
     util_process('Max(a)', 'Aggregate(a, 0, lambda acc, v: acc if acc > v else v)')
+
+def test_sum_in_argument():
+    util_process('Min(Sum(a))', 'Aggregate(Aggregate(a, 0, lambda acc, v: acc+v), 0, lambda acc, v: acc if acc < v else v)' )
