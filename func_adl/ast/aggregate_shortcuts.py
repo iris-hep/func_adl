@@ -39,4 +39,4 @@ class aggregate_node_transformer(ast.NodeTransformer):
                 return _generate_count_call(self.visit(node.args[0]), "lambda acc,v: acc if acc > v else v")
             elif node.func.id == "Min":
                 return _generate_count_call(self.visit(node.args[0]), "lambda acc,v: acc if acc < v else v")
-        return node
+        return self.generic_visit(node)

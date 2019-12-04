@@ -39,4 +39,8 @@ def test_max_of_sequence():
     util_process('Max(a)', 'Aggregate(a, 0, lambda acc, v: acc if acc > v else v)')
 
 def test_sum_in_argument():
-    util_process('Min(Sum(a))', 'Aggregate(Aggregate(a, 0, lambda acc, v: acc+v), 0, lambda acc, v: acc if acc < v else v)' )
+    util_process('Min(Sum(a))', 'Aggregate(Aggregate(a, 0, lambda acc, v: acc+v), 0, lambda acc, v: acc if acc < v else v)')
+
+def test_sum_in_labmda():
+    util_process("ResultTTree(Select(EventDataset(), lambda e: Sum(Select(e.TruthParticles, lambda t: t.prodVtx().x())), ['n_jets'], 'root.root'))",
+                 "ResultTTree(Select(EventDataset(), lambda e: Aggregate(Select(e.TruthParticles, lambda t: t.prodVtx().x()), 0, lambda acc, v: acc + v), ['n_jets'], 'root.root'))")
