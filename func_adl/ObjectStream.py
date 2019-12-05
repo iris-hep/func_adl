@@ -2,7 +2,7 @@
 from func_adl.util_ast_LINQ import parse_as_ast
 from func_adl.util_ast import as_ast, function_call
 # import ast
-from typing import Any, Callable, cast
+from typing import Any, Callable, cast, Union
 import asyncio
 import ast
 import os
@@ -28,7 +28,7 @@ class ObjectStream:
         """
         self._ast = the_ast
 
-    def SelectMany(self, func: ast.Lambda):
+    def SelectMany(self, func: Union[str, ast.Lambda]):
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -43,7 +43,7 @@ class ObjectStream:
         """
         return ObjectStream(function_call("SelectMany", [self._ast, cast(ast.AST, parse_as_ast(func))]))
 
-    def Select(self, f: ast.Lambda):
+    def Select(self, f: Union[str, ast.Lambda]):
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object.

@@ -3,6 +3,7 @@
 # Now the real test code starts.
 from func_adl.util_ast import lambda_is_identity, lambda_test, lambda_is_true, lambda_unwrap, lambda_body_replace, lambda_args, lambda_call, lambda_build, as_ast, function_call
 import ast
+from typing import cast
 
 # Ast parsing
 def test_as_ast_integer():
@@ -88,7 +89,7 @@ def test_lambda_test_lambda_module():
     assert lambda_test(ast.parse('lambda x: x')) == True
 
 def test_lambda_test_raw_lambda():
-    rl = ast.parse('lambda x: x').body[0].value
+    rl = cast(ast.Expr, ast.parse('lambda x: x').body[0]).value
     assert lambda_test(rl) == True
 
 # Is this lambda always returning true?

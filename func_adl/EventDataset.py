@@ -3,7 +3,6 @@ from urllib import parse
 from urllib.parse import ParseResult
 from func_adl import ObjectStream
 from func_adl.util_ast import function_call, as_ast
-import ast
 from typing import Union, Iterable
 
 
@@ -64,7 +63,7 @@ def _parse_and_check_dataset_url(u: str) -> ParseResult:
     return r
 
 
-class EventDataset(ObjectStream, ast.AST):
+class EventDataset(ObjectStream):
     r'''
     Represents a stream of events that originates from a dataset specified by some sort of URL.
     '''

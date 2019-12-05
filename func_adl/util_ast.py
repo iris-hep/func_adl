@@ -76,7 +76,7 @@ def lambda_body(l: Union[ast.Lambda, ast.Module]) -> ast.AST:
     return lambda_unwrap(l).body
 
 
-def lambda_call(args: Union[str, List[str]], l: ast.Lambda) -> ast.Call:
+def lambda_call(args: Union[str, List[str]], l: Union[ast.Lambda, ast.Module]) -> ast.Call:
     '''
     Create a `Call` AST that calls a lambda with the named args.
 
