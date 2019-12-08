@@ -10,7 +10,7 @@ def dummy_executor(a: ast.AST) -> ast.AST:
     'Called by the executor to run an AST'
     return a
 
-async def dummy_executor_coroutine(a: ast.AST) -> asyncio.Future:
+async def dummy_executor_coroutine(a: ast.AST) -> ast.AST:
     'Called to evaluate a guy - but it will take a long time'
     await asyncio.sleep(0.01)
     return a
