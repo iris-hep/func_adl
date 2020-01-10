@@ -1,6 +1,6 @@
 # Helpers for LINQ operators and LINQ expressions in AST form.
 # Utility routines to manipulate LINQ expressions.
-from func_adl.util_ast import lambda_unwrap
+from .util_ast import lambda_unwrap
 import ast
 from typing import Union
 
