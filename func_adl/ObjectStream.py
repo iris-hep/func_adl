@@ -1,6 +1,6 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
-from func_adl.util_ast_LINQ import parse_as_ast
-from func_adl.util_ast import as_ast, function_call
+from .util_ast_LINQ import parse_as_ast
+from .util_ast import as_ast, function_call
 # import ast
 from typing import Any, Callable, cast, Union
 import asyncio
