@@ -101,6 +101,10 @@ def test_tuple_select():
     # (t1, t2)[0] should be t1.
     util_process('(t1,t2)[0]', 't1')
 
+def test_list_select():
+    # [t1, t2][0] should be t1.
+    util_process('[t1,t2][0]', 't1')
+
 def test_tuple_select_past_end():
     # This should cause a crash!
     try:

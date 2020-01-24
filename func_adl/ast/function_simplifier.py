@@ -315,13 +315,28 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         else:
             return FuncADLNodeTransformer.visit_Call(self, call_node)
 
-    def visit_Subscript_Tuple(self, v, s):
+    def visit_Subscript_Tuple(self, v: ast.Tuple, s):
         '''
         (t1, t2, t3...)[1] => t2
 
         Only works if index is a number
         '''
         if type(s.value) is not ast.Num:
+            return ast.Subscript(v, s, ast.Load())
+        n = s.value.n
+        if n >= len(v.elts):
+            raise FuncADLIndexError(f"Attempt to access the {n}th element of a tuple only {len(v.elts)} values long.")
+
+        return v.elts[n]
+
+    def visit_Subscript_List(self, v: ast.List, s: ast.AST):
+        '''
+        [t1, t2, t3...][1] => t2
+
+        Only works if index is a number
+        '''
+        assert isinstance(s, ast.Index)
+        if not isinstance(s.value, ast.Num):
             return ast.Subscript(v, s, ast.Load())
         n = s.value.n
         if n >= len(v.elts):
@@ -356,6 +371,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         s = self.visit(node.slice)
         if type(v) is ast.Tuple:
             return self.visit_Subscript_Tuple(v, s)
+        if type(v) is ast.List:
+            return self.visit_Subscript_List(v, s)
 
         if is_call_of(v, 'First'):
             return self.visit_Subscript_Of_First(v.args[0], s)
