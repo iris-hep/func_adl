@@ -41,6 +41,6 @@ setup(name="func_adl",
                    "Topic :: Utilities",
       ],
       data_files=[],
-      python_requires='>=3.6',
+      python_requires='>=3.6, <3.8',
       platforms="Any",
       )
