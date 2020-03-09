@@ -1,8 +1,9 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
 import ast
 import asyncio
-import os
 from typing import Any, Callable, Union, cast
+
+import nest_asyncio
 
 from .util_ast import as_ast, function_call
 from .util_ast_LINQ import parse_as_ast
@@ -166,22 +167,7 @@ class ObjectStream:
         Returns:
             Whatever the executor evaluates to.
         """
-        # Event loops to run async tasks in python are "funny". We can't wait for a task if
-        # one of those loops is running. So that is improper use of the library.
-        fail = False
-        try:
-            loop = asyncio.get_running_loop()
-            fail = True
-        except BaseException:
-            pass
-        if fail:
-            raise ObjectStreamException('A python async event loop is already running. You must use value_async.')
-
-        # Run our own event loop to make sure we get back the result and we are self contained
-        # and don't stomp on anyone. Since we aren't just waiting on sockets, we will have to
-        # have an OS difference here.
-        if os.name == 'nt':
-            loop = asyncio.ProactorEventLoop()   # type: ignore
-        else:
-            loop = asyncio.get_event_loop()
+        # Use the nested asyncio package to get a running event loop.
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
         return loop.run_until_complete(self.value_async(executor))

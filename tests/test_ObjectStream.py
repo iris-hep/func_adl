@@ -106,18 +106,6 @@ def test_await_exe_with_throw():
     assert saw_exception
 
 @pytest.mark.asyncio
-async def test_fail_await():
-    try:
-        EventDataset("file://junk.root") \
-            .SelectMany("lambda e: e.jets()") \
-            .Select("lambda j: j.pT()") \
-            .AsROOTTTree("junk.root", "analysis", "jetPT") \
-            .value(dummy_executor_coroutine)
-        assert False
-    except ObjectStreamException:
-        pass
-
-@pytest.mark.asyncio
 async def test_await_exe_from_normal_function():
     r = EventDataset("file://junk.root") \
         .SelectMany("lambda e: e.jets()") \

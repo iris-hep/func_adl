@@ -41,5 +41,6 @@
     "python.testing.pytestArgs": [
         "--no-cov"
     ],
-    "python.pythonPath": "i:\\gwatts\\Code\\irishep\\func_adl\\.venv\\Scripts\\python.exe"
+    "python.pythonPath": ".venv\\3.7\\Scripts\\python.exe",
+    "python.venvPath": ".venv"
 }
