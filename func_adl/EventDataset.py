@@ -1,9 +1,10 @@
 # Event dataset
+from typing import Iterable, Union
 from urllib import parse
 from urllib.parse import ParseResult
+
 from .ObjectStream import ObjectStream
-from .util_ast import function_call, as_ast
-from typing import Union, Iterable
+from .util_ast import as_ast, function_call
 
 
 class EventDatasetURLException (BaseException):

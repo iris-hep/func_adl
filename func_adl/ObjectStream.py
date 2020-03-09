@@ -1,11 +1,11 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
-from .util_ast_LINQ import parse_as_ast
-from .util_ast import as_ast, function_call
-# import ast
-from typing import Any, Callable, cast, Union
-import asyncio
 import ast
+import asyncio
 import os
+from typing import Any, Callable, Union, cast
+
+from .util_ast import as_ast, function_call
+from .util_ast_LINQ import parse_as_ast
 
 
 class ObjectStreamException(BaseException):

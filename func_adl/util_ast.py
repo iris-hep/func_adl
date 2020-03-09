@@ -1,6 +1,6 @@
 # Some ast utils
 import ast
-from typing import Union, Optional, List, Any, cast
+from typing import Any, List, Optional, Union, cast
 
 
 def as_ast(p_var: Any) -> ast.AST:

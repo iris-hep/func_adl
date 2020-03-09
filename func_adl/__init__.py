@@ -6,7 +6,7 @@
 # just turn off checking here.
 
 # Main streaming object
-from .ObjectStream import ObjectStream, ObjectStreamException
+from .ObjectStream import ObjectStream, ObjectStreamException  # NOQA
 
 # Dataset accessors
-from .EventDataset import EventDataset, EventDatasetURLException
+from .EventDataset import EventDataset, EventDatasetURLException  # NOQA
