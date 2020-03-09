@@ -134,7 +134,7 @@ class ObjectStream:
         else:
             return r
 
-    async def future_value(self, executor: Callable[[ast.AST], Any] = None) -> None:
+    async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> None:
         r'''
         Start the evaluation of the AST. Returns a promise that can be used to check on the progress.
         Built to allow one to make lots of requests at the same time, and have a back-end server address
@@ -157,7 +157,7 @@ class ObjectStream:
         Trigger the evaluation of the AST. Returns the results of the execution to the caller.
         WARNING: It is an error to call this if the event loop for async futures is already running.
                  This comes up most surprisingly when running in a Jupyter notebook, which starts an
-                 event loop behind your back. So you must use `await` and `future_value`.
+                 event loop behind your back. So you must use `await` and `value_async`.
 
         Args:
             executor:       A function that when called with the ast will return the result. If
@@ -175,7 +175,7 @@ class ObjectStream:
         except BaseException:
             pass
         if fail:
-            raise ObjectStreamException('A python async event loop is already running. You must use future_value.')
+            raise ObjectStreamException('A python async event loop is already running. You must use value_async.')
 
         # Run our own event loop to make sure we get back the result and we are self contained
         # and don't stomp on anyone. Since we aren't just waiting on sockets, we will have to
@@ -184,4 +184,4 @@ class ObjectStream:
             loop = asyncio.ProactorEventLoop()   # type: ignore
         else:
             loop = asyncio.get_event_loop()
-        return loop.run_until_complete(self.future_value(executor))
+        return loop.run_until_complete(self.value_async(executor))

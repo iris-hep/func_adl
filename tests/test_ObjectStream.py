@@ -72,7 +72,7 @@ async def test_await_exe_from_coroutine():
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .future_value(dummy_executor_coroutine)
+        .value_async(dummy_executor_coroutine)
     assert isinstance(await r, ast.AST)
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ async def test_await_exe_from_coroutine_with_throw():
             .SelectMany("lambda e: e.jets()") \
             .Select("lambda j: j.pT()") \
             .AsROOTTTree("junk.root", "analysis", "jetPT") \
-            .future_value(dummy_executor_coroutine_with_throw)
+            .value_async(dummy_executor_coroutine_with_throw)
         result = await r
         assert result is not None
     except MyTestException:
@@ -116,13 +116,14 @@ async def test_fail_await():
         assert False
     except ObjectStreamException:
         pass
+
 @pytest.mark.asyncio
 async def test_await_exe_from_normal_function():
     r = EventDataset("file://junk.root") \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .future_value(dummy_executor)
+        .value_async(dummy_executor)
     assert isinstance(await r, ast.AST)
 
 @pytest.mark.asyncio
@@ -131,12 +132,12 @@ async def test_2await_exe_from_coroutine():
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .future_value(dummy_executor_coroutine)
+        .value_async(dummy_executor_coroutine)
     r2 = EventDataset("file://junk.root") \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.eta()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .future_value(dummy_executor_coroutine)
+        .value_async(dummy_executor_coroutine)
     rpair = await asyncio.gather(r1, r2)
     assert isinstance(rpair[0], ast.AST)
     assert isinstance(rpair[1], ast.AST)
