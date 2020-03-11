@@ -23,7 +23,7 @@ setup(name="func_adl_test",
       url="https://github.com/iris-hep/func_adl",
       license="TBD",
       test_suite="tests",
-      install_requires=["nest_asyncio~=1.2"],
+      install_requires=["nest_asyncio>=1.2,<1.3"],
       extras_require=extras_require,
       classifiers=[
                    # "Development Status :: 3 - Alpha",
