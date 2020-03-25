@@ -6,7 +6,7 @@ from distutils.core import setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-extras_require = {'test': ['pytest', 'pytest-asyncio', 'pytest-cov', 'flake8', 'coverage', 'twine']}
+extras_require = {'test': ['pytest', 'pytest-asyncio', 'pytest-cov', 'flake8', 'coverage', 'twine', 'wheel']}
 extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))
 
 setup(name="func_adl_test",
