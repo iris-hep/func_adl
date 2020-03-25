@@ -9,10 +9,10 @@ from .util_ast import as_ast, function_call
 from .util_ast_LINQ import parse_as_ast
 
 
-class ObjectStreamException(BaseException):
+class ObjectStreamException(Exception):
     'Exception thrown by the ObjectStream object.'
     def __init__(self, msg):
-        BaseException.__init__(self, msg)
+        Exception.__init__(self, msg)
 
 
 class ObjectStream:
@@ -124,7 +124,7 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        raise BaseException('No idea what to do for a default executor')
+        raise Exception('No idea what to do for a default executor')
 
     async def _exe_as_task(self, executor: Callable[[ast.AST], Any]) -> Any:
         'Run the executor as a task, no matter if it is a co routine or not'

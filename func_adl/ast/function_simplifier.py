@@ -43,11 +43,11 @@ def make_Select(source: ast.AST, selection: ast.AST):
     return source if lambda_is_identity(selection) else function_call('Select', [source, selection])
 
 
-class FuncADLIndexError(BaseException):
+class FuncADLIndexError(Exception):
     ''' If we are doing an indexing operation and we are out of range, throw this.
     '''
     def __init__(self, msg):
-        BaseException.__init__(self, msg)
+        Exception.__init__(self, msg)
 
 
 class simplify_chained_calls(FuncADLNodeTransformer):

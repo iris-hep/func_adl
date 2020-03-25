@@ -15,9 +15,9 @@ async def dummy_executor_coroutine(a: ast.AST) -> ast.AST:
     await asyncio.sleep(0.01)
     return a
 
-class MyTestException(BaseException):
+class MyTestException(Exception):
     def __init__(self, msg):
-        BaseException.__init__(self, msg)
+        Exception.__init__(self, msg)
 
 async def dummy_executor_coroutine_with_throw(a: ast.AST) -> asyncio.Future:
     'Called to evaluate a guy - it will throw an exception to make sure it gets picked up.'

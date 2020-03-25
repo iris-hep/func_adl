@@ -58,7 +58,7 @@ def lambda_unwrap(l: ast.AST) -> ast.Lambda:
     '''
     lb = cast(ast.Expr, l.body[0]).value if isinstance(l, ast.Module) else l
     if not isinstance(lb, ast.Lambda):
-        raise BaseException('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(l)))
+        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(l)))
 
     return lb
 
@@ -125,7 +125,7 @@ def lambda_body_replace(l: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
         new_l: New lambda that looks just like the old one, other than the expression is new. If the old one was an ast.Module, so will this one be.
     '''
     if type(l) is not ast.Lambda:
-        raise BaseException('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(l)))
+        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(l)))
 
     new_l = ast.Lambda(l.args, new_expr)
     return new_l
@@ -140,7 +140,7 @@ def lambda_assure(east: ast.AST, nargs: Optional[int] = None):
         nargs:      number of args it is required to have. If None, no check is done.
     '''
     if not lambda_test(east, nargs):
-        raise BaseException(
+        raise Exception(
             'Expression AST is not a lambda function with the right number of arguments')
 
     return east

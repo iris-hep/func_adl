@@ -7,12 +7,12 @@ from .ObjectStream import ObjectStream
 from .util_ast import as_ast, function_call
 
 
-class EventDatasetURLException (BaseException):
+class EventDatasetURLException (Exception):
     '''
     Exception thrown if the dataset URL passed is not valid
     '''
     def __init__(self, message):
-        BaseException.__init__(self, message)
+        Exception.__init__(self, message)
 
 
 def _fixup_url(url: str, parsed_url) -> str:
