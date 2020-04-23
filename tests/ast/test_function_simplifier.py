@@ -1,7 +1,12 @@
-from func_adl.ast.function_simplifier import FuncADLIndexError
+import ast
+from typing import Tuple
+
+from astunparse import unparse
+
+from func_adl.ast.function_simplifier import FuncADLIndexError, make_args_unique
 from func_adl.ast.function_simplifier import simplify_chained_calls
 from tests.util_debug_ast import normalize_ast
-import ast
+from .utils import reset_ast_counters
 
 def util_process(ast_in, ast_out):
     'Make sure ast in is the same as out after running through - this is a utility routine for the harness'
@@ -20,6 +25,45 @@ def util_process(ast_in, ast_out):
     assert s_updated == s_expected
     return a_updated_raw
 
+##############
+# Test lambda copier
+def util_run_parse(a_text: str) -> Tuple[ast.Lambda, ast.Lambda]:
+    module = ast.parse(a_text)
+    assert isinstance(module, ast.Module)
+    s = module.body[0]  # type: ast.Expr
+    a = s.value
+    assert isinstance(a, ast.Lambda)
+    new_a = make_args_unique(a)
+    return (a, new_a)
+
+
+def test_lambda_copy_simple():
+    a, new_a = util_run_parse('lambda a: a')
+    assert unparse(new_a).strip() == "(lambda arg_0: arg_0)"
+    assert ast.dump(new_a) != ast.dump(a)
+
+
+def test_lambda_copy_no_arg():
+    a, new_a = util_run_parse('lambda: 1+1')
+    assert unparse(new_a).strip() == "(lambda : (1 + 1))"
+    assert a is not new_a
+
+
+def test_lambda_copy_nested():
+    a, new_a = util_run_parse('lambda a: (lambda b: b)(a)')
+    assert unparse(new_a).strip() == "(lambda arg_0: (lambda b: b)(arg_0))"
+
+
+def test_lambda_copy_nested_same_arg_name():
+    a, new_a = util_run_parse('lambda a: (lambda a: a)(a)')
+    assert unparse(new_a).strip() == "(lambda arg_0: (lambda a: a)(arg_0))"
+
+
+def test_lambda_copy_nested_captured():
+    a, new_a = util_run_parse('lambda b: (lambda a: a+b)')
+    assert unparse(new_a).strip() == "(lambda arg_0: (lambda a: (a + arg_0)))"
+
+
 ################
 # Test convolutions
 def test_function_replacement():
@@ -27,6 +71,9 @@ def test_function_replacement():
 
 def test_function_convolution_2deep():
     util_process('(lambda x: x+1)((lambda y: y)(z))', 'z+1')
+
+def test_function_convolution_2deep_same_names():
+    util_process('(lambda x: x+1)((lambda x: x+2)(z))', 'z+2+1')
 
 def test_function_convolution_3deep():
     util_process('(lambda x: x+1)((lambda y: y)((lambda z: z)(a)))', 'a+1')
@@ -126,3 +173,12 @@ def test_tuple_in_SelectMany_Select():
     # A more common use of the SelectMany_Select transform.
     util_process("SelectMany(Select(events, lambda e: (Select(e.jets, lambda j: j.pt()), e.eventNumber)), lambda jetpts: jetpts[0])",
                  "SelectMany(events, lambda e: Select(e.jets, lambda j: j.pt()))")
+
+def test_tuple_with_lambda_args_duplication():
+    util_process("Select(Select(events, lambda e: (e.eles, e.muosn)), lambda e: e[0].Select(lambda e: e.E()))",
+        "Select(events, lambda e: e.eles.Select(lambda e: e.E()))")
+
+def test_tuple_with_lambda_args_duplication_rename():
+    # Note that "g" below could still be "e" and it wouldn't tickle the bug. f and e need to be different.
+    util_process("Select(Select(events, lambda e: (e.eles, e.muosn)), lambda f: f[0].Select(lambda g: g.E()))",
+        "Select(events, lambda e: e.eles.Select(lambda e: e.E()))")
