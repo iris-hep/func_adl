@@ -386,7 +386,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         assert isinstance(s, ast.Index)
         if not isinstance(s.value, ast.Num):
             return ast.Subscript(v, s, ast.Load())
-        n = s.value.n  # type: int
+        n = cast(int, s.value.n)
         if n >= len(v.elts):
             raise FuncADLIndexError(f"Attempt to access the {n}th element of a tuple only {len(v.elts)} values long.")
 

@@ -1,5 +1,5 @@
 import ast
-from typing import Tuple
+from typing import Tuple, cast
 
 from astunparse import unparse
 
@@ -30,7 +30,7 @@ def util_process(ast_in, ast_out):
 def util_run_parse(a_text: str) -> Tuple[ast.Lambda, ast.Lambda]:
     module = ast.parse(a_text)
     assert isinstance(module, ast.Module)
-    s = module.body[0]  # type: ast.Expr
+    s = cast(ast.Expr, module.body[0])
     a = s.value
     assert isinstance(a, ast.Lambda)
     new_a = make_args_unique(a)

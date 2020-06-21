@@ -135,7 +135,7 @@ class ObjectStream:
         else:
             return r
 
-    async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> None:
+    async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> Any:
         r'''
         Start the evaluation of the AST. Returns a promise that can be used to check on the progress.
         Built to allow one to make lots of requests at the same time, and have a back-end server address
