@@ -3,7 +3,7 @@ import ast
 import asyncio
 from typing import Any, Callable, Union, cast
 
-import nest_asyncio
+from make_it_sync import make_sync
 
 from .util_ast import as_ast, function_call
 from .util_ast_LINQ import parse_as_ast
@@ -153,21 +153,4 @@ class ObjectStream:
         # We do not know if this thing is synchronous or not, so we have to wrap it in a task.
         return await self._exe_as_task(exe)
 
-    def value(self, executor: Callable[[ast.AST], Any] = None) -> Any:
-        r"""
-        Trigger the evaluation of the AST. Returns the results of the execution to the caller.
-        WARNING: It is an error to call this if the event loop for async futures is already running.
-                 This comes up most surprisingly when running in a Jupyter notebook, which starts an
-                 event loop behind your back. So you must use `await` and `value_async`.
-
-        Args:
-            executor:       A function that when called with the ast will return the result. If
-                            None, then use the default executor.
-
-        Returns:
-            Whatever the executor evaluates to.
-        """
-        # Use the nested asyncio package to get a running event loop.
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(self.value_async(executor))
+    value = make_sync(value_async)
