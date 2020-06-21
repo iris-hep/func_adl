@@ -72,7 +72,7 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
 
     # Combine the lambdas into a single call by calling g with f as an argument
     l_g = make_args_unique(lambda_unwrap(ast_g))
-    l_f = copy.deepcopy(lambda_unwrap(ast_f))
+    l_f = make_args_unique(lambda_unwrap(ast_f))
 
     x = arg_name()
     f_arg = ast.Name(x, ast.Load())
