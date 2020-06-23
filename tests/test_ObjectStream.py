@@ -25,7 +25,7 @@ async def dummy_executor_coroutine_with_throw(a: ast.AST) -> asyncio.Future:
     raise MyTestException('this is a test bomb')
 
 def test_simple_query():
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -33,7 +33,7 @@ def test_simple_query():
     assert isinstance(r, ast.AST)
 
 def test_simple_query_panda():
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsPandasDF(["analysis", "jetPT"]) \
@@ -41,7 +41,7 @@ def test_simple_query_panda():
     assert isinstance(r, ast.AST)
 
 def test_simple_query_awkward():
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsAwkwardArray(["analysis", "jetPT"]) \
@@ -49,7 +49,7 @@ def test_simple_query_awkward():
     assert isinstance(r, ast.AST)
 
 def test_nested_query_rendered_correctly():
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .Where("lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0") \
         .SelectMany("lambda e: e.jets()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -59,7 +59,7 @@ def test_nested_query_rendered_correctly():
 
 def test_executor_returns_a_coroutine():
     'When the executor returns a future, make sure it waits'
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -68,7 +68,7 @@ def test_executor_returns_a_coroutine():
 
 @pytest.mark.asyncio
 async def test_await_exe_from_coroutine():
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -79,7 +79,7 @@ async def test_await_exe_from_coroutine():
 async def test_await_exe_from_coroutine_with_throw():
     saw_exception = False
     try:
-        r = EventDataset("file://junk.root") \
+        r = EventDataset() \
             .SelectMany("lambda e: e.jets()") \
             .Select("lambda j: j.pT()") \
             .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -94,7 +94,7 @@ async def test_await_exe_from_coroutine_with_throw():
 def test_await_exe_with_throw():
     saw_exception = False
     try:
-        r = EventDataset("file://junk.root") \
+        r = EventDataset() \
             .SelectMany("lambda e: e.jets()") \
             .Select("lambda j: j.pT()") \
             .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -107,7 +107,7 @@ def test_await_exe_with_throw():
 
 @pytest.mark.asyncio
 async def test_await_exe_from_normal_function():
-    r = EventDataset("file://junk.root") \
+    r = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
@@ -116,12 +116,12 @@ async def test_await_exe_from_normal_function():
 
 @pytest.mark.asyncio
 async def test_2await_exe_from_coroutine():
-    r1 = EventDataset("file://junk.root") \
+    r1 = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
         .value_async(dummy_executor_coroutine)
-    r2 = EventDataset("file://junk.root") \
+    r2 = EventDataset() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.eta()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
