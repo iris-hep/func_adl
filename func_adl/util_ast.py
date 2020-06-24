@@ -188,3 +188,26 @@ def lambda_test(a: ast.AST, nargs: Optional[int] = None) -> bool:
     if nargs is None:
         return True
     return len(lambda_unwrap(a).args.args) == nargs
+
+
+def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
+    r'''Return an AST for a lambda function from several sources.
+
+    We are handed one of several things:
+        - An AST that is a lambda function
+        - An AST that is a pointer to a Module that wraps an AST
+        - Text that contains properly formatted ast code for a lambda function.
+
+    In all cases, return a lambda function as an AST starting from the AST top node.
+
+    Args:
+        ast_source:     An AST or text string that represnets the lambda.
+
+    Returns:
+        An ast starting from the Lambda AST node.
+    '''
+    if isinstance(ast_source, str):
+        a = ast.parse(ast_source.strip())
+        return lambda_unwrap(a)
+    else:
+        return lambda_unwrap(ast_source)

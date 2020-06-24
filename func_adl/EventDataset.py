@@ -1,7 +1,6 @@
-# Event dataset
-from urllib import parse
-from urllib.parse import ParseResult
-from abc import ABC
+from abc import ABC, abstractmethod
+import ast
+from typing import Any, Optional, cast, List
 
 from .ObjectStream import ObjectStream
 from .util_ast import function_call
@@ -15,38 +14,83 @@ class EventDatasetURLException (Exception):
         Exception.__init__(self, message)
 
 
-def _parse_and_check_dataset_url(u: str) -> ParseResult:
-    '''
-    Returns a parsed URL and the url, after checking the url's to make sure there
-    is enough inforation in them. It throws if there is a problem.
-
-    Args
-        u       String
-
-    Returns:
-        u       The original URL
-        parsed  The URL that was parsed by url2 lib.
-    '''
-    r = parse.urlparse(u)
-    if r.scheme is None or len(r.scheme) == 0:
-        raise EventDatasetURLException(f'EventDataSet({u}) has no scheme (file://, localds://, etc.)')
-    if (r.netloc is None or len(r.netloc) == 0) and len(r.path) == 0:
-        raise EventDatasetURLException(f'EventDataSet({u}) has no dataset or filename')
-
-    return r
-
-
-class EventDataset(ObjectStream):
+class EventDataset(ObjectStream, ABC):
     r'''
     Represents a stream of events that originates from a dataset. This class
     should be sub-classed with the information about the actual dataset.
     '''
     def __init__(self):
         '''
-        Should not be called directly
+        Should not be called directly. Make sure to initialize this ctor
+        or tracking information will be lost.
         '''
-        # We participate in the AST parsing - as a node. So make sure the fields that should be traversed are
-        # set. This is mostly set as a way to show what a subclass would need to do in order
-        # to change this into an actual ast. Extra info is only needed if the info about the dataset is meant
-        # to leave the local computer.
-        self._ast = function_call('EventDataset', [])
+        # We participate in the AST parsing - as a node. This argument is used in a lookup
+        # later on - so do not alter this in a subclass without understanding what is
+        # going on!
+        self._ast = function_call('EventDataset', [ast.Constant(value=self)])
+
+    @abstractmethod
+    async def execute_result_async(self, a: ast.AST) -> Any:
+        '''
+        Override in your sub-class. The infrastructure will call this to render the result "locally", or as
+        requested by the AST.
+        '''
+        pass
+
+
+def _find_ED(a: ast.AST) -> ast.Call:
+    r'''
+    Given an input query ast, find the EventDataset and return it.
+
+    Args:
+        a:      An AST that represents a query
+
+    Returns:
+        The `EventDataset` at the root of this query. It will not be None.
+
+    Exceptions:
+        If there is more than one `EventDataset` found in the query or if there
+        is no `EventDataset` at the root of the query, then an exception is thrown.
+    '''
+
+    class ds_finder(ast.NodeVisitor):
+        def __init__(self):
+            self.ds: Optional[ast.Call] = None
+
+        def visit_Call(self, node: ast.Call):
+            if not isinstance(node.func, ast.Name):
+                return self.generic_visit(node)
+            if node.func.id != 'EventDataset':
+                return self.generic_visit(node)
+
+            if self.ds is not None:
+                raise Exception("AST Query has more than one EventDataset in it!")
+            self.ds = node
+            return node
+
+    ds_f = ds_finder()
+    ds_f.visit(a)
+
+    if ds_f.ds is None:
+        raise Exception("AST Query has no root EventDataset")
+
+    return ds_f.ds
+
+
+def _extract_dataset_info(ds_call: ast.Call) -> EventDataset:
+    '''
+    Convert a found ServiceX dataset in a call.
+    '''
+    args = cast(List[ast.AST], ds_call.args)
+
+    # List should be strings
+    assert len(args) == 1
+    return ast.literal_eval(args[0])
+
+
+def find_ed_in_ast(a: ast.AST) -> EventDataset:
+    '''
+    Search the `AST` for a `ServiceXDatasetSource` node,
+    and return the `sx` dataset object.
+    '''
+    return _extract_dataset_info(_find_ED(a))

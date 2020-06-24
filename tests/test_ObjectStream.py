@@ -6,126 +6,85 @@ import ast
 import asyncio
 import pytest
 
-def dummy_executor(a: ast.AST) -> ast.AST:
-    'Called by the executor to run an AST'
-    return a
 
-async def dummy_executor_coroutine(a: ast.AST) -> ast.AST:
-    'Called to evaluate a guy - but it will take a long time'
-    await asyncio.sleep(0.01)
-    return a
+class my_event(EventDataset):
+    async def execute_result_async(self, a: ast.AST):
+        await asyncio.sleep(0.01)
+        return a
 
 class MyTestException(Exception):
     def __init__(self, msg):
         Exception.__init__(self, msg)
 
-async def dummy_executor_coroutine_with_throw(a: ast.AST) -> asyncio.Future:
-    'Called to evaluate a guy - it will throw an exception to make sure it gets picked up.'
-    await asyncio.sleep(0.01)
-    raise MyTestException('this is a test bomb')
+class my_event_boom(EventDataset):
+    async def execute_result_async(self, a: ast.AST):
+        await asyncio.sleep(0.01)
+        raise MyTestException('this is a test bomb')
 
 def test_simple_query():
-    r = EventDataset() \
+    r = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value(dummy_executor)
+        .value()
     assert isinstance(r, ast.AST)
 
 def test_simple_query_panda():
-    r = EventDataset() \
+    r = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsPandasDF(["analysis", "jetPT"]) \
-        .value(dummy_executor)
+        .value()
     assert isinstance(r, ast.AST)
 
 def test_simple_query_awkward():
-    r = EventDataset() \
+    r = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsAwkwardArray(["analysis", "jetPT"]) \
-        .value(dummy_executor)
+        .value()
     assert isinstance(r, ast.AST)
 
 def test_nested_query_rendered_correctly():
-    r = EventDataset() \
+    r = my_event() \
         .Where("lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0") \
         .SelectMany("lambda e: e.jets()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value(dummy_executor)
+        .value()
     assert isinstance(r, ast.AST)
     assert "Select(source" not in ast.dump(r)
 
-def test_executor_returns_a_coroutine():
-    'When the executor returns a future, make sure it waits'
-    r = EventDataset() \
-        .SelectMany("lambda e: e.jets()") \
-        .Select("lambda j: j.pT()") \
-        .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value(dummy_executor_coroutine)
-    assert isinstance(r, ast.AST)
-
-@pytest.mark.asyncio
-async def test_await_exe_from_coroutine():
-    r = EventDataset() \
-        .SelectMany("lambda e: e.jets()") \
-        .Select("lambda j: j.pT()") \
-        .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value_async(dummy_executor_coroutine)
-    assert isinstance(await r, ast.AST)
-
 @pytest.mark.asyncio
 async def test_await_exe_from_coroutine_with_throw():
-    saw_exception = False
-    try:
-        r = EventDataset() \
+    with pytest.raises(MyTestException):
+        r = my_event_boom() \
             .SelectMany("lambda e: e.jets()") \
             .Select("lambda j: j.pT()") \
             .AsROOTTTree("junk.root", "analysis", "jetPT") \
-            .value_async(dummy_executor_coroutine_with_throw)
-        result = await r
-        assert result is not None
-    except MyTestException:
-        saw_exception = True
-    
-    assert saw_exception
-
-def test_await_exe_with_throw():
-    saw_exception = False
-    try:
-        r = EventDataset() \
-            .SelectMany("lambda e: e.jets()") \
-            .Select("lambda j: j.pT()") \
-            .AsROOTTTree("junk.root", "analysis", "jetPT") \
-            .value(dummy_executor_coroutine_with_throw)
-        assert r is not None
-    except MyTestException:
-        saw_exception = True
-    
-    assert saw_exception
+            .value_async()
+        await r
 
 @pytest.mark.asyncio
 async def test_await_exe_from_normal_function():
-    r = EventDataset() \
+    r = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value_async(dummy_executor)
+        .value_async()
     assert isinstance(await r, ast.AST)
 
 @pytest.mark.asyncio
 async def test_2await_exe_from_coroutine():
-    r1 = EventDataset() \
+    r1 = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value_async(dummy_executor_coroutine)
-    r2 = EventDataset() \
+        .value_async()
+    r2 = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.eta()") \
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value_async(dummy_executor_coroutine)
+        .value_async()
     rpair = await asyncio.gather(r1, r2)
     assert isinstance(rpair[0], ast.AST)
     assert isinstance(rpair[1], ast.AST)

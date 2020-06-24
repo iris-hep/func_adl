@@ -3,26 +3,27 @@ import ast
 from func_adl.ast import ast_hash
 from func_adl import EventDataset
 
-async def do_call (a):
-    return a
+class my_event(EventDataset):
+    async def execute_result_async(self, a: ast.AST):
+        return a
 
 def build_ast() -> ast.AST:
-    return EventDataset() \
+    return my_event() \
         .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()') \
         .AsROOTTTree('dude.root', 'analysis', 'JetPt') \
-        .value(executor=do_call)
+        .value()
 
 def build_ast_array_1() -> ast.AST:
-    return EventDataset() \
+    return my_event() \
         .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()') \
         .AsROOTTTree('dude.root', 'analysis', ['JetPt']) \
-        .value(executor=do_call)
+        .value()
 
 def build_ast_array_2() -> ast.AST:
-    return EventDataset() \
+    return my_event() \
         .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()') \
         .AsROOTTTree('dude.root', 'analysis', ['JetPt', 'JetEta']) \
-        .value(executor=do_call)
+        .value()
 
 def test_ast_hash_works():
     a = build_ast()
