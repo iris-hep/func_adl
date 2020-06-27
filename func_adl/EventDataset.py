@@ -30,6 +30,9 @@ class EventDataset(ObjectStream, ABC):
         self._ast = function_call('EventDataset', [ast.Constant(value=self)])
 
     def __repr__(self):
+        return f'{self.__class__.__name__}_{id(self)}'
+
+    def __str__(self):
         return self.__class__.__name__
 
     @abstractmethod
