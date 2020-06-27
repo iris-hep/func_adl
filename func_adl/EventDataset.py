@@ -29,8 +29,8 @@ class EventDataset(ObjectStream, ABC):
         # going on!
         self._ast = function_call('EventDataset', [ast.Constant(value=self)])
 
-    def __str__(self):
-        return f"'{self.__class__.__name__}'"
+    def __repr__(self):
+        return self.__class__.__name__
 
     @abstractmethod
     async def execute_result_async(self, a: ast.AST) -> Any:
