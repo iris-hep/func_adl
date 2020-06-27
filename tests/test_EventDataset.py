@@ -30,3 +30,8 @@ def test_find_event_inside():
     e = my_event()
     add = ast.BinOp(ast.Num(5), ast.Add, e._ast)
     assert find_ed_in_ast(add) is e
+
+
+def test_string_rep():
+    e = my_event()
+    assert str(e) == "'my_event'"
