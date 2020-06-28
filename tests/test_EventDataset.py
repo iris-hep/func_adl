@@ -35,4 +35,4 @@ def test_find_event_inside():
 def test_string_rep():
     e = my_event()
     assert str(e) == "my_event"
-    assert repr(e).startswith("'my_event_")
+    assert repr(e) == "'my_event'"
