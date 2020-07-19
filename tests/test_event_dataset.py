@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from func_adl import EventDataset
-from func_adl.EventDataset import find_ed_in_ast
+from func_adl.event_dataset import find_ed_in_ast
 
 def test_cannot_create():
     with pytest.raises(Exception):
