@@ -9,4 +9,4 @@
 from .object_stream import ObjectStream, ObjectStreamException  # NOQA
 
 # Dataset accessors
-from .event_dataset import EventDataset  # NOQA
+from .event_dataset import EventDataset, find_EventDataset  # NOQA

@@ -37,7 +37,7 @@ class EventDataset(ObjectStream, ABC):
         pass
 
 
-def _find_ED(a: ast.AST) -> ast.Call:
+def find_EventDataset(a: ast.AST) -> ast.Call:
     r'''
     Given an input query ast, find the EventDataset and return it.
 
@@ -92,4 +92,4 @@ def find_ed_in_ast(a: ast.AST) -> EventDataset:
     Search the `AST` for a `ServiceXDatasetSource` node,
     and return the `sx` dataset object.
     '''
-    return _extract_dataset_info(_find_ED(a))
+    return _extract_dataset_info(find_EventDataset(a))
