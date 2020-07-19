@@ -1,12 +1,10 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
 import ast
-import asyncio
-from typing import Any, Callable, Union, cast
+from typing import Any, Callable, Union, cast, Awaitable
 
 from make_it_sync import make_sync
 
-from .util_ast import as_ast, function_call
-from .util_ast_LINQ import parse_as_ast
+from .util_ast import as_ast, function_call, parse_as_ast
 
 
 class ObjectStreamException(Exception):
@@ -110,7 +108,7 @@ class ObjectStream:
         '''
         return ObjectStream(function_call("ResultAwkwardArray", [self._ast, as_ast(columns)]))
 
-    def _get_executor(self, executor: Callable[[ast.AST], Any] = None) -> Callable[[ast.AST], Any]:
+    def _get_executor(self, executor: Callable[[ast.AST], Awaitable[Any]] = None) -> Callable[[ast.AST], Awaitable[Any]]:
         r'''
         Returns an executor that can be used to run this.
         Logic seperated out as it is used from several different places.
@@ -124,33 +122,26 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        raise Exception('No idea what to do for a default executor')
+        from .EventDataset import find_ed_in_ast
+        ed = find_ed_in_ast(self._ast)
 
-    async def _exe_as_task(self, executor: Callable[[ast.AST], Any]) -> Any:
-        'Run the executor as a task, no matter if it is a co routine or not'
-        r = executor(self._ast)
-
-        if asyncio.iscoroutine(r):
-            return await r
-        else:
-            return r
+        return ed.execute_result_async
 
     async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> Any:
         r'''
-        Start the evaluation of the AST. Returns a promise that can be used to check on the progress.
-        Built to allow one to make lots of requests at the same time, and have a back-end server address
-        them simultaneously.
+        Evaluate the AST. Tracks back to the source dataset to understand how
+        to evaluate the AST. It is possible to pass in an executor to override that
+        behavior (used mostly for testing).
 
         Args:
             executor:       A function that when called with the ast will return a future for the
-                            result. If None, then uses the default executor (or throws if none is
-                            defined).
+                            result. If None, then uses the default executor.
 
         '''
         # Fetch the executor
         exe = self._get_executor(executor)
 
-        # We do not know if this thing is synchronous or not, so we have to wrap it in a task.
-        return await self._exe_as_task(exe)
+        # Run it
+        return await exe(self._ast)
 
     value = make_sync(value_async)

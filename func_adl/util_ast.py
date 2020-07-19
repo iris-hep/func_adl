@@ -40,8 +40,6 @@ def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
                     [])
 
 
-# TODO: lambda_unwrap should only be used in the parse_ast code, no where else - we should be moving
-# Lambda AST's around, not Module AST's.
 def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
     '''Given an AST of a lambda node, return the lambda node. If it is burried in a module, then unwrap it first
     Python, when it parses an module, returns the lambda wrapped in a `Module` AST node. This gets rid of it, but
@@ -188,3 +186,26 @@ def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
     if nargs is None:
         return True
     return len(lambda_unwrap(lam).args.args) == nargs
+
+
+def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
+    r'''Return an AST for a lambda function from several sources.
+
+    We are handed one of several things:
+        - An AST that is a lambda function
+        - An AST that is a pointer to a Module that wraps an AST
+        - Text that contains properly formatted ast code for a lambda function.
+
+    In all cases, return a lambda function as an AST starting from the AST top node.
+
+    Args:
+        ast_source:     An AST or text string that represnets the lambda.
+
+    Returns:
+        An ast starting from the Lambda AST node.
+    '''
+    if isinstance(ast_source, str):
+        a = ast.parse(ast_source.strip())
+        return lambda_unwrap(a)
+    else:
+        return lambda_unwrap(ast_source)
