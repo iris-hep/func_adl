@@ -42,47 +42,47 @@ def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
 
 # TODO: lambda_unwrap should only be used in the parse_ast code, no where else - we should be moving
 # Lambda AST's around, not Module AST's.
-def lambda_unwrap(a: ast.AST) -> ast.Lambda:
+def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
     '''Given an AST of a lambda node, return the lambda node. If it is burried in a module, then unwrap it first
     Python, when it parses an module, returns the lambda wrapped in a `Module` AST node. This gets rid of it, but
     is also flexible.
 
     Args:
-        l:      Lambda AST. It may be wrapped in a module as well.
+        lam:     Lambda AST. It may be wrapped in a module as well.
 
     Returns:
-        `Lambda` AST node, regardless of how the `Lambda` was wrapped in `l`.
+        `Lambda` AST node, regardless of how the `Lambda` was wrapped in `lam`.
 
     Exceptions:
         If the AST node isn't a lambda or a module wrapping a lambda.
     '''
-    lb = cast(ast.Expr, a.body[0]).value if isinstance(a, ast.Module) else a
+    lb = cast(ast.Expr, lam.body[0]).value if isinstance(lam, ast.Module) else lam
     if not isinstance(lb, ast.Lambda):
-        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(a)))
+        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(lam)))
 
     return lb
 
 
-def lambda_args(a: Union[ast.Module, ast.Lambda]) -> ast.arguments:
+def lambda_args(lam: Union[ast.Module, ast.Lambda]) -> ast.arguments:
     'Return the arguments of a lambda, no matter what form the lambda is in.'
-    return lambda_unwrap(a).args
+    return lambda_unwrap(lam).args
 
 
-def lambda_body(a: Union[ast.Lambda, ast.Module]) -> ast.AST:
+def lambda_body(lam: Union[ast.Lambda, ast.Module]) -> ast.AST:
     '''
     Given an AST lambda node, get the expression it uses and return it. This just makes life easier,
     no real logic is occuring here.
     '''
-    return lambda_unwrap(a).body
+    return lambda_unwrap(lam).body
 
 
-def lambda_call(args: Union[str, List[str]], a: Union[ast.Lambda, ast.Module]) -> ast.Call:
+def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module]) -> ast.Call:
     '''
     Create a `Call` AST that calls a lambda with the named args.
 
     Args:
         args:       a single string or a list of strings, each string is an argument name to be passed in.
-        l:          The lambda we want to call.
+        lam:        The lambda we want to call.
 
     Returns:
         A `Call` AST that calls the lambda with the given arguments.
@@ -90,7 +90,7 @@ def lambda_call(args: Union[str, List[str]], a: Union[ast.Lambda, ast.Module]) -
     if isinstance(args, str):
         args = [args]
     named_args = [ast.Name(x, ast.Load()) for x in args]
-    return ast.Call(lambda_unwrap(a), named_args, [])
+    return ast.Call(lambda_unwrap(lam), named_args, [])
 
 
 def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
@@ -113,22 +113,22 @@ def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
     return call_lambda
 
 
-def lambda_body_replace(a: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
+def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
     '''
     Return a new lambda function that has new_expr as the body rather than the old one. Otherwise, everything is the same.
 
     Args:
-        l:          A ast.Lambda or ast.Module that points to a lambda.
+        lam:        A ast.Lambda or ast.Module that points to a lambda.
         new_expr:   Expression that should replace this one.
 
     Returns:
-        new_l: New lambda that looks just like the old one, other than the expression is new. If the old one was an ast.Module, so will this one be.
+        new_lam: New lambda that looks just like the old one, other than the expression is new. If the old one was an ast.Module, so will this one be.
     '''
-    if type(a) is not ast.Lambda:
-        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(a)))
+    if type(lam) is not ast.Lambda:
+        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(lam)))
 
-    new_l = ast.Lambda(a.args, new_expr)
-    return new_l
+    new_lam = ast.Lambda(lam.args, new_expr)
+    return new_lam
 
 
 def lambda_assure(east: ast.AST, nargs: Optional[int] = None):
@@ -146,12 +146,12 @@ def lambda_assure(east: ast.AST, nargs: Optional[int] = None):
     return east
 
 
-def lambda_is_identity(a: ast.AST) -> bool:
+def lambda_is_identity(lam: ast.AST) -> bool:
     'Return true if this is a lambda with 1 argument that returns the argument'
-    if not lambda_test(a, 1):
+    if not lambda_test(lam, 1):
         return False
 
-    b = lambda_unwrap(a)
+    b = lambda_unwrap(lam)
     if not isinstance(b.body, ast.Name):
         return False
 
@@ -159,32 +159,32 @@ def lambda_is_identity(a: ast.AST) -> bool:
     return a1 == b.body.id
 
 
-def lambda_is_true(a: ast.AST) -> bool:
+def lambda_is_true(lam: ast.AST) -> bool:
     'Return true if this lambda always returns true'
-    if not lambda_test(a):
+    if not lambda_test(lam):
         return False
-    rl = lambda_unwrap(a)
+    rl = lambda_unwrap(lam)
     if not isinstance(rl.body, ast.NameConstant):
         return False
 
     return rl.body.value is True
 
 
-def lambda_test(a: ast.AST, nargs: Optional[int] = None) -> bool:
+def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
     r''' Test arguments
     '''
-    if not isinstance(a, ast.Lambda):
-        if not isinstance(a, ast.Module):
+    if not isinstance(lam, ast.Lambda):
+        if not isinstance(lam, ast.Module):
             return False
-        if len(a.body) != 1:
+        if len(lam.body) != 1:
             return False
-        if not isinstance(a.body[0], ast.Expr):
+        if not isinstance(lam.body[0], ast.Expr):
             return False
-        if not isinstance(cast(ast.Expr, a.body[0]).value, ast.Lambda):
+        if not isinstance(cast(ast.Expr, lam.body[0]).value, ast.Lambda):
             return False
-    rl = lambda_unwrap(a) if type(a) is ast.Module else a
+    rl = lambda_unwrap(lam) if type(lam) is ast.Module else lam
     if type(rl) is not ast.Lambda:
         return False
     if nargs is None:
         return True
-    return len(lambda_unwrap(a).args.args) == nargs
+    return len(lambda_unwrap(lam).args.args) == nargs
