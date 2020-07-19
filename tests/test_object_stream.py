@@ -1,7 +1,7 @@
 # Test the object stream
 import sys
 sys.path += ['.']
-from func_adl import ObjectStream, ObjectStreamException, EventDatasetURLException, EventDataset
+from func_adl import EventDataset
 import ast
 import asyncio
 import pytest

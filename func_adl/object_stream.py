@@ -122,7 +122,7 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        from .EventDataset import find_ed_in_ast
+        from .event_dataset import find_ed_in_ast
         ed = find_ed_in_ast(self._ast)
 
         return ed.execute_result_async
