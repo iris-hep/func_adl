@@ -6,18 +6,11 @@ from .object_stream import ObjectStream
 from .util_ast import function_call
 
 
-class EventDatasetURLException (Exception):
-    '''
-    Exception thrown if the dataset URL passed is not valid
-    '''
-    def __init__(self, message):
-        Exception.__init__(self, message)
-
-
 class EventDataset(ObjectStream, ABC):
     r'''
-    Represents a stream of events that originates from a dataset. This class
-    should be sub-classed with the information about the actual dataset.
+    A source of event objects (a ROOT file, or a xAOD file). This class
+    should be sub-classed with the information about the actual dataset, and
+    should never be created on its own.
     '''
     def __init__(self):
         '''
