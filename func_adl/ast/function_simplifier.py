@@ -68,8 +68,6 @@ def make_args_unique(a: ast.Lambda) -> ast.Lambda:
 
 def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     'Return an AST that represents g(f(args))'
-    # TODO: fix up the ast.Calls to use lambda_call if possible
-
     # Combine the lambdas into a single call by calling g with f as an argument
     l_g = make_args_unique(lambda_unwrap(ast_g))
     l_f = make_args_unique(lambda_unwrap(ast_f))
@@ -78,9 +76,7 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     f_arg = ast.Name(x, ast.Load())
     call_g = ast.Call(l_g, [ast.Call(l_f, [f_arg], [])], [])
 
-    # TODO: Rewrite with lambda_build
-    args = ast.arguments(args=[ast.arg(arg=x)])
-    call_g_lambda = ast.Lambda(args=args, body=call_g)
+    call_g_lambda = lambda_build(x, call_g)
 
     # Build a new call to nest the functions
     return call_g_lambda
@@ -123,7 +119,6 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         func_g = selection
 
         # Convolute the two functions
-        # TODO: should this be generic of just visit?
         new_selection = self.visit(convolute(func_g, func_f))
 
         # And return the parent select with the new selection function

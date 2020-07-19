@@ -1,9 +1,22 @@
 # Tests for ast_util.py
 
 # Now the real test code starts.
-from func_adl.util_ast import lambda_is_identity, lambda_test, lambda_is_true, lambda_unwrap, lambda_body_replace, lambda_args, lambda_call, lambda_build, as_ast, function_call
 import ast
 from typing import cast
+
+from func_adl.util_ast import (
+    as_ast,
+    function_call,
+    lambda_args,
+    lambda_body_replace,
+    lambda_build,
+    lambda_call,
+    lambda_is_identity,
+    lambda_is_true,
+    lambda_test,
+    lambda_unwrap,
+    parse_as_ast,
+)
 
 # Ast parsing
 def test_as_ast_integer():
@@ -115,3 +128,9 @@ def test_lambda_replace_simple_expression():
     a2 = lambda_body_replace(lambda_unwrap(a1), expr)
     a2_txt = ast.dump(a2)
     assert "op=Add(), right=Num(n=1))" in a2_txt
+
+
+def test_parse_as_ast_lambda():
+    l = lambda_unwrap(ast.parse("lambda x: x + 1"))
+    r = parse_as_ast(l)
+    assert isinstance(r, ast.Lambda)
