@@ -83,7 +83,6 @@ def _extract_dataset_info(ds_call: ast.Call) -> EventDataset:
     args = cast(List[ast.AST], ds_call.args)
 
     # List should be strings
-    assert len(args) == 1
     return ast.literal_eval(args[0])
 
 

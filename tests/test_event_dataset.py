@@ -17,6 +17,15 @@ class my_event(EventDataset):
         return 10
 
 
+class my_event_extra_args(EventDataset):
+    def __init__(self):
+        super().__init__()
+        self._ast.args.append(ast.Str(s='hi'))
+
+    async def execute_result_async(self, a: ast.AST) -> Any:
+        return 10
+
+
 def test_can_create():
     my_event()
 
@@ -28,6 +37,12 @@ def test_find_event_at_top():
 
 def test_find_event_inside():
     e = my_event()
+    add = ast.BinOp(ast.Num(5), ast.Add, e._ast)
+    assert find_ed_in_ast(add) is e
+
+
+def test_find_event_with_more_ast():
+    e = my_event_extra_args()
     add = ast.BinOp(ast.Num(5), ast.Add, e._ast)
     assert find_ed_in_ast(add) is e
 
