@@ -92,7 +92,7 @@ default_list_of_functions = [
 
 def change_extension_functions_to_calls(a: ast.AST,
                                         function_names: List[str] = default_list_of_functions) \
-                                        -> ast.AST:
+        -> ast.AST:
     '''Given a call tree for a query, find things that look like
     `seq.Select(x: f(x))` and change them to `Select(seq, x: f(x))`.
 
