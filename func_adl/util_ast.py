@@ -199,7 +199,7 @@ class _find_lambda(ast.NodeVisitor):
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
         if self._found is not None:
-            raise Exception(f'The line of source contained more than one lambda on it! Cannot tell which one to read!')
+            raise Exception('The line of source contained more than one lambda on it! Cannot tell which one to read!')
         self._found = node
 
 
