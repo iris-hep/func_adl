@@ -34,7 +34,7 @@ class ObjectStream:
         """
         self._ast = the_ast
 
-    def SelectMany(self, func: Union[str, ast.Lambda]):
+    def SelectMany(self, func: Union[str, ast.Lambda]) -> 'ObjectStream':
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -50,7 +50,7 @@ class ObjectStream:
         """
         return ObjectStream(function_call("SelectMany", [self._ast, cast(ast.AST, parse_as_ast(func))]))
 
-    def Select(self, f: Union[str, ast.Lambda]):
+    def Select(self, f: Union[str, ast.Lambda]) -> 'ObjectStream':
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object. There is a one-to-one correspondence between the input objects and output objects.
@@ -65,7 +65,7 @@ class ObjectStream:
         """
         return ObjectStream(function_call("Select", [self._ast, cast(ast.AST, parse_as_ast(f))]))
 
-    def Where(self, filter):
+    def Where(self, filter) -> 'ObjectStream':
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -79,7 +79,7 @@ class ObjectStream:
         '''
         return ObjectStream(function_call("Where", [self._ast, cast(ast.AST, parse_as_ast(filter))]))
 
-    def AsPandasDF(self, columns=[]):
+    def AsPandasDF(self, columns=[]) -> 'ObjectStream':
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
         This `DataFrame` will contain all the data fed to it. Only non-array datatypes are permitted:
@@ -95,7 +95,7 @@ class ObjectStream:
         # To get Pandas use the ResultPandasDF function call.
         return ObjectStream(function_call("ResultPandasDF", [self._ast, as_ast(columns)]))
 
-    def AsROOTTTree(self, filename, treename, columns=[]):
+    def AsROOTTTree(self, filename, treename, columns=[]) -> 'ObjectStream':
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -121,7 +121,7 @@ class ObjectStream:
         """
         return ObjectStream(function_call("ResultTTree", [self._ast, as_ast(columns), as_ast(treename), as_ast(filename)]))
 
-    def AsAwkwardArray(self, columns=[]):
+    def AsAwkwardArray(self, columns=[]) -> 'ObjectStream':
         r'''
         Return a pandas stream that contains one item, an `awkward` array, or dictionary of `awkward` arrays.
         This `awkward` will contain all the data fed to it.
