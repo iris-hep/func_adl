@@ -35,6 +35,8 @@ jobs:
       run: |
         python -m pytest -r sx
     - name: Build the pypi package
+      env:
+        func_adl_version: 1.0b10
       run: |
         python setup_func_adl.py sdist bdist_wheel
         python setup_func_adl_ast.py sdist bdist_wheel

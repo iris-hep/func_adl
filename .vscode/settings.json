@@ -18,6 +18,7 @@
         "databanks",
         "dataframes",
         "elts",
+        "getenv",
         "gwatts",
         "iscoroutine",
         "localds",

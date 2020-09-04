@@ -1,7 +1,7 @@
 # Need setuptools even though it isn't used - loads some plugins.
 from setuptools import find_packages  # noqa: F401
 from distutils.core import setup
-from version_info import version_func_adl_ast, version_func_adl
+import os
 
 # Use the readme as the long description.
 with open("README.md", "r") as fh:
@@ -10,8 +10,12 @@ with open("README.md", "r") as fh:
 extras_require = {'develop': ['pytest', 'pytest-cov', 'flake8', 'coverage', 'twine']}
 extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))
 
+version = os.getenv('func_adl_version')
+if version is None:
+    raise Exception('func_adl_version env var is not set')
+
 setup(name="func_adl.ast",
-      version=version_func_adl_ast,
+      version=version,
       packages=['func_adl/ast'],
       scripts=[],
       description="Functional Analysis Description Language - Backend AST Manipulation Packages",
@@ -24,7 +28,7 @@ setup(name="func_adl.ast",
       url="https://github.com/iris-hep/func_adl",
       license="TBD",
       test_suite="tests",
-      install_requires=[f"func_adl=={version_func_adl}"],
+      install_requires=[f"func_adl=={version}"],
       setup_requires=["pytest-runner"],
       tests_require=["pytest>=3.9"],
       extras_require=extras_require,
