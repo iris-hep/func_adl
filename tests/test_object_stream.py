@@ -84,6 +84,18 @@ async def test_await_exe_from_normal_function():
         .value_async()
     assert isinstance(await r, ast.AST)
 
+
+def test_ast_prop():
+    r = my_event() \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsROOTTTree("junk.root", "analysis", "jetPT")
+
+    assert isinstance(r.query_ast, ast.AST)
+    assert isinstance(r.query_ast, ast.Call)
+
+
+
 @pytest.mark.asyncio
 async def test_2await_exe_from_coroutine():
     r1 = my_event() \

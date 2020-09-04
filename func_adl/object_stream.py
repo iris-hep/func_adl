@@ -32,7 +32,16 @@ class ObjectStream:
         Initialize the stream with the ast that will produce this stream of objects.
         The user will almost never use this initializer.
         """
-        self._ast = the_ast
+        self._q_ast = the_ast
+
+    @property
+    def query_ast(self) -> ast.AST:
+        '''Return the query `ast` that this `ObjectStream` represents
+
+        Returns:
+            ast.AST: The python `ast` that is represented by this query
+        '''
+        return self._q_ast
 
     def SelectMany(self, func: Union[str, ast.Lambda]) -> 'ObjectStream':
         r"""
@@ -48,7 +57,7 @@ class ObjectStream:
         Returns:
             A new ObjectStream of the type of the elements.
         """
-        return ObjectStream(function_call("SelectMany", [self._ast, cast(ast.AST, parse_as_ast(func))]))
+        return ObjectStream(function_call("SelectMany", [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
 
     def Select(self, f: Union[str, ast.Lambda]) -> 'ObjectStream':
         r"""
@@ -63,7 +72,7 @@ class ObjectStream:
 
             A new ObjectStream of the transformed elements.
         """
-        return ObjectStream(function_call("Select", [self._ast, cast(ast.AST, parse_as_ast(f))]))
+        return ObjectStream(function_call("Select", [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
 
     def Where(self, filter) -> 'ObjectStream':
         r'''
@@ -77,7 +86,7 @@ class ObjectStream:
 
             A new ObjectStream that contains only elements that pass the filter function
         '''
-        return ObjectStream(function_call("Where", [self._ast, cast(ast.AST, parse_as_ast(filter))]))
+        return ObjectStream(function_call("Where", [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
 
     def AsPandasDF(self, columns=[]) -> 'ObjectStream':
         r"""
@@ -93,7 +102,7 @@ class ObjectStream:
         """
 
         # To get Pandas use the ResultPandasDF function call.
-        return ObjectStream(function_call("ResultPandasDF", [self._ast, as_ast(columns)]))
+        return ObjectStream(function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
 
     def AsROOTTTree(self, filename, treename, columns=[]) -> 'ObjectStream':
         r"""
@@ -120,7 +129,7 @@ class ObjectStream:
             dataset.  The order of the files back is consistent for different queries on the same
             dataset.
         """
-        return ObjectStream(function_call("ResultTTree", [self._ast, as_ast(columns), as_ast(treename), as_ast(filename)]))
+        return ObjectStream(function_call("ResultTTree", [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)]))
 
     def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) -> 'ObjectStream':
         '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
@@ -144,7 +153,7 @@ class ObjectStream:
             the backend - the data should be concatinated together to get a final result. The order of the files back
             is consistent for different queries on the same dataset.
         '''
-        return ObjectStream(function_call("ResultParquet", [self._ast, as_ast(columns), as_ast(filename)]))
+        return ObjectStream(function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)]))
 
     def AsAwkwardArray(self, columns=[]) -> 'ObjectStream':
         r'''
@@ -160,7 +169,7 @@ class ObjectStream:
 
             An `ObjectStream` with the `awkward` array data as its one and only element.
         '''
-        return ObjectStream(function_call("ResultAwkwardArray", [self._ast, as_ast(columns)]))
+        return ObjectStream(function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)]))
 
     def _get_executor(self, executor: Callable[[ast.AST], Awaitable[Any]] = None) -> Callable[[ast.AST], Awaitable[Any]]:
         r'''
@@ -177,7 +186,7 @@ class ObjectStream:
             return executor
 
         from .event_dataset import find_ed_in_ast
-        ed = find_ed_in_ast(self._ast)
+        ed = find_ed_in_ast(self._q_ast)
 
         return ed.execute_result_async
 
@@ -208,6 +217,6 @@ class ObjectStream:
         exe = self._get_executor(executor)
 
         # Run it
-        return await exe(self._ast)
+        return await exe(self._q_ast)
 
     value = make_sync(value_async)
