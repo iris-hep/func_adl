@@ -13,6 +13,7 @@
         "astunparse",
         "asyncio",
         "codecov",
+        "dataframes",
         "elts",
         "gwatts",
         "iscoroutine",
@@ -21,6 +22,7 @@
         "noqa",
         "numpy",
         "pytest",
+        "servicex",
         "url's",
         "xaod",
         "xrootd"
