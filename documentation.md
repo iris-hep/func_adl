@@ -1,10 +1,10 @@
 # Documentation for func_adl
 
-func_adl is an SQL-like language used to construct hierarchical data queries for `servicex` (https://pypi.org/project/servicex/). func_adl is written to work with both `servicex` service modes, and requires either `func_adl_xAOD` (https://pypi.org/project/func-adl-xAOD/) or `func_adl_uproot` (https://pypi.org/project/func-adl-uproot/) for full functionality.
+func_adl is an SQL-like language used to construct hierarchical data queries for [`servicex`](https://pypi.org/project/servicex/). func_adl is written to work with both `servicex` service modes, and requires either [`func_adl_xAOD`](https://pypi.org/project/func-adl-xAOD/) or [`func_adl_uproot`](https://pypi.org/project/func-adl-uproot/) for full functionality.
 
-### Example of a func_adl_xAOD query
+## Example of a func_adl_xAOD query
 
-```
+```python
 data = ServiceXDatasetSource(dataset) \
     .Select('lambda e: (e.Electrons("Electrons"), e.Muons("Muons"))') \
     .Select('lambda ls: (ls[0].Select(lambda e: e.pt()), ls[0].Select(lambda e: e.eta()), \
@@ -23,7 +23,7 @@ The following lines are each func_adl transformations on the dataset. func_adl f
 
 It should be noted that all commands except for `.value()` are used only to construct the query, and do not send any information or request anything from `ServiceX`. The entire query is sent using the `.value()` command, and there is no data exchange until that command is sent.
 
-### Commands in a func_adl_xAOD query:
+## Commands in a func_adl_xAOD query
 
 There are a variety of useful operators that can be submitted in a func_adl query. Here, they are listed and explained:
 
@@ -41,7 +41,10 @@ This command replaces the list with its length, counting the number of elements.
 
 `.AsAwkwardArray(...)`
 `.AsPandasDF(...)`
+`.AsROOTTTree(...)`
+`.AsParquetFile(...)`
 These commands specifies how the query should return the selection. Currently, the xAOD backend can return selections as either awkward arrays or pandas dataframes.
 
 `.value()`
-This command actually executes the query built by the other commands, sending it to `ServiceX` and then returning the data. 
+`.value_async()`
+This command actually executes the query built by the other commands, sending it to `ServiceX` and then returning the data.

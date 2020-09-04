@@ -1,5 +1,6 @@
 # Test the object stream
 import sys
+from typing import Any, Optional
 sys.path += ['.']
 from func_adl import EventDataset
 import ast
@@ -28,6 +29,16 @@ def test_simple_query():
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
         .value()
     assert isinstance(r, ast.AST)
+
+
+def test_simple_query_parquet():
+    r = my_event() \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsParquetFiles("junk.root", 'jetPT') \
+        .value()
+    assert isinstance(r, ast.AST)
+
 
 def test_simple_query_panda():
     r = my_event() \
@@ -88,3 +99,22 @@ async def test_2await_exe_from_coroutine():
     rpair = await asyncio.gather(r1, r2)
     assert isinstance(rpair[0], ast.AST)
     assert isinstance(rpair[1], ast.AST)
+
+
+@pytest.mark.asyncio
+async def test_passed_in_executor():
+    logged_ast: Optional[ast.AST] = None
+    
+    async def my_exe(a: ast.AST) -> Any:
+        nonlocal logged_ast
+        logged_ast = a
+        return 1
+        
+    r = my_event() \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsROOTTTree("junk.root", "analysis", "jetPT") \
+        .value_async(executor=my_exe)
+
+    assert (await r) == 1
+    assert logged_ast is not None

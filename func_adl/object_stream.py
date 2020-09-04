@@ -1,16 +1,16 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
 import ast
-from typing import Any, Callable, Union, cast, Awaitable
+from typing import Any, Awaitable, Callable, List, Union, cast
 
 from make_it_sync import make_sync
 
 from .util_ast import as_ast, function_call, parse_as_ast
 
 
-class ObjectStreamException(Exception):
-    'Exception thrown by the ObjectStream object.'
-    def __init__(self, msg):
-        Exception.__init__(self, msg)
+# class ObjectStreamException(Exception):
+#     'Exception thrown by the ObjectStream object.'
+#     def __init__(self, msg):
+#         Exception.__init__(self, msg)
 
 
 class ObjectStream:
@@ -117,9 +117,34 @@ class ObjectStream:
 
             A new ObjectStream with type [(filename, treename)]. This is because multiple tree's
             may be written by the back end, and need to be concatenated together to get the full
+            dataset.  The order of the files back is consistent for different queries on the same
             dataset.
         """
         return ObjectStream(function_call("ResultTTree", [self._ast, as_ast(columns), as_ast(treename), as_ast(filename)]))
+
+    def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) -> 'ObjectStream':
+        '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
+        entry in the file. The times must be of types that the infrastructure can work with:
+
+            Float               A tree with a single float in each entry will be written.
+            vector<float>       A tree with a list of floats in each entry will be written.
+            (<tuple>)           A tree with multiple items (leaves) will be written. Each leaf
+                                must have one of the above types. Nested tuples are not supported.
+            {k:v, }             A dictionary with named columns. v is either a float or a vector of floats.
+
+        Arguments:
+
+            filename            Name of a file in which the data will be written. Depending on where the data comes
+                                from this may not be used - consider it a suggestion.
+            columns             If the data does not arrive by dictionary, then these are the column names.
+
+        Returns:
+
+            A new `ObjectStream` with type `[filename]`. This is because multiple files may be written by
+            the backend - the data should be concatinated together to get a final result. The order of the files back
+            is consistent for different queries on the same dataset.
+        '''
+        return ObjectStream(function_call("ResultParquet", [self._ast, as_ast(columns), as_ast(filename)]))
 
     def AsAwkwardArray(self, columns=[]) -> 'ObjectStream':
         r'''
