@@ -80,15 +80,19 @@ class FuncADLNodeVisitor (ast.NodeVisitor):
             return self.generic_visit(node)
 
 
+# Default list of functions that we allow in here when altering extension function changes.
+# TODO: #50 Get rid of this now that qastle supports this stuff
 default_list_of_functions = [
     'Select', 'SelectMany', 'Where',
     'First',
     'ResultTTree', 'ResultAwkwardArray', 'ResultPandasDF',
-    'Min', 'Max', 'Sum', 'Aggregate', 'Count',              # It could be these should be via plug-in somewhere else.
+    'Min', 'Max', 'Sum', 'Aggregate', 'Count',
 ]
 
 
-def change_extension_functions_to_calls(a: ast.AST, function_names: List[str] = default_list_of_functions) -> ast.AST:
+def change_extension_functions_to_calls(a: ast.AST,
+                                        function_names: List[str] = default_list_of_functions) \
+                                        -> ast.AST:
     '''Given a call tree for a query, find things that look like
     `seq.Select(x: f(x))` and change them to `Select(seq, x: f(x))`.
 
@@ -103,5 +107,6 @@ def change_extension_functions_to_calls(a: ast.AST, function_names: List[str] = 
                 return node
             if node.func.attr not in function_names:
                 return node
-            return function_call(node.func.attr, cast(List[ast.AST], [node.func.value] + node.args))
+            return function_call(node.func.attr,
+                                 cast(List[ast.AST], [node.func.value] + node.args))
     return transform_calls().visit(a)
