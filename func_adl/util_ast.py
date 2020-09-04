@@ -1,6 +1,6 @@
-# Some ast utils
 import ast
-from typing import Any, List, Optional, Union, cast
+import inspect
+from typing import Any, Callable, List, Optional, Union, cast
 
 
 def as_ast(p_var: Any) -> ast.AST:
@@ -188,7 +188,22 @@ def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
     return len(lambda_unwrap(lam).args.args) == nargs
 
 
-def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
+class _find_lambda(ast.NodeVisitor):
+    def __init__(self):
+        super().__init__()
+        self._found: Optional[ast.Lambda] = None
+
+    @property
+    def found(self) -> Optional[ast.Lambda]:
+        return self._found
+
+    def visit_Lambda(self, node: ast.Lambda) -> Any:
+        if self._found is not None:
+            raise Exception(f'The line of source contained more than one lambda on it! Cannot tell which one to read!')
+        self._found = node
+
+
+def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     r'''Return an AST for a lambda function from several sources.
 
     We are handed one of several things:
@@ -204,8 +219,22 @@ def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
     Returns:
         An ast starting from the Lambda AST node.
     '''
-    if isinstance(ast_source, str):
+    if callable(ast_source):
+        source = inspect.getsource(ast_source).strip()
+        sq_ast = ast.parse(source)
+        finder = _find_lambda()
+
+        try:
+            finder.visit(sq_ast)
+            if finder.found is None:
+                raise Exception(f'The source code for the lambda function {ast_source} did not contain a lambda: {source}')
+            return finder.found
+        except Exception as e:
+            raise Exception(f'While parsing the source line {source}') from e
+
+    elif isinstance(ast_source, str):
         a = ast.parse(ast_source.strip())
         return lambda_unwrap(a)
+
     else:
         return lambda_unwrap(ast_source)

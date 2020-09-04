@@ -1,22 +1,13 @@
-# Tests for ast_util.py
-
-# Now the real test code starts.
 import ast
 from typing import cast
 
+import pytest
+
 from func_adl.util_ast import (
-    as_ast,
-    function_call,
-    lambda_args,
-    lambda_body_replace,
-    lambda_build,
-    lambda_call,
-    lambda_is_identity,
-    lambda_is_true,
-    lambda_test,
-    lambda_unwrap,
-    parse_as_ast,
-)
+    as_ast, function_call, lambda_args, lambda_body_replace, lambda_build,
+    lambda_call, lambda_is_identity, lambda_is_true, lambda_test,
+    lambda_unwrap, parse_as_ast)
+
 
 # Ast parsing
 def test_as_ast_integer():
@@ -134,3 +125,33 @@ def test_parse_as_ast_lambda():
     l = lambda_unwrap(ast.parse("lambda x: x + 1"))
     r = parse_as_ast(l)
     assert isinstance(r, ast.Lambda)
+
+
+def test_parse_as_str():
+    r = parse_as_ast('lambda x: x + 1')
+    assert isinstance(r, ast.Lambda)
+
+
+def test_parse_as_callable_simple():
+    r = parse_as_ast(lambda x: x + 1)
+    assert isinstance(r, ast.Lambda)
+
+
+def test_parse_nested_lambda():
+    r = parse_as_ast(lambda x: (lambda y: y + 1)(x))
+    assert isinstance(r, ast.Lambda)
+
+def test_parse_two_lambdas():
+    with pytest.raises(Exception) as e:
+        (parse_as_ast(lambda x: x + 1), parse_as_ast(lambda y: y * 10))
+
+    assert 'While parsing' in str(e.value)
+
+
+def test_parse_simple_func():
+    'Fail if we get a function - one day we can do this, but not quite yet'
+    def doit(x):
+        return x + 1
+
+    with pytest.raises(Exception):
+        parse_as_ast(doit)
