@@ -1,5 +1,5 @@
 import ast
-from typing import cast
+from typing import Callable, cast
 
 import pytest
 
@@ -155,3 +155,17 @@ def test_parse_simple_func():
 
     with pytest.raises(Exception):
         parse_as_ast(doit)
+
+
+def test_run_on_parse():
+    'Emulate the syntax you often find when you have a multistep query'
+    class my_obj:
+        def do_it(self, x: Callable):
+            parse_as_ast(x)
+            return self
+
+    # #&$&#^$^@ this parse error makes this almost not useful.
+    with pytest.raises(Exception):
+        long_expr = my_obj() \
+            .do_it(lambda x: x + 1) \
+            .do_it(lambda y: y + 2)
