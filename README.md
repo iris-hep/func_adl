@@ -16,3 +16,5 @@ one of the following packages:
 
 - func_adl.xAOD: for running on an ATLAS experiment xAOD file hosted in ServiceX
 - func_adl.xAOD.backend: for running on a local file using docker
+
+See the documentation for more information.

@@ -41,7 +41,7 @@ This command replaces the list with its length, counting the number of elements.
 
 `.AsAwkwardArray(...)`
 `.AsPandasDF(...)`
-`.AsROOTTtree(...)`
+`.AsROOTTTree(...)`
 `.AsParquetFile(...)`
 These commands specifies how the query should return the selection. Currently, the xAOD backend can return selections as either awkward arrays or pandas dataframes.
 
