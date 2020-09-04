@@ -34,6 +34,10 @@ jobs:
     - name: Test with pytest
       run: |
         python -m pytest -r sx
+    - name: Build the pypi package
+      run: |
+        python setup_func_adl.py sdist bdist_wheel
+        python setup_func_adl_ast.py sdist bdist_wheel
     - name: Report coverage with Codecov
       if: github.event_name == 'push' && matrix.python-version == 3.7 && matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v1
@@ -41,3 +45,4 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         flags: unittests
+      
