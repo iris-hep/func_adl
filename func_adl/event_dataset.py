@@ -20,7 +20,7 @@ class EventDataset(ObjectStream, ABC):
         # We participate in the AST parsing - as a node. This argument is used in a lookup
         # later on - so do not alter this in a subclass without understanding what is
         # going on!
-        self._ast = function_call('EventDataset', [ast.Constant(value=self)])
+        super().__init__(function_call('EventDataset', [ast.Constant(value=self)]))
 
     def __repr__(self):
         return f"'{self.__class__.__name__}'"

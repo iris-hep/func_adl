@@ -1,5 +1,5 @@
 import ast
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -20,7 +20,7 @@ class my_event(EventDataset):
 class my_event_extra_args(EventDataset):
     def __init__(self):
         super().__init__()
-        self._ast.args.append(ast.Str(s='hi'))
+        cast(ast.Call, self.query_ast).args.append(ast.Str(s='hi'))
 
     async def execute_result_async(self, a: ast.AST) -> Any:
         return 10
@@ -32,18 +32,18 @@ def test_can_create():
 
 def test_find_event_at_top():
     e = my_event()
-    assert find_ed_in_ast(e._ast) is e
+    assert find_ed_in_ast(e.query_ast) is e
 
 
 def test_find_event_inside():
     e = my_event()
-    add = ast.BinOp(ast.Num(5), ast.Add, e._ast)
+    add = ast.BinOp(ast.Num(5), ast.Add, e.query_ast)
     assert find_ed_in_ast(add) is e
 
 
 def test_find_event_with_more_ast():
     e = my_event_extra_args()
-    add = ast.BinOp(ast.Num(5), ast.Add, e._ast)
+    add = ast.BinOp(ast.Num(5), ast.Add, e.query_ast)
     assert find_ed_in_ast(add) is e
 
 
