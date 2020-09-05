@@ -23,9 +23,10 @@ jobs:
       env:
         func_adl_version: ${{ github.ref }}
       run: |
-        echo $func_adl_version
         python setup_func_adl.py sdist bdist_wheel
-        python setup_func_adl_ast.py sdist bdist_wheel
-    - name: Push to Pypi
-      run: |
-        echo $GITHUB_REF
+        # python setup_func_adl_ast.py sdist bdist_wheel
+    - name: Publish a func_adl to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.3.1
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
