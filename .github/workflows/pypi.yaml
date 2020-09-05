@@ -21,8 +21,9 @@ jobs:
         pip list
     - name: Build the pypi package
       env:
-        func_adl_version: $GITHUB_REF
+        func_adl_version: ${{ github.ref }}
       run: |
+        echo $func_adl_version
         python setup_func_adl.py sdist bdist_wheel
         python setup_func_adl_ast.py sdist bdist_wheel
     - name: Push to Pypi
