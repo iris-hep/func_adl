@@ -13,6 +13,7 @@ extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))
 version = os.getenv('func_adl_version')
 if version is None:
     raise Exception('func_adl_version env var is not set')
+version = version.split('/')[-1]
 
 setup(name="func_adl",
       version=version,
