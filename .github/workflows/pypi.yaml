@@ -19,14 +19,24 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install --no-cache-dir -e .[complete]
         pip list
-    - name: Build the pypi package
+    - name: Build the func_adl wheel
       env:
         func_adl_version: ${{ github.ref }}
       run: |
         python setup_func_adl.py sdist bdist_wheel
-        # python setup_func_adl_ast.py sdist bdist_wheel
     - name: Publish a func_adl to PyPI
       uses: pypa/gh-action-pypi-publish@v1.3.1
       with:
         user: __token__
-        password: ${{ secrets.pypi_password }}
+        password: ${{ secrets.pypi_password_func_adl }}
+    - name: Build the func_adl.ast wheel
+      env:
+        func_adl_version: ${{ github.ref }}
+      run: |
+        rm -rf dist/
+        python setup_func_adl_ast.py sdist bdist_wheel
+    - name: Publish a func_adl.ast to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.3.1
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password_func_adl_ast }}
