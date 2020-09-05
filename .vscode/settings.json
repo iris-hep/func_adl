@@ -27,6 +27,7 @@
         "noqa",
         "numpy",
         "prereleased",
+        "pypa",
         "pypi",
         "pytest",
         "rucio",
