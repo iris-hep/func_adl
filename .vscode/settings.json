@@ -26,6 +26,7 @@
         "nargs",
         "noqa",
         "numpy",
+        "prereleased",
         "pypi",
         "pytest",
         "rucio",

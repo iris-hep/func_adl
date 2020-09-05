@@ -2,7 +2,7 @@ name: Push to Pypi
 
 on:
   release:
-    types: [released]
+    types: [released, prereleased]
 
 jobs:
   publish:
