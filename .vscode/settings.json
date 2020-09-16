@@ -1,6 +1,5 @@
 {
     "python.testing.autoTestDiscoverOnSaveEnabled": false,
-    "python.testing.promptToConfigure": false,
     "python.testing.pytestEnabled": true,
     "python.linting.flake8Enabled": true,
     "cSpell.words": [
@@ -30,6 +29,7 @@
         "pypa",
         "pypi",
         "pytest",
+        "qastle",
         "rucio",
         "sdist",
         "servicex",
@@ -38,10 +38,6 @@
         "url's",
         "xaod",
         "xrootd"
-    ],
-    "python.linting.flake8Args": [
-        "--ignore=E501",
-        "--exclude=tests/*"
     ],
     "cSpell.ignorePaths": [
         "**/package-lock.json",
