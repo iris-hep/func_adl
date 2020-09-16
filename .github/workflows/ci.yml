@@ -17,9 +17,9 @@ jobs:
         python-version: [3.6, 3.7]
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -34,6 +34,12 @@ jobs:
     - name: Test with pytest
       run: |
         python -m pytest -r sx
+    - name: Build the pypi package
+      env:
+        func_adl_version: 1.0b10
+      run: |
+        python setup_func_adl.py sdist bdist_wheel
+        python setup_func_adl_ast.py sdist bdist_wheel
     - name: Report coverage with Codecov
       if: github.event_name == 'push' && matrix.python-version == 3.7 && matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v1

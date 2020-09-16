@@ -40,12 +40,10 @@ def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
                     [])
 
 
-# TODO: lambda_unwrap should only be used in the parse_ast code, no where else - we should be moving
-# Lambda AST's around, not Module AST's.
 def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
-    '''Given an AST of a lambda node, return the lambda node. If it is burried in a module, then unwrap it first
-    Python, when it parses an module, returns the lambda wrapped in a `Module` AST node. This gets rid of it, but
-    is also flexible.
+    '''Given an AST of a lambda node, return the lambda node. If it is burried in a module, then
+    unwrap it first Python, when it parses an module, returns the lambda wrapped in a `Module` AST
+    node. This gets rid of it, but is also flexible.
 
     Args:
         lam:     Lambda AST. It may be wrapped in a module as well.
@@ -58,7 +56,8 @@ def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
     '''
     lb = cast(ast.Expr, lam.body[0]).value if isinstance(lam, ast.Module) else lam
     if not isinstance(lb, ast.Lambda):
-        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(lam)))
+        raise Exception(f'Attempt to get lambda expression body from {type(lam)}, '
+                        'which is not a lambda.')
 
     return lb
 
@@ -70,8 +69,8 @@ def lambda_args(lam: Union[ast.Module, ast.Lambda]) -> ast.arguments:
 
 def lambda_body(lam: Union[ast.Lambda, ast.Module]) -> ast.AST:
     '''
-    Given an AST lambda node, get the expression it uses and return it. This just makes life easier,
-    no real logic is occuring here.
+    Given an AST lambda node, get the expression it uses and return it. This just makes life
+    easier, no real logic is occuring here.
     '''
     return lambda_unwrap(lam).body
 
@@ -81,7 +80,8 @@ def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module])
     Create a `Call` AST that calls a lambda with the named args.
 
     Args:
-        args:       a single string or a list of strings, each string is an argument name to be passed in.
+        args:       a single string or a list of strings, each string is an argument name to be
+                    passed in.
         lam:        The lambda we want to call.
 
     Returns:
@@ -115,17 +115,20 @@ def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
 
 def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
     '''
-    Return a new lambda function that has new_expr as the body rather than the old one. Otherwise, everything is the same.
+    Return a new lambda function that has new_expr as the body rather than the old one. Otherwise,
+    everything is the same.
 
     Args:
         lam:        A ast.Lambda or ast.Module that points to a lambda.
         new_expr:   Expression that should replace this one.
 
     Returns:
-        new_lam: New lambda that looks just like the old one, other than the expression is new. If the old one was an ast.Module, so will this one be.
+        new_lam: New lambda that looks just like the old one, other than the expression is new. If
+        the old one was an ast.Module, so will this one be.
     '''
     if type(lam) is not ast.Lambda:
-        raise Exception('Attempt to get lambda expression body from {0}, which is not a lambda.'.format(type(lam)))
+        raise Exception(f'Attempt to get lambda expression body from {type(lam)}, '
+                        'which is not a lambda.')
 
     new_lam = ast.Lambda(lam.args, new_expr)
     return new_lam
@@ -155,8 +158,8 @@ def lambda_is_identity(lam: ast.AST) -> bool:
     if not isinstance(b.body, ast.Name):
         return False
 
-    a = b.args.args[0].arg
-    return a == b.body.id
+    a1 = b.args.args[0].arg
+    return a1 == b.body.id
 
 
 def lambda_is_true(lam: ast.AST) -> bool:
@@ -188,3 +191,26 @@ def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
     if nargs is None:
         return True
     return len(lambda_unwrap(lam).args.args) == nargs
+
+
+def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
+    r'''Return an AST for a lambda function from several sources.
+
+    We are handed one of several things:
+        - An AST that is a lambda function
+        - An AST that is a pointer to a Module that wraps an AST
+        - Text that contains properly formatted ast code for a lambda function.
+
+    In all cases, return a lambda function as an AST starting from the AST top node.
+
+    Args:
+        ast_source:     An AST or text string that represnets the lambda.
+
+    Returns:
+        An ast starting from the Lambda AST node.
+    '''
+    if isinstance(ast_source, str):
+        a = ast.parse(ast_source.strip())
+        return lambda_unwrap(a)
+    else:
+        return lambda_unwrap(ast_source)

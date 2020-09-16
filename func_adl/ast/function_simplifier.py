@@ -1,10 +1,14 @@
 # Various node visitors to clean up nested function calls of various types.
-from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, is_call_of, unpack_Call
-from func_adl.util_ast import lambda_body, lambda_body_replace, lambda_unwrap, lambda_call, lambda_build, lambda_is_identity, lambda_is_true, function_call
-from func_adl.ast.call_stack import argument_stack, stack_frame
-import copy
 import ast
-from typing import List, cast
+import copy
+from typing import List, Tuple, cast
+
+from func_adl.ast.call_stack import argument_stack, stack_frame
+from func_adl.ast.func_adl_ast_utils import (
+    FuncADLNodeTransformer, is_call_of, unpack_Call)
+from func_adl.util_ast import (
+    function_call, lambda_body, lambda_body_replace, lambda_build, lambda_call,
+    lambda_is_identity, lambda_is_true, lambda_unwrap)
 
 
 argument_var_counter = 0
@@ -18,21 +22,61 @@ def arg_name():
     return n
 
 
+def make_args_unique(a: ast.Lambda) -> ast.Lambda:
+    '''
+    Replaces the lambda with a new lambda, with unique arguments names
+
+    Args:
+        a       Lambda function to be copied over
+
+    Returns:
+        l       New copy of the lambda. The original is unmodified.
+    '''
+    class replace_args (ast.NodeTransformer):
+        def __init__(self):
+            ast.NodeTransformer.__init__(self)
+            self._arg_stack: List[Tuple[str, str]] = []
+            self._seen_lambda = False
+
+        def visit_Lambda(self, node: ast.Lambda) -> ast.Lambda:
+            if self._seen_lambda:
+                mapping = [(a.arg, a.arg) for a in node.args.args]
+            else:
+                mapping = [(a.arg, arg_name()) for a in node.args.args]
+                self._seen_lambda = True
+
+            for old, new in mapping:
+                self._arg_stack.append((old, new))
+
+            r = self.generic_visit(node)
+            assert isinstance(r, ast.Lambda)
+
+            r.args.args = [ast.arg(arg=new, annotation=None) for old, new in mapping]
+            for arg in node.args.args:
+                self._arg_stack.pop()
+
+            return r
+
+        def visit_Name(self, node: ast.Name) -> ast.Name:
+            for n in reversed(self._arg_stack):
+                if n[0] == node.id:
+                    return ast.Name(id=n[1])
+            return node
+
+    return replace_args().visit(copy.deepcopy(a))
+
+
 def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     'Return an AST that represents g(f(args))'
-    # TODO: fix up the ast.Calls to use lambda_call if possible
-
     # Combine the lambdas into a single call by calling g with f as an argument
-    l_g = copy.deepcopy(lambda_unwrap(ast_g))
-    l_f = copy.deepcopy(lambda_unwrap(ast_f))
+    l_g = make_args_unique(lambda_unwrap(ast_g))
+    l_f = make_args_unique(lambda_unwrap(ast_f))
 
     x = arg_name()
     f_arg = ast.Name(x, ast.Load())
     call_g = ast.Call(l_g, [ast.Call(l_f, [f_arg], [])], [])
 
-    # TODO: Rewrite with lambda_build
-    args = ast.arguments(args=[ast.arg(arg=x)])
-    call_g_lambda = ast.Lambda(args=args, body=call_g)
+    call_g_lambda = lambda_build(x, call_g)
 
     # Build a new call to nest the functions
     return call_g_lambda
@@ -75,7 +119,6 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         func_g = selection
 
         # Convolute the two functions
-        # TODO: should this be generic of just visit?
         new_selection = self.visit(convolute(func_g, func_f))
 
         # And return the parent select with the new selection function
@@ -338,7 +381,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         assert isinstance(s, ast.Index)
         if not isinstance(s.value, ast.Num):
             return ast.Subscript(v, s, ast.Load())
-        n = s.value.n  # type: int
+        n = cast(int, s.value.n)
         if n >= len(v.elts):
             raise FuncADLIndexError(f"Attempt to access the {n}th element of a tuple only {len(v.elts)} values long.")
 

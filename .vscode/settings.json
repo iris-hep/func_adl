@@ -1,6 +1,5 @@
 {
     "python.testing.autoTestDiscoverOnSaveEnabled": false,
-    "python.testing.promptToConfigure": false,
     "python.testing.pytestEnabled": true,
     "python.linting.flake8Enabled": true,
     "cSpell.words": [
@@ -9,24 +8,36 @@
         "Jupyter",
         "LINQ",
         "ROOTT",
+        "Topo",
         "asts",
+        "astunparse",
         "asyncio",
+        "bdist",
         "codecov",
+        "databanks",
+        "dataframes",
         "elts",
+        "getenv",
         "gwatts",
         "iscoroutine",
         "localds",
+        "macos",
         "nargs",
         "noqa",
         "numpy",
+        "prereleased",
+        "pypa",
+        "pypi",
         "pytest",
+        "qastle",
+        "rucio",
+        "sdist",
+        "servicex",
+        "setuptools",
+        "unittests",
         "url's",
         "xaod",
         "xrootd"
-    ],
-    "python.linting.flake8Args": [
-        "--ignore=E501",
-        "--exclude=tests/*"
     ],
     "cSpell.ignorePaths": [
         "**/package-lock.json",
@@ -38,9 +49,7 @@
     ],
     "pyright.openFilesOnly": false,
     "python.analysis.openFilesOnly": false,
-    "python.testing.pytestArgs": [
-        "--no-cov"
-    ],
     "python.pythonPath": ".venv\\Scripts\\python.exe",
-    "python.venvPath": ".venv"
+    "python.venvPath": ".venv",
+    "python.analysis.typeCheckingMode": "basic"
 }
