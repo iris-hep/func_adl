@@ -18,3 +18,7 @@ one of the following packages:
 - func_adl.xAOD.backend: for running on a local file using docker
 
 See the documentation for more information.
+
+## Development
+
+After a new release has been built and passes the tests you can release it by creating a new release on `github`. An action that runs when a release is "created" will send it to `pypi`.
