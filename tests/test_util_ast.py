@@ -183,11 +183,25 @@ def test_parse_nested_lambda():
 
 
 def test_parse_simple_func():
-    'Fail if we get a function - one day we can do this, but not quite yet'
+    'A oneline function defined at local scope'
     def doit(x):
         return x + 1
 
     f = parse_as_ast(doit)
+
+    assert isinstance(f, ast.Lambda)
+    assert len(f.args.args) == 1
+    assert isinstance(f.body, ast.BinOp)
+
+
+def global_doit(x):
+    return x + 1
+
+
+def test_parse_global_simple_func():
+    'A oneline function defined at global scope'
+
+    f = parse_as_ast(global_doit)
 
     assert isinstance(f, ast.Lambda)
     assert len(f.args.args) == 1
@@ -219,7 +233,7 @@ def test_parse_continues():
 
 
 def test_parse_continues_one_line():
-    'Emulate the syntax you often find when you have a multistep query'
+    'Make sure we do not let our confusion confuse the user - bomb correctly here'
     found = []
 
     class my_obj:
