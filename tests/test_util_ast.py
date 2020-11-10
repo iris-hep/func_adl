@@ -6,7 +6,7 @@ import pytest
 from func_adl.util_ast import (
     as_ast, function_call, lambda_args, lambda_body_replace, lambda_build,
     lambda_call, lambda_is_identity, lambda_is_true, lambda_test,
-    lambda_unwrap, parse_as_ast)
+    lambda_unwrap, parse_as_ast, rewrite_func_as_lambda)
 
 
 # Ast parsing
@@ -121,6 +121,45 @@ def test_lambda_replace_simple_expression():
     assert "op=Add(), right=Num(n=1))" in a2_txt
 
 
+def test_rewrite_oneliner():
+    a = ast.parse('''def oneline(a):
+        return a+1''')
+
+    b = a.body[0]
+    assert isinstance(b, ast.FunctionDef)
+    l = rewrite_func_as_lambda(b)
+
+    assert isinstance(l, ast.Lambda)
+    assert len(l.args.args) == 1
+    assert l.args.args[0].arg == 'a'
+    assert isinstance(l.body, ast.BinOp)
+
+
+def test_rewrite_twoliner():
+    a = ast.parse('''def oneline(a):
+        t = a+1
+        return t''')
+
+    b = a.body[0]
+    assert isinstance(b, ast.FunctionDef)
+    with pytest.raises(ValueError) as e:
+        l = rewrite_func_as_lambda(b)
+
+    assert "simple" in str(e.value)
+
+
+def test_rewrite_noret():
+    a = ast.parse('''def oneline(a):
+        a+1''')
+
+    b = a.body[0]
+    assert isinstance(b, ast.FunctionDef)
+    with pytest.raises(ValueError) as e:
+        l = rewrite_func_as_lambda(b)
+
+    assert "return" in str(e.value)
+
+
 def test_parse_as_ast_lambda():
     l = lambda_unwrap(ast.parse("lambda x: x + 1"))
     r = parse_as_ast(l)
@@ -140,12 +179,7 @@ def test_parse_as_callable_simple():
 def test_parse_nested_lambda():
     r = parse_as_ast(lambda x: (lambda y: y + 1)(x))
     assert isinstance(r, ast.Lambda)
-
-def test_parse_two_lambdas():
-    with pytest.raises(Exception) as e:
-        (parse_as_ast(lambda x: x + 1), parse_as_ast(lambda y: y * 10))
-
-    assert 'While parsing' in str(e.value)
+    assert isinstance(r.body, ast.Call)
 
 
 def test_parse_simple_func():
@@ -153,19 +187,48 @@ def test_parse_simple_func():
     def doit(x):
         return x + 1
 
-    with pytest.raises(Exception):
-        parse_as_ast(doit)
+    f = parse_as_ast(doit)
+
+    assert isinstance(f, ast.Lambda)
+    assert len(f.args.args) == 1
+    assert isinstance(f.body, ast.BinOp)
 
 
-def test_run_on_parse():
+def test_parse_continues():
     'Emulate the syntax you often find when you have a multistep query'
+    found = []
+
     class my_obj:
         def do_it(self, x: Callable):
-            parse_as_ast(x)
+            found.append(parse_as_ast(x))
             return self
 
-    # #&$&#^$^@ this parse error makes this almost not useful.
-    with pytest.raises(Exception):
+    long_expr = my_obj() \
+        .do_it(lambda x: x + 1) \
+        .do_it(lambda y: y * 2)
+
+    assert len(found) == 2
+    l1, l2 = found
+    assert isinstance(l1, ast.Lambda)
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+    assert isinstance(l2, ast.Lambda)
+    assert isinstance(l2.body, ast.BinOp)
+    assert isinstance(l2.body.op, ast.Mult)
+
+
+def test_parse_continues_one_line():
+    'Emulate the syntax you often find when you have a multistep query'
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    with pytest.raises(Exception) as e:
         long_expr = my_obj() \
-            .do_it(lambda x: x + 1) \
-            .do_it(lambda y: y + 2)
+            .do_it(lambda x: x + 1).do_it(lambda y: y * 2)
+
+    assert "two" in str(e.value)
