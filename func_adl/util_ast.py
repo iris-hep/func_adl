@@ -1,6 +1,6 @@
-# Some ast utils
 import ast
-from typing import Any, List, Optional, Union, cast
+import inspect
+from typing import Any, Callable, List, Optional, Union, cast
 
 
 def as_ast(p_var: Any) -> ast.AST:
@@ -193,7 +193,38 @@ def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
     return len(lambda_unwrap(lam).args.args) == nargs
 
 
-def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
+def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
+    '''Rewrite a function definition as a lambda. The function can contain only
+    a single return statement. ValueError is throw otherwise.
+
+    Args:
+        f (ast.FunctionDef): The ast pointing to the function definition.
+
+    Raises:
+        ValueError: An error occurred during the conversion:
+
+    Returns:
+        ast.Lambda: A lambda that is the equivalent.
+
+    Notes:
+
+        - It is assumed that the ast passed in won't be altered in place - no deep copy is
+          done of the statement or args - they are just re-used.
+    '''
+    if len(f.body) != 1:
+        raise ValueError(f'Can handle simple functions of only one line - "{f.name}"" has {len(f.body)}.')
+    if not isinstance(f.body[0], ast.Return):
+        raise ValueError(f'Simple function must use return statement - "{f.name}" does not seem to.')
+
+    # the arguments
+    args = f.args
+    ret = cast(ast.Return, f.body[0])
+    return ast.Lambda(args, ret.value)
+
+    return f
+
+
+def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     r'''Return an AST for a lambda function from several sources.
 
     We are handed one of several things:
@@ -209,8 +240,63 @@ def parse_as_ast(ast_source: Union[str, ast.AST]) -> ast.Lambda:
     Returns:
         An ast starting from the Lambda AST node.
     '''
-    if isinstance(ast_source, str):
-        a = ast.parse(ast_source.strip())
+    if callable(ast_source):
+        source = inspect.getsource(ast_source).strip()
+
+        # Look for the name of the calling function (e.g. 'Select' or 'Where')
+        caller_name = inspect.currentframe().f_back.f_code.co_name
+        caller_idx = source.find(caller_name)
+        # If found, parse the string between the parentheses of the function call
+        if caller_idx > -1:
+            source = source[caller_idx + len(caller_name):]
+            i = 0
+            open_count = 0
+            while True:
+                c = source[i]
+                if c == '(':
+                    open_count += 1
+                elif c == ')':
+                    open_count -= 1
+                if open_count == 0:
+                    break
+                i += 1
+            stem = source[i + 1:]
+            new_line = stem.find('\n')
+            next_caller = stem.find(caller_name)
+            if next_caller > -1 and (new_line < 0 or new_line > next_caller):
+                raise ValueError(f'Found two calls to {caller_name} on same line - split accross lines')
+            source = source[:i + 1]
+
+        def parse(src: str) -> Optional[ast.Module]:
+            try:
+                return ast.parse(src)
+            except SyntaxError:
+                return None
+
+        # Special case ending with a close parenthesis at the end of a line.
+        src_ast = parse(source)
+        if not src_ast and source.endswith(')'):
+            src_ast = parse(source[:-1])
+
+        if not src_ast:
+            raise ValueError(f'Unable to recover source for function {ast_source}.')
+
+        # If this is a function, not a lambda, then we can morph and return that.
+        if len(src_ast.body) == 1 and isinstance(src_ast.body[0], ast.FunctionDef):
+            return rewrite_func_as_lambda(src_ast.body[0])  # type: ignore
+
+        lda = next((node for node in ast.walk(src_ast)
+                   if isinstance(node, ast.Lambda)), None)
+
+        if lda is None:
+            raise ValueError(f'Unable to recover source for function {ast_source}.')
+
+        return lda
+
+    elif isinstance(ast_source, str):
+        a = ast.parse(ast_source.strip())  # type: ignore
         return lambda_unwrap(a)
+
     else:
+        assert isinstance(ast_source, ast.AST)
         return lambda_unwrap(ast_source)

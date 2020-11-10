@@ -43,7 +43,7 @@ class ObjectStream:
         '''
         return self._q_ast
 
-    def SelectMany(self, func: Union[str, ast.Lambda]) -> 'ObjectStream':
+    def SelectMany(self, func: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -56,10 +56,14 @@ class ObjectStream:
 
         Returns:
             A new ObjectStream of the type of the elements.
+
+        Notes:
+            - The function can be a `lambda`, the name of a one-line function, a string that contains
+              a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
         return ObjectStream(function_call("SelectMany", [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
 
-    def Select(self, f: Union[str, ast.Lambda]) -> 'ObjectStream':
+    def Select(self, f: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object. There is a one-to-one correspondence between the input objects and output objects.
@@ -71,10 +75,14 @@ class ObjectStream:
         Returns:
 
             A new ObjectStream of the transformed elements.
+
+        Notes:
+            - The function can be a `lambda`, the name of a one-line function, a string that contains
+              a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
         return ObjectStream(function_call("Select", [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
 
-    def Where(self, filter) -> 'ObjectStream':
+    def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -85,6 +93,10 @@ class ObjectStream:
         Returns:
 
             A new ObjectStream that contains only elements that pass the filter function
+
+        Notes:
+            - The function can be a `lambda`, the name of a one-line function, a string that contains
+              a lambda definition, or a python `ast` of type `ast.Lambda`.
         '''
         return ObjectStream(function_call("Where", [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
 
