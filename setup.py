@@ -38,6 +38,6 @@ setup(name="func_adl_test",
                    "Topic :: Utilities",
       ],
       data_files=[],
-      python_requires='>=3.6, <3.8',
+      python_requires='>=3.6, <3.10',
       platforms="Any",
       )
