@@ -31,6 +31,15 @@ def test_simple_query():
     assert isinstance(r, ast.AST)
 
 
+def test_simple_query_lambda():
+    r = my_event() \
+        .SelectMany(lambda e: e.jets()) \
+        .Select(lambda j: j.pT()) \
+        .AsROOTTTree("junk.root", "analysis", "jetPT") \
+        .value()
+    assert isinstance(r, ast.AST)
+
+
 def test_simple_query_parquet():
     r = my_event() \
         .SelectMany("lambda e: e.jets()") \
