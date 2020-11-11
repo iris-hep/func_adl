@@ -1,7 +1,7 @@
 # Various node visitors to clean up nested function calls of various types.
 import ast
 import copy
-from typing import List, Tuple, cast
+from typing import List, Optional, Tuple, Union, cast
 
 from func_adl.ast.call_stack import argument_stack, stack_frame
 from func_adl.ast.func_adl_ast_utils import (
@@ -363,15 +363,16 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         else:
             return FuncADLNodeTransformer.visit_Call(self, call_node)
 
-    def visit_Subscript_Tuple(self, v: ast.Tuple, s):
+    def visit_Subscript_Tuple(self, v: ast.Tuple, s: Union[ast.Num, ast.Constant, ast.Index]):
         '''
         (t1, t2, t3...)[1] => t2
 
         Only works if index is a number
         '''
-        if not isinstance(s.value, (ast.Num, ast.Constant)):
+        # Get the value out - this is due to supporting python 3.6-3.9
+        n = _get_value_from_index(s)
+        if n is None:
             return ast.Subscript(v, s, ast.Load())
-        n = s.value.n if isinstance(s.value, ast.Num) else s.value.value
         assert isinstance(n, int), 'Programming error: index is not an integer in tuple subscript'
         if n >= len(v.elts):
             raise FuncADLIndexError(f'Attempt to access the {n}th element of a tuple only'
@@ -379,16 +380,15 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
-    def visit_Subscript_List(self, v: ast.List, s: ast.AST):
+    def visit_Subscript_List(self, v: ast.List, s: Union[ast.Num, ast.Constant, ast.Index]):
         '''
         [t1, t2, t3...][1] => t2
 
         Only works if index is a number
         '''
-        assert isinstance(s, ast.Index)
-        if not isinstance(s.value, (ast.Num, ast.Constant)):
+        n = _get_value_from_index(s)
+        if n is None:
             return ast.Subscript(v, s, ast.Load())
-        n = cast(int, s.value.n) if isinstance(s.value, ast.Num) else cast(int, s.value.value)
         if n >= len(v.elts):
             raise FuncADLIndexError(f'Attempt to access the {n}th element of a tuple'
                                     f' only {len(v.elts)} values long.')
@@ -439,3 +439,24 @@ class simplify_chained_calls(FuncADLNodeTransformer):
     def visit_Attribute(self, node):
         'Make sure to make a new version of the Attribute so it does not get reused'
         return ast.Attribute(value=self.visit(node.value), attr=node.attr, ctx=ast.Load())
+
+
+def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index]) -> Optional[int]:
+    '''Deal with 3.6, 3.7, and 3.8 differences in how indexing for list and tuple
+    subscripts is handled.
+
+    Args:
+        arg (Union[ast.Num, ast.Constant, ast.Index]): Input ast to extract an index from.
+                                                       Hopefully.
+    '''
+    def extract(a: Union[ast.Num, ast.Constant]) -> Optional[int]:
+        if isinstance(a, ast.Num):
+            return cast(int, a.n)
+        if isinstance(a, ast.Constant):
+            return a.value
+        return None
+
+    if isinstance(arg, ast.Index):
+        return extract(arg.value)   # type: ignore
+    else:
+        return extract(arg)
