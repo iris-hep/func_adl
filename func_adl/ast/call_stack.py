@@ -26,7 +26,8 @@ class argument_stack:
         Return name if it is not found.
 
         name - the name we should look up. Any object that can be a key in a dict
-        default - If none, if the name can't be found, return the name. Otherwise return whatever default is.
+        default - If none, if the name can't be found, return the name. Otherwise return whatever
+        default is.
         '''
         for frames in reversed(self._arg_transformer):
             if name in frames:

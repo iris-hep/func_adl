@@ -212,9 +212,11 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
           done of the statement or args - they are just re-used.
     '''
     if len(f.body) != 1:
-        raise ValueError(f'Can handle simple functions of only one line - "{f.name}"" has {len(f.body)}.')
+        raise ValueError(f'Can handle simple functions of only one line - "{f.name}"'
+                         f' has {len(f.body)}.')
     if not isinstance(f.body[0], ast.Return):
-        raise ValueError(f'Simple function must use return statement - "{f.name}" does not seem to.')
+        raise ValueError(f'Simple function must use return statement - "{f.name}" does '
+                         'not seem to.')
 
     # the arguments
     args = f.args
@@ -264,7 +266,8 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
             new_line = stem.find('\n')
             next_caller = stem.find(caller_name)
             if next_caller > -1 and (new_line < 0 or new_line > next_caller):
-                raise ValueError(f'Found two calls to {caller_name} on same line - split accross lines')
+                raise ValueError(f'Found two calls to {caller_name} on same line - '
+                                 'split accross lines')
             source = source[:i + 1]
 
         def parse(src: str) -> Optional[ast.Module]:

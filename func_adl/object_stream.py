@@ -21,11 +21,11 @@ class ObjectStream:
     of `ObjectStream` objects, linked together, is a DAG that stores the user's intent.
 
     Every stream has an _object type_. This is the type of the elements of the stream. For example,
-    the top stream, the objects are of type `Event` (or `xADOEvent`). If you transform an `Event` into
-    a list of jets, then the object type will be a list of `Jet` objects. Each element of the stream
-    is an array. You can also lift this second array of `Jets` and turn it into a plain stream
-    of `Jets` using the `SelectMany` method below. In that case, you'll no longer be able to tell
-    the boundary between events.
+    the top stream, the objects are of type `Event` (or `xADOEvent`). If you transform an `Event`
+    into a list of jets, then the object type will be a list of `Jet` objects. Each element of the
+    stream is an array. You can also lift this second array of `Jets` and turn it into a plain
+    stream of `Jets` using the `SelectMany` method below. In that case, you'll no longer be able
+    to tell the boundary between events.
     '''
     def __init__(self, the_ast: ast.AST):
         r"""
@@ -58,10 +58,11 @@ class ObjectStream:
             A new ObjectStream of the type of the elements.
 
         Notes:
-            - The function can be a `lambda`, the name of a one-line function, a string that contains
-              a lambda definition, or a python `ast` of type `ast.Lambda`.
+            - The function can be a `lambda`, the name of a one-line function, a string that
+              contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
-        return ObjectStream(function_call("SelectMany", [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
+        return ObjectStream(function_call("SelectMany",
+                                          [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
 
     def Select(self, f: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
         r"""
@@ -77,8 +78,8 @@ class ObjectStream:
             A new ObjectStream of the transformed elements.
 
         Notes:
-            - The function can be a `lambda`, the name of a one-line function, a string that contains
-              a lambda definition, or a python `ast` of type `ast.Lambda`.
+            - The function can be a `lambda`, the name of a one-line function, a string that
+              contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
         return ObjectStream(function_call("Select", [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
 
@@ -95,16 +96,17 @@ class ObjectStream:
             A new ObjectStream that contains only elements that pass the filter function
 
         Notes:
-            - The function can be a `lambda`, the name of a one-line function, a string that contains
-              a lambda definition, or a python `ast` of type `ast.Lambda`.
+            - The function can be a `lambda`, the name of a one-line function, a string that
+              contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         '''
-        return ObjectStream(function_call("Where", [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
+        return ObjectStream(function_call("Where",
+                                          [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
 
     def AsPandasDF(self, columns=[]) -> 'ObjectStream':
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
-        This `DataFrame` will contain all the data fed to it. Only non-array datatypes are permitted:
-        the data must look like an Excel table.
+        This `DataFrame` will contain all the data fed to it. Only non-array datatypes are
+        permitted: the data must look like an Excel table.
 
         Arguments:
 
@@ -141,7 +143,10 @@ class ObjectStream:
             dataset.  The order of the files back is consistent for different queries on the same
             dataset.
         """
-        return ObjectStream(function_call("ResultTTree", [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)]))
+        return ObjectStream(
+            function_call("ResultTTree",
+                          [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)])
+            )
 
     def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) -> 'ObjectStream':
         '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
@@ -151,26 +156,31 @@ class ObjectStream:
             vector<float>       A tree with a list of floats in each entry will be written.
             (<tuple>)           A tree with multiple items (leaves) will be written. Each leaf
                                 must have one of the above types. Nested tuples are not supported.
-            {k:v, }             A dictionary with named columns. v is either a float or a vector of floats.
+            {k:v, }             A dictionary with named columns. v is either a float or a vector
+                                of floats.
 
         Arguments:
 
-            filename            Name of a file in which the data will be written. Depending on where the data comes
-                                from this may not be used - consider it a suggestion.
-            columns             If the data does not arrive by dictionary, then these are the column names.
+            filename            Name of a file in which the data will be written. Depending on
+                                where the data comes from this may not be used - consider it a
+                                suggestion.
+            columns             If the data does not arrive by dictionary, then these are the
+                                column names.
 
         Returns:
 
-            A new `ObjectStream` with type `[filename]`. This is because multiple files may be written by
-            the backend - the data should be concatinated together to get a final result. The order of the files back
-            is consistent for different queries on the same dataset.
+            A new `ObjectStream` with type `[filename]`. This is because multiple files may be
+            written by the backend - the data should be concatinated together to get a final
+            result. The order of the files back is consistent for different queries on the same
+            dataset.
         '''
-        return ObjectStream(function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)]))
+        return ObjectStream(function_call("ResultParquet",
+                                          [self._q_ast, as_ast(columns), as_ast(filename)]))
 
     def AsAwkwardArray(self, columns=[]) -> 'ObjectStream':
         r'''
-        Return a pandas stream that contains one item, an `awkward` array, or dictionary of `awkward` arrays.
-        This `awkward` will contain all the data fed to it.
+        Return a pandas stream that contains one item, an `awkward` array, or dictionary of
+        `awkward` arrays. This `awkward` will contain all the data fed to it.
 
         Arguments:
 
@@ -183,7 +193,8 @@ class ObjectStream:
         '''
         return ObjectStream(function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)]))
 
-    def _get_executor(self, executor: Callable[[ast.AST], Awaitable[Any]] = None) -> Callable[[ast.AST], Awaitable[Any]]:
+    def _get_executor(self, executor: Callable[[ast.AST], Awaitable[Any]] = None) \
+            -> Callable[[ast.AST], Awaitable[Any]]:
         r'''
         Returns an executor that can be used to run this.
         Logic seperated out as it is used from several different places.
