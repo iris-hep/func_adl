@@ -6,7 +6,12 @@ from distutils.core import setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-extras_require = {'test': ['pytest', 'pytest-asyncio', 'pytest-cov', 'flake8', 'coverage', 'twine', 'wheel', 'astunparse']}
+extras_require = {
+    'test': [
+                'pytest', 'pytest-asyncio', 'pytest-cov', 'flake8',
+                'coverage', 'twine', 'wheel', 'astunparse'
+            ]
+                 }
 extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))
 
 setup(name="func_adl_test",
@@ -38,6 +43,6 @@ setup(name="func_adl_test",
                    "Topic :: Utilities",
       ],
       data_files=[],
-      python_requires='>=3.6, <3.8',
+      python_requires='>=3.6, <3.10',
       platforms="Any",
       )

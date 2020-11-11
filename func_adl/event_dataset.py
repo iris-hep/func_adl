@@ -31,8 +31,8 @@ class EventDataset(ObjectStream, ABC):
     @abstractmethod
     async def execute_result_async(self, a: ast.AST) -> Any:
         '''
-        Override in your sub-class. The infrastructure will call this to render the result "locally", or as
-        requested by the AST.
+        Override in your sub-class. The infrastructure will call this to render the result
+        "locally", or as requested by the AST.
         '''
         pass
 
