@@ -30,7 +30,7 @@ jobs:
     - name: Lint with Flake8
       if: matrix.python-version == 3.7 && matrix.os == 'ubuntu-latest'
       run: |
-        flake8 --exclude=tests/* --ignore=E501
+        flake8
     - name: Test with pytest
       run: |
         python -m pytest -r sx
