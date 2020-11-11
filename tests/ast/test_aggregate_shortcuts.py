@@ -1,4 +1,3 @@
-# Test the aggregate shortcuts
 from func_adl.ast.aggregate_shortcuts import aggregate_node_transformer
 from tests.util_debug_ast import normalize_ast
 import ast

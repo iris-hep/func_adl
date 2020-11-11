@@ -84,7 +84,8 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
 
 def make_Select(source: ast.AST, selection: ast.AST):
     'Make a select, and return source is selection is an identity'
-    return source if lambda_is_identity(selection) else function_call('Select', [source, selection])
+    return source if lambda_is_identity(selection) \
+        else function_call('Select', [source, selection])
 
 
 class FuncADLIndexError(Exception):
@@ -97,8 +98,8 @@ class FuncADLIndexError(Exception):
 class simplify_chained_calls(FuncADLNodeTransformer):
     '''
     In order to cleanly evaluate things like tuples (which should not show up at the back end),
-    we must move around various functions, evaluate others, etc., where we can. This AST transformer
-    does that work.
+    we must move around various functions, evaluate others, etc., where we can. This AST
+    transformer does that work.
     '''
 
     def __init__(self):
@@ -138,7 +139,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         assert isinstance(func_f, ast.Lambda)
         func_g = selection
 
-        lambda_select = lambda_body_replace(func_f, make_Select(lambda_body(func_f), func_g))  # type: ast.AST
+        lambda_select = \
+            lambda_body_replace(func_f, make_Select(lambda_body(func_f), func_g))  # type: ast.AST
         return self.visit(function_call('SelectMany', [source, lambda_select]))
 
     def call_Select(self, node: ast.Call, args: List[ast.AST]):
@@ -211,7 +213,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         captured_arg = func_f.args.args[0].arg
         captured_body = func_f.body
-        new_select = function_call('SelectMany', [cast(ast.AST, captured_body), cast(ast.AST, func_g)])
+        new_select = function_call('SelectMany', [cast(ast.AST, captured_body),
+                                                  cast(ast.AST, func_g)])
         new_select_lambda = lambda_build(captured_arg, new_select)
         new_selectmany = function_call('SelectMany', [seq, cast(ast.AST, new_select_lambda)])
         return new_selectmany
@@ -261,7 +264,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         func_g = filter
 
         arg = arg_name()
-        convolution = lambda_build(arg, ast.BoolOp(ast.And(), [lambda_call(arg, func_f), lambda_call(arg, func_g)]))  # type: ast.AST
+        convolution = lambda_build(arg, ast.BoolOp(ast.And(), [lambda_call(arg, func_f),
+                                                               lambda_call(arg, func_g)]))
         return self.visit(function_call('Where', [source, convolution]))
 
     def visit_Where_of_Select(self, parent, filter):
@@ -298,7 +302,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         assert isinstance(func_f, ast.Lambda)
 
         func_g = filter
-        lambda_where = lambda_body_replace(func_f, function_call("Where", [lambda_body(func_f), func_g]))  # type: ast.AST
+        lambda_where = lambda_body_replace(func_f,
+                                           function_call("Where", [lambda_body(func_f), func_g]))
 
         return self.visit(function_call('SelectMany', [seq, lambda_where]))
 
@@ -364,11 +369,13 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         Only works if index is a number
         '''
-        if type(s.value) is not ast.Num:
+        if not isinstance(s.value, (ast.Num, ast.Constant)):
             return ast.Subscript(v, s, ast.Load())
-        n = s.value.n
+        n = s.value.n if isinstance(s.value, ast.Num) else s.value.value
+        assert isinstance(n, int), 'Programming error: index is not an integer in tuple subscript'
         if n >= len(v.elts):
-            raise FuncADLIndexError(f"Attempt to access the {n}th element of a tuple only {len(v.elts)} values long.")
+            raise FuncADLIndexError(f'Attempt to access the {n}th element of a tuple only'
+                                    f' {len(v.elts)} values long.')
 
         return v.elts[n]
 
@@ -379,11 +386,12 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         Only works if index is a number
         '''
         assert isinstance(s, ast.Index)
-        if not isinstance(s.value, ast.Num):
+        if not isinstance(s.value, (ast.Num, ast.Constant)):
             return ast.Subscript(v, s, ast.Load())
-        n = cast(int, s.value.n)
+        n = cast(int, s.value.n) if isinstance(s.value, ast.Num) else cast(int, s.value.value)
         if n >= len(v.elts):
-            raise FuncADLIndexError(f"Attempt to access the {n}th element of a tuple only {len(v.elts)} values long.")
+            raise FuncADLIndexError(f'Attempt to access the {n}th element of a tuple'
+                                    f' only {len(v.elts)} values long.')
 
         return v.elts[n]
 
@@ -398,7 +406,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         # Build the select that starts from the source and does the slice.
         a = arg_name()
-        select = make_Select(first, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()), s, ast.Load())))
+        select = make_Select(first, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()),
+                                                                  s, ast.Load())))
 
         return self.visit(function_call('First', [cast(ast.AST, select)]))
 

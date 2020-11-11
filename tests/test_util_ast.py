@@ -1,5 +1,6 @@
 import ast
 from typing import Callable, cast
+import sys
 
 import pytest
 
@@ -11,24 +12,44 @@ from func_adl.util_ast import (
 
 # Ast parsing
 def test_as_ast_integer():
-    assert "Num(n=1)" == ast.dump(as_ast(1))
+    if sys.version_info < (3,8):
+        assert "Num(n=1)" == ast.dump(as_ast(1))
+    else:
+        assert "Constant(value=1, kind=None)" == ast.dump(as_ast(1))
 
-def test_as_ast_string():
-    assert "Str(s='hi there')" == ast.dump(as_ast("hi there"))
 
-def test_as_ast_string_var():
+
+def test_as_ast_string_37():
+    if sys.version_info < (3,8):
+        assert "Str(s='hi there')" == ast.dump(as_ast("hi there"))
+    else:
+        assert "Constant(value='hi there', kind=None)" == ast.dump(as_ast("hi there"))
+
+
+def test_as_ast_string_var_37():
     s = "hi there"
-    assert "Str(s='hi there')" == ast.dump(as_ast(s))
+    if sys.version_info < (3,8):
+        assert "Str(s='hi there')" == ast.dump(as_ast(s))
+    else:
+        assert "Constant(value='hi there', kind=None)" == ast.dump(as_ast(s))
 
-def test_as_ast_list():
-    assert "List(elts=[Str(s='one'), Str(s='two')], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
+
+def test_as_ast_list_37():
+    if sys.version_info < (3,8):
+        assert "List(elts=[Str(s='one'), Str(s='two')], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
+    else:
+        assert "List(elts=[Constant(value='one', kind=None), Constant(value='two', kind=None)], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
 
 # Fucntion Calling
-def test_function_call_simple():
+def test_function_call_simple_37():
     a = function_call('dude', [as_ast(1)])
     print (ast.dump(ast.parse('dude(1)')))
-    expected = "Call(func=Name(id='dude', ctx=Load()), args=[Num(n=1)], keywords=[])"
+    if sys.version_info < (3,8):
+        expected = "Call(func=Name(id='dude', ctx=Load()), args=[Num(n=1)], keywords=[])"
+    else:
+        expected = "Call(func=Name(id='dude', ctx=Load()), args=[Constant(value=1, kind=None)], keywords=[])"
     assert expected == ast.dump(a)
+
 
 # Identity
 def test_identity_is():
@@ -109,6 +130,7 @@ def test_lambda_is_true_expression():
 def test_lambda_is_true_non_lambda():
     assert lambda_is_true(ast.parse("True")) == False
 
+
 # Replacement
 def test_lambda_replace_simple_expression():
     a1 = ast.parse("lambda x: x")
@@ -118,7 +140,10 @@ def test_lambda_replace_simple_expression():
 
     a2 = lambda_body_replace(lambda_unwrap(a1), expr)
     a2_txt = ast.dump(a2)
-    assert "op=Add(), right=Num(n=1))" in a2_txt
+    if sys.version_info <= (3, 8):
+        assert "op=Add(), right=Num(n=1))" in a2_txt
+    else:
+        assert "op=Add(), right=Constant(value=1, kind=None))" in a2_txt
 
 
 def test_rewrite_oneliner():
