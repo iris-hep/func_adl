@@ -83,6 +83,27 @@ class ObjectStream:
         """
         return ObjectStream(function_call("Select", [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
 
+    def SelectIndex(self, r: Union[str, ast.Lambda, Callable], f: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
+        r"""
+        Apply a transformation function to each object in the stream using an index between
+        the specified range, yielding a new type of object. There is a one-to-one correspondence
+        between the input objects and output objects.
+
+        Arguments:
+
+            r:      range specification function (lambda)
+            f:      selection function (lambda)
+
+        Returns:
+
+            A new ObjectStream of the transformed elements.
+
+        Notes:
+            - The functions can be `lambda`, the name of a one-line function, a string that
+              contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+        """
+        return ObjectStream(function_call("SelectIndex", [self._q_ast, cast(ast.AST, parse_as_ast(r)), cast(ast.AST, parse_as_ast(f))]))
+
     def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
