@@ -10,3 +10,5 @@ from .object_stream import ObjectStream  # NOQA
 
 # Dataset accessors
 from .event_dataset import EventDataset, find_EventDataset  # NOQA
+
+from .functions import Range
