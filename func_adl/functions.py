@@ -2,7 +2,7 @@ from .object_stream import ObjectStream
 
 from typing import Union, cast
 
-def Range(self, lower_bound: Union[str, int, ast.AST], upper_bound: Union[str, int, ast.AST]) -> ObjectStream:
+def Range(lower_bound: Union[str, int, ast.AST], upper_bound: Union[str, int, ast.AST]) -> ObjectStream:
     r"""
     Given the lower and upper bound return an object with the range of numbers, similar to python range
     
@@ -18,6 +18,5 @@ def Range(self, lower_bound: Union[str, int, ast.AST], upper_bound: Union[str, i
     """
 
     return ObjectStream(function_call("Range",
-                                          [self._q_ast,
-                                           cast(ast.AST, as_ast(lower_bound)),
+                                          [cast(ast.AST, as_ast(lower_bound)),
                                            cast(ast.AST, as_ast(upper_bound))]))
