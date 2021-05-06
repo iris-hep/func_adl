@@ -1,3 +1,5 @@
+import ast
+
 from .object_stream import ObjectStream
 
 from typing import Union, cast
