@@ -13,6 +13,9 @@ from .util_ast import as_ast, function_call, parse_as_ast
 #         Exception.__init__(self, msg)
 
 
+executor_attr_name = '_func_adl_executor'
+
+
 class ObjectStream:
     r'''
     The objects can be events, jets, electrons, or just floats, or arrays of floats.
@@ -208,10 +211,11 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        from .event_dataset import find_ed_in_ast
-        ed = find_ed_in_ast(self._q_ast)
+        node = self
+        while not hasattr(node, executor_attr_name):
+            node = self._q_ast.args[0]
 
-        return ed.execute_result_async
+        return getattr(node, executor_attr_name)
 
     async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> Any:
         r'''
