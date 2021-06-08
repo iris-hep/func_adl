@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import ast
-from typing import Any, Optional, cast, List
+from typing import Any, Optional
 
 from .object_stream import ObjectStream, executor_attr_name
 from .util_ast import function_call
