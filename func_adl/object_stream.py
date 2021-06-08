@@ -211,9 +211,9 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        node = self
+        node = self._q_ast
         while not hasattr(node, executor_attr_name):
-            node = self._q_ast.args[0]
+            node = node.args[0]
 
         return getattr(node, executor_attr_name)
 
