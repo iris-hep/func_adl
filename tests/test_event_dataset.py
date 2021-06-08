@@ -4,7 +4,6 @@ from typing import Any, cast
 import pytest
 
 from func_adl import EventDataset
-from func_adl.event_dataset import find_ed_in_ast
 
 def test_cannot_create():
     with pytest.raises(Exception):
@@ -28,23 +27,6 @@ class my_event_extra_args(EventDataset):
 
 def test_can_create():
     my_event()
-
-
-def test_find_event_at_top():
-    e = my_event()
-    assert find_ed_in_ast(e.query_ast) is e
-
-
-def test_find_event_inside():
-    e = my_event()
-    add = ast.BinOp(ast.Num(5), ast.Add, e.query_ast)
-    assert find_ed_in_ast(add) is e
-
-
-def test_find_event_with_more_ast():
-    e = my_event_extra_args()
-    add = ast.BinOp(ast.Num(5), ast.Add, e.query_ast)
-    assert find_ed_in_ast(add) is e
 
 
 def test_string_rep():
