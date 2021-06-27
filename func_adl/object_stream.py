@@ -217,7 +217,7 @@ class ObjectStream:
         # the first argument in the ast.Call node.
         node = self._q_ast
         while not hasattr(node, executor_attr_name):
-            node = node.args[0]
+            node = node.args[0]  # type: ignore
 
         # Extract the executor from this reference.
         return getattr(node, executor_attr_name)

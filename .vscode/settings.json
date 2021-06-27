@@ -49,7 +49,7 @@
     ],
     "pyright.openFilesOnly": false,
     "python.analysis.openFilesOnly": false,
-    "python.pythonPath": ".venv-39\\Scripts\\python.exe",
+    "python.pythonPath": ".venv\\Scripts\\python.exe",
     "python.venvPath": ".venv",
     "python.analysis.typeCheckingMode": "basic",
     "python.testing.pytestArgs": [

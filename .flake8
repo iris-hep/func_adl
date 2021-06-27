@@ -1,3 +1,2 @@
 [flake8]
-exclude = tests/*
 max-line-length=99
