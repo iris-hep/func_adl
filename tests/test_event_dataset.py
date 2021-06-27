@@ -2,8 +2,8 @@ import ast
 from typing import Any, cast
 
 import pytest
-
 from func_adl import EventDataset
+
 
 def test_cannot_create():
     with pytest.raises(Exception):

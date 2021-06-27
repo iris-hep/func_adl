@@ -12,19 +12,18 @@ from func_adl.util_ast import (
 
 # Ast parsing
 def test_as_ast_integer():
-    if sys.version_info < (3,8):
+    if sys.version_info < (3, 8):
         assert "Num(n=1)" == ast.dump(as_ast(1))
-    elif sys.version_info < (3,9):
+    elif sys.version_info < (3, 9):
         assert "Constant(value=1, kind=None)" == ast.dump(as_ast(1))
     else:
         assert "Constant(value=1)" == ast.dump(as_ast(1))
 
 
-
 def test_as_ast_string():
-    if sys.version_info < (3,8):
+    if sys.version_info < (3, 8):
         assert "Str(s='hi there')" == ast.dump(as_ast("hi there"))
-    elif sys.version_info < (3,9):
+    elif sys.version_info < (3, 9):
         assert "Constant(value='hi there', kind=None)" == ast.dump(as_ast("hi there"))
     else:
         assert "Constant(value='hi there')" == ast.dump(as_ast("hi there"))
@@ -32,30 +31,35 @@ def test_as_ast_string():
 
 def test_as_ast_string_var():
     s = "hi there"
-    if sys.version_info < (3,8):
+    if sys.version_info < (3, 8):
         assert "Str(s='hi there')" == ast.dump(as_ast(s))
-    elif sys.version_info < (3,9):
+    elif sys.version_info < (3, 9):
         assert "Constant(value='hi there', kind=None)" == ast.dump(as_ast(s))
     else:
         assert "Constant(value='hi there')" == ast.dump(as_ast(s))
 
 
 def test_as_ast_list():
-    if sys.version_info < (3,8):
-        assert "List(elts=[Str(s='one'), Str(s='two')], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
-    elif sys.version_info < (3,9):
-        assert "List(elts=[Constant(value='one', kind=None), Constant(value='two', kind=None)], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
+    if sys.version_info < (3, 8):
+        assert "List(elts=[Str(s='one'), Str(s='two')], ctx=Load())" \
+            == ast.dump(as_ast(["one", "two"]))
+    elif sys.version_info < (3, 9):
+        assert "List(elts=[Constant(value='one', kind=None), Constant(value='two', " \
+            "kind=None)], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
     else:
-        assert "List(elts=[Constant(value='one'), Constant(value='two')], ctx=Load())" == ast.dump(as_ast(["one", "two"]))
+        assert "List(elts=[Constant(value='one'), Constant(value='two')], ctx=Load())" \
+            == ast.dump(as_ast(["one", "two"]))
+
 
 # Fucntion Calling
 def test_function_call_simple():
     a = function_call('dude', [as_ast(1)])
-    print (ast.dump(ast.parse('dude(1)')))
-    if sys.version_info < (3,8):
+    print(ast.dump(ast.parse('dude(1)')))
+    if sys.version_info < (3, 8):
         expected = "Call(func=Name(id='dude', ctx=Load()), args=[Num(n=1)], keywords=[])"
-    elif sys.version_info < (3,9):
-        expected = "Call(func=Name(id='dude', ctx=Load()), args=[Constant(value=1, kind=None)], keywords=[])"
+    elif sys.version_info < (3, 9):
+        expected = "Call(func=Name(id='dude', ctx=Load()), " \
+            "args=[Constant(value=1, kind=None)], keywords=[])"
     else:
         expected = "Call(func=Name(id='dude', ctx=Load()), args=[Constant(value=1)], keywords=[])"
     assert expected == ast.dump(a)
@@ -63,82 +67,100 @@ def test_function_call_simple():
 
 # Identity
 def test_identity_is():
-    assert lambda_is_identity(ast.parse('lambda x: x')) == True
+    assert lambda_is_identity(ast.parse('lambda x: x')) is True
+
 
 def test_identity_isnot_body():
-    assert lambda_is_identity(ast.parse('lambda x: x+1')) == False
+    assert lambda_is_identity(ast.parse('lambda x: x+1')) is False
+
 
 def test_identity_isnot_args():
-    assert lambda_is_identity(ast.parse('lambda x,y: x')) == False
+    assert lambda_is_identity(ast.parse('lambda x,y: x')) is False
+
 
 def test_identity_isnot_body_var():
-    assert lambda_is_identity(ast.parse('lambda x: x1')) == False
+    assert lambda_is_identity(ast.parse('lambda x: x1')) is False
+
 
 # Is this a lambda?
 def test_lambda_test_expression():
-    assert lambda_test(ast.parse("x")) == False
+    assert lambda_test(ast.parse("x")) is False
+
 
 def test_lambda_assure_expression():
     try:
         lambda_test(ast.parse("x"))
         assert False
-    except:
+    except Exception:
         pass
+
 
 def test_lambda_assure_lambda():
     try:
         lambda_test(ast.parse("lambda x : x+1"))
         assert False
-    except:
+    except Exception:
         pass
+
 
 def test_lambda_args():
     args = lambda_args(ast.parse("lambda x: x+1"))
-    assert len(args.args)==1
+    assert len(args.args) == 1
     assert args.args[0].arg == 'x'
 
+
 def test_lambda_simple_ast_expr():
-    assert lambda_test(ast.Not()) == False
+    assert lambda_test(ast.Not()) is False
+
 
 def test_lambda_build_single_arg():
     expr = ast.parse("x+1")
-    l = lambda_build("x", expr)
-    assert isinstance(l, ast.Lambda)
+    ln = lambda_build("x", expr)
+    assert isinstance(ln, ast.Lambda)
+
 
 def test_lambda_build_list_arg():
     expr = ast.parse("x+1")
-    l = lambda_build(["x"], expr)
-    assert isinstance(l, ast.Lambda)
+    ln = lambda_build(["x"], expr)
+    assert isinstance(ln, ast.Lambda)
+
 
 def test_call_wrap_list_arg():
-    l = ast.parse('lambda x: x+1')
-    c = lambda_call(['x'], l)
+    ln = ast.parse('lambda x: x+1')
+    c = lambda_call(['x'], ln)
     assert isinstance(c, ast.Call)
+
 
 def test_call_wrap_single_arg():
-    l = ast.parse('lambda x: x+1')
-    c = lambda_call('x', l)
+    ln = ast.parse('lambda x: x+1')
+    c = lambda_call('x', ln)
     assert isinstance(c, ast.Call)
 
+
 def test_lambda_test_lambda_module():
-    assert lambda_test(ast.parse('lambda x: x')) == True
+    assert lambda_test(ast.parse('lambda x: x')) is True
+
 
 def test_lambda_test_raw_lambda():
     rl = cast(ast.Expr, ast.parse('lambda x: x').body[0]).value
-    assert lambda_test(rl) == True
+    assert lambda_test(rl) is True
+
 
 # Is this lambda always returning true?
 def test_lambda_is_true_yes():
-    assert lambda_is_true(ast.parse("lambda x: True")) == True
+    assert lambda_is_true(ast.parse("lambda x: True")) is True
+
 
 def test_lambda_is_true_no():
-    assert lambda_is_true(ast.parse("lambda x: False")) == False
+    assert lambda_is_true(ast.parse("lambda x: False")) is False
+
 
 def test_lambda_is_true_expression():
-    assert lambda_is_true(ast.parse("lambda x: x")) == False
+    assert lambda_is_true(ast.parse("lambda x: x")) is False
+
 
 def test_lambda_is_true_non_lambda():
-    assert lambda_is_true(ast.parse("True")) == False
+    assert lambda_is_true(ast.parse("True")) is False
 
 
 # Replacement
@@ -152,7 +174,7 @@ def test_lambda_replace_simple_expression():
     a2_txt = ast.dump(a2)
     if sys.version_info < (3, 8):
         assert "op=Add(), right=Num(n=1))" in a2_txt
-    elif sys.version_info < (3,9):
+    elif sys.version_info < (3, 9):
         assert "op=Add(), right=Constant(value=1, kind=None))" in a2_txt
     else:
         assert "op=Add(), right=Constant(value=1))" in a2_txt
@@ -164,12 +186,12 @@ def test_rewrite_oneliner():
 
     b = a.body[0]
     assert isinstance(b, ast.FunctionDef)
-    l = rewrite_func_as_lambda(b)
+    ln = rewrite_func_as_lambda(b)
 
-    assert isinstance(l, ast.Lambda)
-    assert len(l.args.args) == 1
-    assert l.args.args[0].arg == 'a'
-    assert isinstance(l.body, ast.BinOp)
+    assert isinstance(ln, ast.Lambda)
+    assert len(ln.args.args) == 1
+    assert ln.args.args[0].arg == 'a'
+    assert isinstance(ln.body, ast.BinOp)
 
 
 def test_rewrite_twoliner():
@@ -180,7 +202,7 @@ def test_rewrite_twoliner():
     b = a.body[0]
     assert isinstance(b, ast.FunctionDef)
     with pytest.raises(ValueError) as e:
-        l = rewrite_func_as_lambda(b)
+        rewrite_func_as_lambda(b)
 
     assert "simple" in str(e.value)
 
@@ -192,14 +214,14 @@ def test_rewrite_noret():
     b = a.body[0]
     assert isinstance(b, ast.FunctionDef)
     with pytest.raises(ValueError) as e:
-        l = rewrite_func_as_lambda(b)
+        rewrite_func_as_lambda(b)
 
     assert "return" in str(e.value)
 
 
 def test_parse_as_ast_lambda():
-    l = lambda_unwrap(ast.parse("lambda x: x + 1"))
-    r = parse_as_ast(l)
+    ln = lambda_unwrap(ast.parse("lambda x: x + 1"))
+    r = parse_as_ast(ln)
     assert isinstance(r, ast.Lambda)
 
 
@@ -254,7 +276,7 @@ def test_parse_continues():
             found.append(parse_as_ast(x))
             return self
 
-    long_expr = my_obj() \
+    my_obj() \
         .do_it(lambda x: x + 1) \
         .do_it(lambda y: y * 2)
 
@@ -279,7 +301,7 @@ def test_parse_continues_one_line():
             return self
 
     with pytest.raises(Exception) as e:
-        long_expr = my_obj() \
+        my_obj() \
             .do_it(lambda x: x + 1).do_it(lambda y: y * 2)
 
     assert "two" in str(e.value)

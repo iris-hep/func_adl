@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.fixture(autouse=True)
 def reset_ast_counters():
     import func_adl.ast.function_simplifier as fs

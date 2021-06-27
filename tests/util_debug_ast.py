@@ -11,7 +11,7 @@ class pretty_print_visitor(ast.NodeVisitor):
         self._s = stream
         self._indent = 1
 
-    def print_fields (self, node):
+    def print_fields(self, node):
         'Handle different types of fields'
         if isinstance(node, list):
             self._s.write('    '*self._indent + '[\n')
@@ -53,7 +53,7 @@ class pretty_print_visitor(ast.NodeVisitor):
         self._s.write('(')
         if self.count_fields(node) > 0:
             self._s.write('\n')
-            self.print_fields (node)
+            self.print_fields(node)
             self._s.write('    '*self._indent)
         self._s.write(')')
 
@@ -66,17 +66,20 @@ class pretty_print_visitor(ast.NodeVisitor):
     def visit_Name(self, node):
         self._s.write('Name(id="{0}")'.format(node.id))
 
-def pretty_print (ast):
+
+def pretty_print(ast):
     'Pretty print an ast'
     pretty_print_visitor(stdout).visit(ast)
     stdout.write("\n")
 
+
 class normalize_ast(ast.NodeTransformer):
     '''
-    The AST's can have the same symantec meaning, but not the same text, so the string compare that happens as part of these tests fail. The code
+    The AST's can have the same symantec meaning, but not the same text, so the string compare
+    that happens as part of these tests fail. The code
     here's job is to make the ast produced by the local code look like the python code.
     '''
-    def __init__ (self):
+    def __init__(self):
         self._arg_index = 0
         self._arg_transformer = []
 
@@ -115,4 +118,3 @@ class normalize_ast(ast.NodeTransformer):
 
     def visit_Name(self, node: ast.Name):
         return ast.Name(self.lookup_name(node.id), ast.Load())
-
