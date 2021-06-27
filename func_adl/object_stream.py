@@ -13,6 +13,10 @@ from .util_ast import as_ast, function_call, parse_as_ast
 #         Exception.__init__(self, msg)
 
 
+# Attribute that will be used to store the executor reference
+executor_attr_name = '_func_adl_executor'
+
+
 class ObjectStream:
     r'''
     The objects can be events, jets, electrons, or just floats, or arrays of floats.
@@ -208,10 +212,15 @@ class ObjectStream:
         if executor is not None:
             return executor
 
-        from .event_dataset import find_ed_in_ast
-        ed = find_ed_in_ast(self._q_ast)
+        # Dig into the AST until we find a node with an executor reference attached. The AST is
+        # traversed by looking recursively into the source of each ObjectStream, which is always
+        # the first argument in the ast.Call node.
+        node = self._q_ast
+        while not hasattr(node, executor_attr_name):
+            node = node.args[0]
 
-        return ed.execute_result_async
+        # Extract the executor from this reference.
+        return getattr(node, executor_attr_name)
 
     async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> Any:
         r'''

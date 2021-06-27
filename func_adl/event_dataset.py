@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import ast
-from typing import Any, Optional, cast, List
+from typing import Any, Optional
 
-from .object_stream import ObjectStream
+from .object_stream import ObjectStream, executor_attr_name
 from .util_ast import function_call
 
 
@@ -17,10 +17,16 @@ class EventDataset(ObjectStream, ABC):
         Should not be called directly. Make sure to initialize this ctor
         or tracking information will be lost.
         '''
-        # We participate in the AST parsing - as a node. This argument is used in a lookup
-        # later on - so do not alter this in a subclass without understanding what is
-        # going on!
-        super().__init__(function_call('EventDataset', [ast.Constant(value=self)]))
+
+        # Create the base AST node.
+        ed_ast = function_call('EventDataset', [])
+
+        # Safely store a reference to our executor in the AST in an attribute not used by the
+        # the native Python ast module.
+        setattr(ed_ast, executor_attr_name, self.execute_result_async)
+
+        # Let ObjectStream take care of passing around this AST.
+        super().__init__(ed_ast)
 
     def __repr__(self):
         return f"'{self.__class__.__name__}'"
@@ -74,21 +80,3 @@ def find_EventDataset(a: ast.AST) -> ast.Call:
         raise Exception("AST Query has no root EventDataset")
 
     return ds_f.ds
-
-
-def _extract_dataset_info(ds_call: ast.Call) -> EventDataset:
-    '''
-    Convert a found ServiceX dataset in a call.
-    '''
-    args = cast(List[ast.AST], ds_call.args)
-
-    # List should be strings
-    return ast.literal_eval(args[0])
-
-
-def find_ed_in_ast(a: ast.AST) -> EventDataset:
-    '''
-    Search the `AST` for a `ServiceXDatasetSource` node,
-    and return the `sx` dataset object.
-    '''
-    return _extract_dataset_info(find_EventDataset(a))
