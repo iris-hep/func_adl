@@ -1,10 +1,11 @@
 # Test various things about the hash functions we use for ast's.
 import ast
+from typing import Optional
 from func_adl.ast import ast_hash
 from func_adl import EventDataset
 
 class my_event(EventDataset):
-    async def execute_result_async(self, a: ast.AST):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str]):
         return a
 
 def build_ast() -> ast.AST:

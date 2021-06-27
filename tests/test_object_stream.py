@@ -8,9 +8,15 @@ from func_adl import EventDataset
 
 
 class my_event(EventDataset):
-    async def execute_result_async(self, a: ast.AST):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
         await asyncio.sleep(0.01)
         return a
+
+
+class my_event_with_title(EventDataset):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+        await asyncio.sleep(0.01)
+        return a, title
 
 
 class MyTestException(Exception):
@@ -19,7 +25,7 @@ class MyTestException(Exception):
 
 
 class my_event_boom(EventDataset):
-    async def execute_result_async(self, a: ast.AST):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str]):
         await asyncio.sleep(0.01)
         raise MyTestException('this is a test bomb')
 
@@ -31,6 +37,15 @@ def test_simple_query():
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
         .value()
     assert isinstance(r, ast.AST)
+
+
+def test_simple_quer_with_title():
+    r = my_event_with_title() \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsROOTTTree("junk.root", "analysis", "jetPT") \
+        .value(title='onetwothree')
+    assert r[1] == 'onetwothree'
 
 
 def test_simple_query_lambda():
@@ -131,7 +146,7 @@ async def test_2await_exe_from_coroutine():
 async def test_passed_in_executor():
     logged_ast: Optional[ast.AST] = None
 
-    async def my_exe(a: ast.AST) -> Any:
+    async def my_exe(a: ast.AST, title: Optional[str]) -> Any:
         nonlocal logged_ast
         logged_ast = a
         return 1
