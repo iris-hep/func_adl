@@ -376,16 +376,25 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         assert isinstance(node.func, ast.Attribute)
         method_name = node.func.attr
         method_args = node.args
-        method_keywords = node.keywords
+        method_keywords = node.keywords if hasattr(node, 'keywords') \
+            else node.kwargs  # type: ignore - Working around python 3.7vs3.8
+
         assert isinstance(node.func.value, ast.Call)
         seq = node.func.value.args[0]
 
         # Now rebuild the call
         a = arg_name()
-        seq_a_call = ast.Call(func=ast.Attribute(value=ast.Name(a, ast.Load()),
-                                                 attr=method_name),
-                              args=method_args,
-                              keywords=method_keywords)
+        call_args = {
+            'func': ast.Attribute(value=ast.Name(a, ast.Load()),
+                                  attr=method_name),
+            'args': method_args,
+        }
+        if hasattr(node, 'keywords'):
+            call_args['keywords'] = method_keywords
+        else:
+            call_args['kwargs'] = method_keywords
+
+        seq_a_call = ast.Call(**call_args)
         select = make_Select(seq, lambda_build(a, seq_a_call))
 
         return self.visit(function_call('First', [cast(ast.AST, select)]))
