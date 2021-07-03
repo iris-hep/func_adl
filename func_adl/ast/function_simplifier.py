@@ -357,6 +357,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         '''We are looking for cases where an argument is another function or expression.
         In that case, we want to try to get an evaluation of the argument, and replace it in the
         AST of this function. This only works of the function we are calling is a lambda.
+
+        Also, if this is a First() call, then move the call inside it.
         '''
         if type(call_node.func) is ast.Lambda:
             arg_asts = [self.visit(a) for a in call_node.args]
@@ -400,6 +402,23 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
+    def visit_Subscript_Dict(self, v: ast.Dict, s: Union[ast.Num, ast.Constant, ast.Index]):
+        '''
+        {t1, t2, t3...}[1] => t2
+        '''
+        sub = _get_value_from_index(s)
+        assert isinstance(sub, (str, int))
+        return self.visit_Subscript_Dict_with_value(v, sub)
+
+    def visit_Subscript_Dict_with_value(self, v: ast.Dict, s: Union[str, int]):
+        'Do the lookup for the dict'
+        for index, value in enumerate(v.keys):
+            assert isinstance(value, (ast.Str, ast.Constant, ast.Num))
+            if _get_value_from_index(value) == s:
+                return v.values[index]
+
+        return ast.Subscript(v, s, ast.Load())
+
     def visit_Subscript_Of_First(self, first: ast.AST, s):
         '''
         Convert a seq.First()[0]
@@ -430,6 +449,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             return self.visit_Subscript_Tuple(v, s)
         if type(v) is ast.List:
             return self.visit_Subscript_List(v, s)
+        if type(v) is ast.Dict:
+            return self.visit_Subscript_Dict(v, s)
 
         if is_call_of(v, 'First'):
             return self.visit_Subscript_Of_First(v.args[0], s)
@@ -441,9 +462,38 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         'Do lookup and see if we should translate or not.'
         return self._arg_stack.lookup_name(name_node.id, default=name_node)
 
+    def visit_Attribute_Of_First(self, first: ast.AST, attr: str):
+        '''
+        Convert a seq.First().attr
+        ==>
+        seq.Select(l: l.attr).First()
+
+        Other work will do the conversion as needed.
+        '''
+
+        # Build the select that starts from the source and does the slice.
+        a = arg_name()
+        select = make_Select(first,
+                             lambda_build(a,
+                                          ast.Attribute(value=ast.Name(a, ast.Load()),
+                                                        attr=attr)))
+
+        return self.visit(function_call('First', [cast(ast.AST, select)]))
+
     def visit_Attribute(self, node):
-        'Make sure to make a new version of the Attribute so it does not get reused'
-        return ast.Attribute(value=self.visit(node.value), attr=node.attr, ctx=ast.Load())
+        '''
+        If this is a reference against a dict, then we can de-ref it if there is a key.
+        Otherwise, we need to make sure to make a new version of the Attribute so it does
+        not get reused'
+        '''
+        if is_call_of(node.value, 'First'):
+            return self.visit_Attribute_Of_First(node.value.args[0], node.attr)
+
+        visited_value = self.visit(node.value)
+        if isinstance(visited_value, ast.Dict):
+            return self.visit_Subscript_Dict_with_value(visited_value, node.attr)
+
+        return ast.Attribute(value=visited_value, attr=node.attr, ctx=ast.Load())
 
 
 def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index]) -> Optional[int]:
