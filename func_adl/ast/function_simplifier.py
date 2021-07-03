@@ -95,6 +95,19 @@ class FuncADLIndexError(Exception):
         Exception.__init__(self, msg)
 
 
+def _is_method_call_on_first(node: ast.Call):
+    '''
+    Determine if this is a call like First(seq).method(args).
+    '''
+    if not isinstance(node.func, ast.Attribute):
+        return False
+
+    if not is_call_of(node.func.value, 'First'):
+        return False
+
+    return True
+
+
 class simplify_chained_calls(FuncADLNodeTransformer):
     '''
     In order to cleanly evaluate things like tuples (which should not show up at the back end),
@@ -353,6 +366,30 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             else:
                 return function_call('Where', [parent_where, f])
 
+    def select_method_call_on_first(self, node: ast.Call):
+        '''Turn
+        First(seq).method(args)
+        into
+        First(Select(seq, s: s.method(args)))
+        '''
+        # Extract the call info
+        assert isinstance(node.func, ast.Attribute)
+        method_name = node.func.attr
+        method_args = node.args
+        method_keywords = node.keywords
+        assert isinstance(node.func.value, ast.Call)
+        seq = node.func.value.args[0]
+
+        # Now rebuild the call
+        a = arg_name()
+        seq_a_call = ast.Call(func=ast.Attribute(value=ast.Name(a, ast.Load()),
+                                                 attr=method_name),
+                              args=method_args,
+                              keywords=method_keywords)
+        select = make_Select(seq, lambda_build(a, seq_a_call))
+
+        return self.visit(function_call('First', [cast(ast.AST, select)]))
+
     def visit_Call(self, call_node):
         '''We are looking for cases where an argument is another function or expression.
         In that case, we want to try to get an evaluation of the argument, and replace it in the
@@ -367,6 +404,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
                     self._arg_stack.define_name(a_name.arg, arg)
                 # Now, evaluate the expression, and then lift it.
                 return self.visit(call_node.func.body)
+        elif _is_method_call_on_first(call_node):
+            return self.select_method_call_on_first(call_node)
         else:
             return FuncADLNodeTransformer.visit_Call(self, call_node)
 
