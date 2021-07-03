@@ -114,6 +114,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => Select(seq, x: g(f(x)))
         '''
         _, args = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -134,6 +135,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => SelectMany(seq, x: Select(f(x), y: g(y)))
         '''
         (_, args) = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -258,6 +260,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         '''
         # Unpack arguments and f and g functions
         _, args = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -277,6 +280,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => Select(Where(seq, x: g(f(x)), f(x))
         '''
         _, args = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -297,6 +301,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => SelectMany(seq, x: Where(f(x), g(y)))
         '''
         _, args = unpack_Call(parent)
+        assert args is not None
         seq = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
