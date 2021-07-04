@@ -544,7 +544,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         return ast.Attribute(value=visited_value, attr=node.attr, ctx=ast.Load())
 
 
-def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index]) -> Optional[int]:
+def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index, ast.Str]) -> Optional[int]:
     '''Deal with 3.6, 3.7, and 3.8 differences in how indexing for list and tuple
     subscripts is handled.
 
@@ -557,6 +557,8 @@ def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index]) -> Optio
             return cast(int, a.n)
         if isinstance(a, ast.Constant):
             return a.value
+        if isinstance(a, ast.Str):
+            return a.s
         return None
 
     if isinstance(arg, ast.Index):
