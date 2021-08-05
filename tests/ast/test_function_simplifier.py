@@ -132,12 +132,11 @@ def test_where_select():
 def test_where_first():
     util_process('Where(Select(Select(events, lambda e: First(e.jets)), '
                  'lambda j: j.pt()), lambda jp: jp>40.0)',
-                 'Select(Where(events, lambda e: First(e.jets).pt() > 40.0), '
-                 'lambda e1: First(e1.jets).pt())')
+                 'Select(Where(events, '
+                 'lambda e: First(Select(e.jets, lambda j: j.pt())) > 40.0), '
+                 'lambda e1: First(Select(e1.jets, lambda j: j.pt())))')
 
-    # util_process('Where(Select(Select(events, lambda e: First(e.jets)), lambda j: j.pt()), lambda jp: jp>40.0)', \
-    #     'Select(Where(events, lambda e: First(Select(e.jets, lambda j: j.pt())) > 40.0), lambda e1: First(Select(e1.jets, lambda j: j.pt())))')
- 
+
 ################
 # Testing out SelectMany
 def test_selectmany_simple():
@@ -228,9 +227,6 @@ def test_tuple_with_lambda_args_duplication_rename():
     util_process("Select(Select(events, lambda e: (e.eles, e.muosn)), "
                  "lambda f: f[0].Select(lambda g: g.E()))",
                  "Select(events, lambda e: e.eles.Select(lambda e: e.E()))")
-    # Note that "g" below could still be "e" and it wouldn't tickle the bug. f and e need to be different.
-    # util_process("Select(Select(events, lambda e: (e.eles, e.muosn)), lambda f: f[0].Select(lambda g: g.E()))",
-    #     "Select(events, lambda e: e.eles.Select(lambda e: e.E()))")
 
 
 # Dict tests
