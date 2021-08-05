@@ -8,9 +8,33 @@ on:
   - cron:  '1 0 * * *'
 
 jobs:
-  test:
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install --no-cache-dir -e .[complete]
+        pip list
+    - name: Lint with Flake8
+      run: |
+        flake8
+    - name: Build the pypi package
+      env:
+        func_adl_version: 1.0b10
+      run: |
+        python setup_func_adl.py sdist bdist_wheel
+        python setup_func_adl_ast.py sdist bdist_wheel
 
+  test:
     runs-on: ${{ matrix.os }}
+    needs: flake8
+
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -27,19 +51,9 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install --no-cache-dir -e .[complete]
         pip list
-    - name: Lint with Flake8
-      if: matrix.python-version == 3.7 && matrix.os == 'ubuntu-latest'
-      run: |
-        flake8
     - name: Test with pytest
       run: |
         python -m pytest -r sx
-    - name: Build the pypi package
-      env:
-        func_adl_version: 1.0b10
-      run: |
-        python setup_func_adl.py sdist bdist_wheel
-        python setup_func_adl_ast.py sdist bdist_wheel
     - name: Report coverage with Codecov
       if: github.event_name == 'push' && matrix.python-version == 3.7 && matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v1
