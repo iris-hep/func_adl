@@ -1,6 +1,6 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
 import ast
-from typing import Any, Awaitable, Callable, List, Union, cast
+from typing import Any, Awaitable, Callable, List, Optional, Union, cast
 
 from make_it_sync import make_sync
 
@@ -197,8 +197,8 @@ class ObjectStream:
         '''
         return ObjectStream(function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)]))
 
-    def _get_executor(self, executor: Callable[[ast.AST], Awaitable[Any]] = None) \
-            -> Callable[[ast.AST], Awaitable[Any]]:
+    def _get_executor(self, executor: Callable[[ast.AST, Optional[str]], Awaitable[Any]] = None) \
+            -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:
         r'''
         Returns an executor that can be used to run this.
         Logic seperated out as it is used from several different places.
@@ -217,12 +217,13 @@ class ObjectStream:
         # the first argument in the ast.Call node.
         node = self._q_ast
         while not hasattr(node, executor_attr_name):
-            node = node.args[0]
+            node = node.args[0]  # type: ignore
 
         # Extract the executor from this reference.
         return getattr(node, executor_attr_name)
 
-    async def value_async(self, executor: Callable[[ast.AST], Any] = None) -> Any:
+    async def value_async(self, executor: Callable[[ast.AST, Optional[str]], Any] = None,
+                          title: Optional[str] = None) -> Any:
         r'''
         Evaluate the ObjectStream computation graph. Tracks back to the source dataset to
         understand how to evaluate the AST. It is possible to pass in an executor to override that
@@ -234,6 +235,7 @@ class ObjectStream:
                             result. If None, then uses the default executor. Normally is none
                             and the default executor specified by the `EventDatasource` is called
                             instead.
+            title           Optional title to hand to the transform
 
         Returns
 
@@ -249,6 +251,6 @@ class ObjectStream:
         exe = self._get_executor(executor)
 
         # Run it
-        return await exe(self._q_ast)
+        return await exe(self._q_ast, title)
 
     value = make_sync(value_async)

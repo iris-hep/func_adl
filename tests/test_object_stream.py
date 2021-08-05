@@ -1,26 +1,34 @@
 # Test the object stream
-import sys
-from typing import Any, Optional
-sys.path += ['.']
-from func_adl import EventDataset
 import ast
 import asyncio
+from typing import Any, Optional
+
 import pytest
+from func_adl import EventDataset
 
 
 class my_event(EventDataset):
-    async def execute_result_async(self, a: ast.AST):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
         await asyncio.sleep(0.01)
         return a
+
+
+class my_event_with_title(EventDataset):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+        await asyncio.sleep(0.01)
+        return a, title
+
 
 class MyTestException(Exception):
     def __init__(self, msg):
         Exception.__init__(self, msg)
 
+
 class my_event_boom(EventDataset):
-    async def execute_result_async(self, a: ast.AST):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str]):
         await asyncio.sleep(0.01)
         raise MyTestException('this is a test bomb')
+
 
 def test_simple_query():
     r = my_event() \
@@ -29,6 +37,15 @@ def test_simple_query():
         .AsROOTTTree("junk.root", "analysis", "jetPT") \
         .value()
     assert isinstance(r, ast.AST)
+
+
+def test_simple_quer_with_title():
+    r = my_event_with_title() \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsROOTTTree("junk.root", "analysis", "jetPT") \
+        .value(title='onetwothree')
+    assert r[1] == 'onetwothree'
 
 
 def test_simple_query_lambda():
@@ -57,6 +74,7 @@ def test_simple_query_panda():
         .value()
     assert isinstance(r, ast.AST)
 
+
 def test_simple_query_awkward():
     r = my_event() \
         .SelectMany("lambda e: e.jets()") \
@@ -64,6 +82,7 @@ def test_simple_query_awkward():
         .AsAwkwardArray(["analysis", "jetPT"]) \
         .value()
     assert isinstance(r, ast.AST)
+
 
 def test_nested_query_rendered_correctly():
     r = my_event() \
@@ -74,6 +93,7 @@ def test_nested_query_rendered_correctly():
     assert isinstance(r, ast.AST)
     assert "Select(source" not in ast.dump(r)
 
+
 @pytest.mark.asyncio
 async def test_await_exe_from_coroutine_with_throw():
     with pytest.raises(MyTestException):
@@ -83,6 +103,7 @@ async def test_await_exe_from_coroutine_with_throw():
             .AsROOTTTree("junk.root", "analysis", "jetPT") \
             .value_async()
         await r
+
 
 @pytest.mark.asyncio
 async def test_await_exe_from_normal_function():
@@ -102,7 +123,6 @@ def test_ast_prop():
 
     assert isinstance(r.query_ast, ast.AST)
     assert isinstance(r.query_ast, ast.Call)
-
 
 
 @pytest.mark.asyncio
@@ -125,12 +145,12 @@ async def test_2await_exe_from_coroutine():
 @pytest.mark.asyncio
 async def test_passed_in_executor():
     logged_ast: Optional[ast.AST] = None
-    
-    async def my_exe(a: ast.AST) -> Any:
+
+    async def my_exe(a: ast.AST, title: Optional[str]) -> Any:
         nonlocal logged_ast
         logged_ast = a
         return 1
-        
+
     r = my_event() \
         .SelectMany("lambda e: e.jets()") \
         .Select("lambda j: j.pT()") \
