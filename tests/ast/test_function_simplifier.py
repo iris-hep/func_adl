@@ -245,4 +245,5 @@ def test_dict_in_lambda():
 
 
 def test_dict_around_first():
-    util_process('Select(events, lambda e: First(Select(e.jets, lambda j: {"j": j, "e": e})).j)', 'Select(events, lambda e: First(e.jets))')
+    util_process('Select(events, lambda e: First(Select(e.jets, lambda j: {"j": j, "e": e})).j)',
+                 'Select(events, lambda e: First(e.jets))')
