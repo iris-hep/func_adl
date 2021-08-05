@@ -95,6 +95,19 @@ class FuncADLIndexError(Exception):
         Exception.__init__(self, msg)
 
 
+def _is_method_call_on_first(node: ast.Call):
+    '''
+    Determine if this is a call like First(seq).method(args).
+    '''
+    if not isinstance(node.func, ast.Attribute):
+        return False
+
+    if not is_call_of(node.func.value, 'First'):
+        return False
+
+    return True
+
+
 class simplify_chained_calls(FuncADLNodeTransformer):
     '''
     In order to cleanly evaluate things like tuples (which should not show up at the back end),
@@ -114,6 +127,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => Select(seq, x: g(f(x)))
         '''
         _, args = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -134,6 +148,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => SelectMany(seq, x: Select(f(x), y: g(y)))
         '''
         (_, args) = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -258,6 +273,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         '''
         # Unpack arguments and f and g functions
         _, args = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -277,6 +293,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => Select(Where(seq, x: g(f(x)), f(x))
         '''
         _, args = unpack_Call(parent)
+        assert args is not None
         source = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -297,6 +314,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         => SelectMany(seq, x: Where(f(x), g(y)))
         '''
         _, args = unpack_Call(parent)
+        assert args is not None
         seq = args[0]
         func_f = args[1]
         assert isinstance(func_f, ast.Lambda)
@@ -348,10 +366,45 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             else:
                 return function_call('Where', [parent_where, f])
 
+    def select_method_call_on_first(self, node: ast.Call):
+        '''Turn
+        First(seq).method(args)
+        into
+        First(Select(seq, s: s.method(args)))
+        '''
+        # Extract the call info
+        assert isinstance(node.func, ast.Attribute)
+        method_name = node.func.attr
+        method_args = node.args
+        method_keywords = node.keywords if hasattr(node, 'keywords') \
+            else node.kwargs  # type: ignore - Working around python 3.7vs3.8
+
+        assert isinstance(node.func.value, ast.Call)
+        seq = node.func.value.args[0]
+
+        # Now rebuild the call
+        a = arg_name()
+        call_args = {
+            'func': ast.Attribute(value=ast.Name(a, ast.Load()),
+                                  attr=method_name),
+            'args': method_args,
+        }
+        if hasattr(node, 'keywords'):
+            call_args['keywords'] = method_keywords
+        else:
+            call_args['kwargs'] = method_keywords
+
+        seq_a_call = ast.Call(**call_args)
+        select = make_Select(seq, lambda_build(a, seq_a_call))
+
+        return self.visit(function_call('First', [cast(ast.AST, select)]))
+
     def visit_Call(self, call_node):
         '''We are looking for cases where an argument is another function or expression.
         In that case, we want to try to get an evaluation of the argument, and replace it in the
         AST of this function. This only works of the function we are calling is a lambda.
+
+        Also, if this is a First() call, then move the call inside it.
         '''
         if type(call_node.func) is ast.Lambda:
             arg_asts = [self.visit(a) for a in call_node.args]
@@ -360,6 +413,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
                     self._arg_stack.define_name(a_name.arg, arg)
                 # Now, evaluate the expression, and then lift it.
                 return self.visit(call_node.func.body)
+        elif _is_method_call_on_first(call_node):
+            return self.select_method_call_on_first(call_node)
         else:
             return FuncADLNodeTransformer.visit_Call(self, call_node)
 
@@ -395,6 +450,23 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
+    def visit_Subscript_Dict(self, v: ast.Dict, s: Union[ast.Num, ast.Constant, ast.Index]):
+        '''
+        {t1, t2, t3...}[1] => t2
+        '''
+        sub = _get_value_from_index(s)
+        assert isinstance(sub, (str, int))
+        return self.visit_Subscript_Dict_with_value(v, sub)
+
+    def visit_Subscript_Dict_with_value(self, v: ast.Dict, s: Union[str, int]):
+        'Do the lookup for the dict'
+        for index, value in enumerate(v.keys):
+            assert isinstance(value, (ast.Str, ast.Constant, ast.Num))
+            if _get_value_from_index(value) == s:
+                return v.values[index]
+
+        return ast.Subscript(v, s, ast.Load())
+
     def visit_Subscript_Of_First(self, first: ast.AST, s):
         '''
         Convert a seq.First()[0]
@@ -425,6 +497,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             return self.visit_Subscript_Tuple(v, s)
         if type(v) is ast.List:
             return self.visit_Subscript_List(v, s)
+        if type(v) is ast.Dict:
+            return self.visit_Subscript_Dict(v, s)
 
         if is_call_of(v, 'First'):
             return self.visit_Subscript_Of_First(v.args[0], s)
@@ -436,12 +510,41 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         'Do lookup and see if we should translate or not.'
         return self._arg_stack.lookup_name(name_node.id, default=name_node)
 
+    def visit_Attribute_Of_First(self, first: ast.AST, attr: str):
+        '''
+        Convert a seq.First().attr
+        ==>
+        seq.Select(l: l.attr).First()
+
+        Other work will do the conversion as needed.
+        '''
+
+        # Build the select that starts from the source and does the slice.
+        a = arg_name()
+        select = make_Select(first,
+                             lambda_build(a,
+                                          ast.Attribute(value=ast.Name(a, ast.Load()),
+                                                        attr=attr)))
+
+        return self.visit(function_call('First', [cast(ast.AST, select)]))
+
     def visit_Attribute(self, node):
-        'Make sure to make a new version of the Attribute so it does not get reused'
-        return ast.Attribute(value=self.visit(node.value), attr=node.attr, ctx=ast.Load())
+        '''
+        If this is a reference against a dict, then we can de-ref it if there is a key.
+        Otherwise, we need to make sure to make a new version of the Attribute so it does
+        not get reused'
+        '''
+        if is_call_of(node.value, 'First'):
+            return self.visit_Attribute_Of_First(node.value.args[0], node.attr)
+
+        visited_value = self.visit(node.value)
+        if isinstance(visited_value, ast.Dict):
+            return self.visit_Subscript_Dict_with_value(visited_value, node.attr)
+
+        return ast.Attribute(value=visited_value, attr=node.attr, ctx=ast.Load())
 
 
-def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index]) -> Optional[int]:
+def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index, ast.Str]) -> Optional[int]:
     '''Deal with 3.6, 3.7, and 3.8 differences in how indexing for list and tuple
     subscripts is handled.
 
@@ -454,6 +557,8 @@ def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index]) -> Optio
             return cast(int, a.n)
         if isinstance(a, ast.Constant):
             return a.value
+        if isinstance(a, ast.Str):
+            return a.s
         return None
 
     if isinstance(arg, ast.Index):

@@ -135,7 +135,10 @@ def test_where_first():
                  'Select(Where(events, lambda e: First(e.jets).pt() > 40.0), '
                  'lambda e1: First(e1.jets).pt())')
 
-
+    # util_process('Where(Select(Select(events, lambda e: First(e.jets)), lambda j: j.pt()), lambda jp: jp>40.0)', \
+    #     'Select(Where(events, lambda e: First(Select(e.jets, lambda j: j.pt())) > 40.0), lambda e1: First(Select(e1.jets, lambda j: j.pt())))')
+ 
+################
 # Testing out SelectMany
 def test_selectmany_simple():
     # SelectMany statement shouldn't be altered on its own.
@@ -225,3 +228,25 @@ def test_tuple_with_lambda_args_duplication_rename():
     util_process("Select(Select(events, lambda e: (e.eles, e.muosn)), "
                  "lambda f: f[0].Select(lambda g: g.E()))",
                  "Select(events, lambda e: e.eles.Select(lambda e: e.E()))")
+    # Note that "g" below could still be "e" and it wouldn't tickle the bug. f and e need to be different.
+    # util_process("Select(Select(events, lambda e: (e.eles, e.muosn)), lambda f: f[0].Select(lambda g: g.E()))",
+    #     "Select(events, lambda e: e.eles.Select(lambda e: e.E()))")
+
+
+# Dict tests
+def test_dict_select_reference():
+    # ('n1': t1, 'n2': t2').t1 should be t1.
+    util_process('{"n1": t1, "n2": t2}.n1', 't1')
+
+
+def test_dict_select_index():
+    # ('n1': t1, 'n2': t2').t1 should be t1.
+    util_process('{"n1": t1, "n2": t2}["n1"]', 't1')
+
+
+def test_dict_in_lambda():
+    util_process('(lambda t: t.n1)({"n1": j1, "n2": j2})', 'j1')
+
+
+def test_dict_around_first():
+    util_process('Select(events, lambda e: First(Select(e.jets, lambda j: {"j": j, "e": e})).j)', 'Select(events, lambda e: First(e.jets))')
