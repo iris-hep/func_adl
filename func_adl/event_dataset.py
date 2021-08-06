@@ -35,12 +35,12 @@ class EventDataset(ObjectStream, ABC):
         return self.__class__.__name__
 
     @abstractmethod
-    async def execute_result_async(self, a: ast.AST) -> Any:
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None) -> Any:
         '''
         Override in your sub-class. The infrastructure will call this to render the result
         "locally", or as requested by the AST.
         '''
-        pass
+        pass  # pragma: no cover
 
 
 def find_EventDataset(a: ast.AST) -> ast.Call:
