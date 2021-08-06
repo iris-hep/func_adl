@@ -25,6 +25,9 @@ class EventDataset(ObjectStream, ABC):
         # the native Python ast module.
         setattr(ed_ast, executor_attr_name, self.execute_result_async)
 
+        # Safely store a reference to this object
+        setattr(ed_ast, '_eds_object', self)
+
         # Let ObjectStream take care of passing around this AST.
         super().__init__(ed_ast)
 
@@ -45,13 +48,13 @@ class EventDataset(ObjectStream, ABC):
 
 def find_EventDataset(a: ast.AST) -> ast.Call:
     r'''
-    Given an input query ast, find the EventDataset and return it.
+    Given an input query ast, find the EventDataset `ast` and return it.
 
     Args:
         a:      An AST that represents a query
 
     Returns:
-        The `EventDataset` at the root of this query. It will not be None.
+        The `EventDataset` `ast` at the root of this query. It will not be None.
 
     Exceptions:
         If there is more than one `EventDataset` found in the query or if there
@@ -77,6 +80,6 @@ def find_EventDataset(a: ast.AST) -> ast.Call:
     ds_f.visit(a)
 
     if ds_f.ds is None:
-        raise Exception("AST Query has no root EventDataset")
+        raise Exception(f"AST Query has no root EventDataset: {ast.dump(a)}")
 
     return ds_f.ds

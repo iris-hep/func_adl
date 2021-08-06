@@ -4,6 +4,12 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Run Code Coverage",
+            "type": "shell",
+            "command": ". .venv/scripts/activate.ps1 ; coverage-3.9.exe run -m pytest",
+            "problemMatcher": []
+        },
+        {
             "label": "Install Package",
             "type": "shell",
             "command": "${config:python.pythonPath}",
