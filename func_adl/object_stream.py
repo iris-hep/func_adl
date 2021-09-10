@@ -1,6 +1,6 @@
 # An Object stream represents a stream of objects, floats, integers, etc.
 import ast
-from typing import Any, Awaitable, Callable, List, Optional, Union, cast
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union, cast
 
 from make_it_sync import make_sync
 
@@ -105,6 +105,15 @@ class ObjectStream:
         '''
         return ObjectStream(function_call("Where",
                                           [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
+
+    def MetaData(self, metadata: Dict[str, str]) -> 'ObjectStream':
+        '''Add metadata to the current object stream. The metadata is an arbitrary set of string
+        key-value pairs. The backend must be able to properly interpret the metadata.
+
+        Returns:
+            ObjectStream: A new stream, of the same type and contents, but with metadata added.
+        '''
+        return ObjectStream(function_call("MetaData", [self._q_ast, as_ast(metadata)]))
 
     def AsPandasDF(self, columns=[]) -> 'ObjectStream':
         r"""

@@ -84,6 +84,16 @@ def test_simple_query_awkward():
     assert isinstance(r, ast.AST)
 
 
+def test_metadata():
+    r = my_event() \
+        .MetaData({'one': 'two', 'two': 'three'}) \
+        .SelectMany("lambda e: e.jets()") \
+        .Select("lambda j: j.pT()") \
+        .AsROOTTTree("junk.root", "analysis", "jetPT") \
+        .value()
+    assert isinstance(r, ast.AST)
+
+
 def test_nested_query_rendered_correctly():
     r = my_event() \
         .Where("lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0") \
