@@ -27,14 +27,17 @@ def test_no_metadata():
 
 def test_simple_metadata():
     'Make sure expression with metadata correctly cleaned up and removed'
-    meta = compare_metadata("MetaData(Select(jets, lambda j: j*2), {'hi': 'there'})", "Select(jets, lambda j: j*2)")
+    meta = compare_metadata("MetaData(Select(jets, lambda j: j*2), {'hi': 'there'})",
+                            "Select(jets, lambda j: j*2)")
     assert len(meta) == 1
     assert meta[0] == {'hi': 'there'}
 
 
 def test_two_metadata():
     'Make sure expression with no metadata is not changed'
-    meta = compare_metadata("MetaData(Select(MetaData(jets, {'fork': 'dude'}), lambda j: j*2), {'hi': 'there'})", "Select(jets, lambda j: j*2)")
+    meta = compare_metadata(
+        "MetaData(Select(MetaData(jets, {'fork': 'dude'}), lambda j: j*2), {'hi': 'there'})",
+        "Select(jets, lambda j: j*2)")
     assert len(meta) == 2
     assert meta[0] == {'hi': 'there'}
     assert meta[1] == {'fork': 'dude'}
