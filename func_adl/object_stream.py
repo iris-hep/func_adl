@@ -106,7 +106,7 @@ class ObjectStream:
         return ObjectStream(function_call("Where",
                                           [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
 
-    def MetaData(self, metadata: Dict[str, str]) -> 'ObjectStream':
+    def MetaData(self, metadata: Dict[str, Any]) -> 'ObjectStream':
         '''Add metadata to the current object stream. The metadata is an arbitrary set of string
         key-value pairs. The backend must be able to properly interpret the metadata.
 
