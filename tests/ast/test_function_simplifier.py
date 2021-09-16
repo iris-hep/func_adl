@@ -1,13 +1,11 @@
 import ast
-from typing import Tuple, cast
 
 from astunparse import unparse
 from func_adl.ast.function_simplifier import (FuncADLIndexError,
-                                              make_args_unique,
                                               simplify_chained_calls)
 from tests.util_debug_ast import normalize_ast
 
-from .utils import reset_ast_counters  # NOQA
+from .utils import reset_ast_counters, util_run_parse  # NOQA
 
 
 def util_process(ast_in, ast_out):
@@ -29,18 +27,6 @@ def util_process(ast_in, ast_out):
     print(s_expected)
     assert s_updated == s_expected
     return a_updated_raw
-
-
-##############
-# Test lambda copier
-def util_run_parse(a_text: str) -> Tuple[ast.Lambda, ast.Lambda]:
-    module = ast.parse(a_text)
-    assert isinstance(module, ast.Module)
-    s = cast(ast.Expr, module.body[0])
-    a = s.value
-    assert isinstance(a, ast.Lambda)
-    new_a = make_args_unique(a)
-    return (a, new_a)
 
 
 def test_lambda_copy_simple():
