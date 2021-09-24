@@ -1,23 +1,24 @@
-# An Object stream represents a stream of objects, floats, integers, etc.
 import ast
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union, cast
+from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional,
+                    TypeVar, Union, cast)
 
 from make_it_sync import make_sync
 
 from .util_ast import as_ast, function_call, parse_as_ast
 
-
-# class ObjectStreamException(Exception):
-#     'Exception thrown by the ObjectStream object.'
-#     def __init__(self, msg):
-#         Exception.__init__(self, msg)
-
-
 # Attribute that will be used to store the executor reference
 executor_attr_name = '_func_adl_executor'
 
+T = TypeVar('T')
+S = TypeVar('S')
 
-class ObjectStream:
+
+class ReturnedDataPlaceHolder:
+    '''Type returned for awkward, etc.,'''
+    pass
+
+
+class ObjectStream(Generic[T]):
     r'''
     The objects can be events, jets, electrons, or just floats, or arrays of floats.
 
@@ -47,7 +48,8 @@ class ObjectStream:
         '''
         return self._q_ast
 
-    def SelectMany(self, func: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
+    def SelectMany(self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]) \
+            -> 'ObjectStream[S]':
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -65,10 +67,10 @@ class ObjectStream:
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
-        return ObjectStream(function_call("SelectMany",
-                                          [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
+        return ObjectStream[S](function_call("SelectMany",
+                                             [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
 
-    def Select(self, f: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
+    def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> 'ObjectStream[S]':
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object. There is a one-to-one correspondence between the input objects and output objects.
@@ -85,9 +87,10 @@ class ObjectStream:
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
-        return ObjectStream(function_call("Select", [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
+        return ObjectStream[S](function_call("Select",
+                                             [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
 
-    def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream':
+    def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream[T]':
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -103,19 +106,19 @@ class ObjectStream:
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         '''
-        return ObjectStream(function_call("Where",
-                                          [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
+        return ObjectStream[T](function_call("Where",
+                                             [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
 
-    def MetaData(self, metadata: Dict[str, Any]) -> 'ObjectStream':
+    def MetaData(self, metadata: Dict[str, Any]) -> 'ObjectStream[T]':
         '''Add metadata to the current object stream. The metadata is an arbitrary set of string
         key-value pairs. The backend must be able to properly interpret the metadata.
 
         Returns:
             ObjectStream: A new stream, of the same type and contents, but with metadata added.
         '''
-        return ObjectStream(function_call("MetaData", [self._q_ast, as_ast(metadata)]))
+        return ObjectStream[T](function_call("MetaData", [self._q_ast, as_ast(metadata)]))
 
-    def AsPandasDF(self, columns=[]) -> 'ObjectStream':
+    def AsPandasDF(self, columns=[]) -> 'ObjectStream[ReturnedDataPlaceHolder]':
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
         This `DataFrame` will contain all the data fed to it. Only non-array datatypes are
@@ -129,9 +132,11 @@ class ObjectStream:
         """
 
         # To get Pandas use the ResultPandasDF function call.
-        return ObjectStream(function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
+        return ObjectStream[ReturnedDataPlaceHolder](
+            function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
 
-    def AsROOTTTree(self, filename, treename, columns=[]) -> 'ObjectStream':
+    def AsROOTTTree(self, filename, treename, columns=[]) \
+            -> 'ObjectStream[ReturnedDataPlaceHolder]':
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -156,12 +161,13 @@ class ObjectStream:
             dataset.  The order of the files back is consistent for different queries on the same
             dataset.
         """
-        return ObjectStream(
+        return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultTTree",
                           [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)])
             )
 
-    def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) -> 'ObjectStream':
+    def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) \
+            -> 'ObjectStream[ReturnedDataPlaceHolder]':
         '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
         entry in the file. The times must be of types that the infrastructure can work with:
 
@@ -187,10 +193,11 @@ class ObjectStream:
             result. The order of the files back is consistent for different queries on the same
             dataset.
         '''
-        return ObjectStream(function_call("ResultParquet",
-                                          [self._q_ast, as_ast(columns), as_ast(filename)]))
+        return ObjectStream[ReturnedDataPlaceHolder](function_call("ResultParquet",
+                                                     [self._q_ast, as_ast(columns),
+                                                      as_ast(filename)]))
 
-    def AsAwkwardArray(self, columns=[]) -> 'ObjectStream':
+    def AsAwkwardArray(self, columns=[]) -> 'ObjectStream[ReturnedDataPlaceHolder]':
         r'''
         Return a pandas stream that contains one item, an `awkward` array, or dictionary of
         `awkward` arrays. This `awkward` will contain all the data fed to it.
@@ -204,7 +211,8 @@ class ObjectStream:
 
             An `ObjectStream` with the `awkward` array data as its one and only element.
         '''
-        return ObjectStream(function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)]))
+        return ObjectStream[ReturnedDataPlaceHolder](
+            function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)]))
 
     def _get_executor(self, executor: Callable[[ast.AST, Optional[str]], Awaitable[Any]] = None) \
             -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:

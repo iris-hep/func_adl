@@ -1,7 +1,7 @@
 # Test the object stream
 import ast
 import asyncio
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 import pytest
 from func_adl import EventDataset
@@ -17,6 +17,25 @@ class my_event_with_title(EventDataset):
     async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
         await asyncio.sleep(0.01)
         return a, title
+
+
+class dd_jet:
+    def pt(self) -> float:
+        ...
+
+    def eta(self) -> float:
+        ...
+
+
+class dd_event:
+    def Jets(self, bank: str) -> Iterable[dd_jet]:
+        ...
+
+
+class my_event_with_type(EventDataset[dd_event]):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+        await asyncio.sleep(0.01)
+        return a
 
 
 class MyTestException(Exception):
@@ -39,6 +58,14 @@ def test_simple_query():
     assert isinstance(r, ast.AST)
 
 
+def test_with_types():
+    r = (my_event_with_type()
+         .SelectMany(lambda e: e.Jets('jets'))
+         .Select(lambda j: j.eta())
+         .value())
+    assert isinstance(r, ast.AST)
+
+
 def test_simple_quer_with_title():
     r = my_event_with_title() \
         .SelectMany("lambda e: e.jets()") \
@@ -49,11 +76,11 @@ def test_simple_quer_with_title():
 
 
 def test_simple_query_lambda():
-    r = my_event() \
-        .SelectMany(lambda e: e.jets()) \
-        .Select(lambda j: j.pT()) \
-        .AsROOTTTree("junk.root", "analysis", "jetPT") \
-        .value()
+    r = (my_event()
+         .SelectMany(lambda e: e.jets())
+         .Select(lambda j: j.pT())
+         .AsROOTTTree("junk.root", "analysis", "jetPT")
+         .value())
     assert isinstance(r, ast.AST)
 
 
