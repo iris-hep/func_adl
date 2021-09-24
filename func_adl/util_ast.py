@@ -246,7 +246,7 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
         source = inspect.getsource(ast_source).strip()
 
         # Look for the name of the calling function (e.g. 'Select' or 'Where')
-        caller_name = inspect.currentframe().f_back.f_code.co_name
+        caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
         caller_idx = source.find(caller_name)
         # If found, parse the string between the parentheses of the function call
         if caller_idx > -1:
