@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 import ast
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 from .object_stream import ObjectStream, executor_attr_name
 from .util_ast import function_call
 
+T = TypeVar('T')
 
-class EventDataset(ObjectStream, ABC):
+
+class EventDataset(ObjectStream[T], ABC):
     r'''
     A source of event objects (a ROOT file, or a xAOD file). This class
     should be sub-classed with the information about the actual dataset, and
