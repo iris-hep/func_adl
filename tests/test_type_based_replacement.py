@@ -2,6 +2,7 @@ import ast
 from func_adl.type_based_replacement import remap_by_types
 from typing import Iterable, Tuple, TypeVar
 from func_adl import ObjectStream
+import copy
 import pytest
 
 
@@ -46,6 +47,10 @@ def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], as
     if a.func.attr == 'Jets':
         s_update = s.MetaData({'j': 'stuff'})
         return s_update, a
+    elif a.func.attr == 'EventNumber':
+        new_call = copy.copy(a)
+        new_call.args = [ast.Constant(n=20)]
+        return s, new_call
     else:
         return s, a
 
@@ -66,6 +71,9 @@ class Event:
         ...
 
     def Tracks(self) -> Iterable[Track]:
+        ...
+
+    def EventNumber(self) -> int:
         ...
 
 
@@ -114,6 +122,18 @@ def test_method_on_collection():
     assert ast.dump(new_s) == ast.dump(ast.parse("e.MET().pxy()"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast.parse("MetaData(e, {'j': 'pxy stuff'})").body[0].value)  # type: ignore
+
+
+def test_method_modify_ast():
+    'Call a method that requires some special stuff on a returend object'
+    s = ast.parse("e.EventNumber()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("e.EventNumber(20)"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
 
 
 def test_method_with_no_return_type():
