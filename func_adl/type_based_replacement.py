@@ -1,12 +1,46 @@
 import ast
 import copy
 import inspect
-from typing import Any, Dict, Tuple, TypeVar, Union
+from collections import namedtuple
+from typing import Any, Callable, Dict, Tuple, TypeVar, Union
 
 from .object_stream import ObjectStream
 
 T = TypeVar('T')
-S = TypeVar('S')
+
+
+_FuncAdlFunction = namedtuple('_FuncAdlFunction', ['name', 'function', 'processor_function'])
+_global_functions: Dict[str, _FuncAdlFunction] = {}
+
+
+def reset_global_functions():
+    '''Resets all the global functions we know about.
+
+    Generally only used between tests.
+    '''
+    global _global_functions
+    _global_functions = {}
+
+
+def register_func_adl_function(
+    function: Callable,
+    processor_function: Callable[[ObjectStream[T], ast.Call], Tuple[ObjectStream[T], ast.AST]]
+        ) -> None:
+    '''Register a new function for use inside a func_adl expression
+
+    Args:
+        function (Callable): The type definition for the function (type st)
+        processor_function (Callable[[ObjectStream[T], ast.Call],
+            Tuple[ObjectStream[T], ast.AST]]):
+            The processor function that can modify the stream, etc.
+    '''
+    info = _FuncAdlFunction(function.__name__, function, processor_function)
+    _global_functions[info.name] = info
+
+
+def func_adl_callable(processor=None):
+    register_func_adl_function(func, processor)
+    return func
 
 
 def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: ast.AST) \
@@ -69,6 +103,9 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 found_type = self._found_types.get(t_node.func.value, None)
                 if found_type is not None:
                     t_node = self.process_method_call(t_node, found_type)
+            elif isinstance(t_node.func, ast.Name):
+                if t_node.func.id in _global_functions:
+                    t_node = self.process_function_call(t_node, _global_functions[t_node.func.id])
             return t_node
 
         def visit_Name(self, node: ast.Name) -> ast.Name:

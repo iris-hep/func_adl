@@ -1,5 +1,5 @@
 import ast
-from func_adl.type_based_replacement import remap_by_types
+from func_adl.type_based_replacement import func_adl_callable, remap_by_types
 from typing import Iterable, Tuple, TypeVar
 from func_adl import ObjectStream
 import copy
@@ -158,3 +158,39 @@ def test_bogus_method():
     assert ast.dump(new_s) == ast.dump(ast.parse("e.Jetsss('default')"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+
+
+def test_function_with_processor():
+    'Define a function we can use'
+    def MySqrtProcessor(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
+        new_s = s.MetaData({'j': 'stuff'})
+        return new_s, a
+
+    @func_adl_callable
+    def MySqrt(x: float) -> float:
+        ...
+
+    s = ast.parse("MySqrt(2)")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(2)"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("MetaData(e, {'j': 'func_stuff'})").body[0].value)  # type: ignore
+
+
+def test_function_with_simple():
+    'Define a function we can use'
+    @func_adl_callable
+    def MySqrt(x: float) -> float:
+        ...
+
+    s = ast.parse("MySqrt(2)")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(2)"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("MetaData(e, {'j': 'func_stuff'})").body[0].value)  # type: ignore
