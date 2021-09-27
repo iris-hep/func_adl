@@ -1,5 +1,4 @@
 import ast
-import typing
 from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional,
                     TypeVar, Union, cast)
 
