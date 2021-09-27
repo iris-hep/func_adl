@@ -196,6 +196,21 @@ def test_function_with_simple():
         == ast.dump(ast.parse("e").body[0].value)  # type: ignore
 
 
+def test_function_with_missing_arg():
+    'Define a function we can use'
+    @func_adl_callable()
+    def MySqrt(my_x: float) -> float:
+        ...
+
+    s = ast.parse("MySqrt()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    with pytest.raises(ValueError) as e:
+        remap_by_types(objs, 'e', Event, s)
+
+    assert "my_x" in str(e)
+
+
 def test_function_with_default():
     'Define a function we can use'
     @func_adl_callable()

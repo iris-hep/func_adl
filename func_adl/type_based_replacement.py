@@ -1,10 +1,10 @@
 import ast
 import copy
 import inspect
-from typing import Any, Callable, Dict, Generic, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union
+from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
+                    Tuple, Type, TypeVar, Union)
 
 from .object_stream import ObjectStream
-
 
 U = TypeVar('U')
 _FuncAdlFunction = NamedTuple('_FuncAdlFunction', [
