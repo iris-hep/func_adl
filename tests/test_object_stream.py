@@ -1,7 +1,8 @@
 # Test the object stream
 import ast
 import asyncio
-from typing import Any, Iterable, Optional
+from func_adl.object_stream import ObjectStream
+from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 import pytest
 from func_adl import EventDataset
@@ -27,7 +28,16 @@ class dd_jet:
         ...
 
 
+T = TypeVar('T')
+
+
+def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.AST]:
+    return s.MetaData({'hi': 'there'}), a
+
+
 class dd_event:
+    _func_adl_type_info = add_md_for_type
+
     def Jets(self, bank: str) -> Iterable[dd_jet]:
         ...
 
@@ -64,6 +74,7 @@ def test_with_types():
          .Select(lambda j: j.eta())
          .value())
     assert isinstance(r, ast.AST)
+    assert 'there' in ast.dump(r)
 
 
 def test_simple_quer_with_title():
