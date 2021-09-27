@@ -76,7 +76,7 @@ else:  # pragma: no cover
         if isinstance(p, str):
             return ast.Str(p)
         elif isinstance(p, (int, float)):
-            return ast.Num(p)
+            return ast.Num(value=p, kind=None)
         elif isinstance(p, bool):
             return ast.NameConstant(p)
         elif p is None:
