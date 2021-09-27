@@ -7,6 +7,10 @@ import sys
 
 from .object_stream import ObjectStream
 
+# Internal named tuple containing info for a global function
+# definitions. Functions with these names can be used inline
+# in func_adl expressions, and will trigger the processor and
+# also be subject to normal argument resolution.
 U = TypeVar('U')
 _FuncAdlFunction = NamedTuple('_FuncAdlFunction', [
     ('name', str),
@@ -34,7 +38,12 @@ def register_func_adl_function(
     processor_function: Optional[Callable[[ObjectStream[V], ast.Call],
                                           Tuple[ObjectStream[V], ast.AST]]]
         ) -> None:
-    '''Register a new function for use inside a func_adl expression
+    '''Register a new function for use inside a func_adl expression.
+
+    * A function registered will have its arguments filled in - defaults,
+    keywords converted to positional, etc.
+    * If a processor function is provided, it will be called as the call
+    site si being examined. Any bit can be modified.
 
     Args:
         function (Callable): The type definition for the function (type st)
@@ -51,6 +60,29 @@ W = TypeVar('W')
 
 def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
                                                    Tuple[ObjectStream[W], ast.AST]]] = None):
+    '''Dectorator that will declare a function that can be used inline in
+    a `func_adl` expression. The body of the function, what the backend
+    translates it to, must be given by another route (e.g. via `MetaData`
+    and the `processor` argument).
+
+    ```
+    @func_adl_callable
+    def my_func(arg1: float, arg2: float = 10) -> float:
+        ...
+    ```
+
+    This example will declare `my_func`. If it is used like this:
+    `Select(lambda x: my_func(arg1=x))`, it will be translated into
+    a call sent to the backend that looks like `Select(lambda x: my_func(x, 10))`.
+
+    If `processor` is provided, it will be called as the call site is being
+    processed. One can add items to the `ObjectStream` or even modify/check the
+    arguments of the call.
+
+    Args:
+        processor (Optional[Callable[[ObjectStream[W], ast.Call],
+                  Tuple[ObjectStream[W], ast.AST]]], optional): [description]. Defaults to None.
+    '''
     def decorate(function: Callable):
         register_func_adl_function(function, processor)
         return function
@@ -60,6 +92,11 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
 
 def _find_keyword(keywords: List[ast.keyword], name: str) \
         -> Tuple[Optional[ast.AST], List[ast.keyword]]:
+    '''Find an argument in a keyword list.
+
+    Returns:
+        [type]: The argument or None if not found.
+    '''
     for kw in keywords:
         if kw.arg == name:
             new_kw = list(keywords)
@@ -68,6 +105,8 @@ def _find_keyword(keywords: List[ast.keyword], name: str) \
     return None, keywords
 
 
+# Some functions to enable backwards compatibility.
+# Capability may be degraded in older versions - particularly 3.6.
 if sys.version_info >= (3, 8):  # pragma: no cover
     def _as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
         return ast.Constant(value=p, kind=None)
@@ -103,6 +142,21 @@ else:  # pragma: no cover
 
 
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
+    '''Given a call and the function definition:
+
+    * Defaults are filled in
+    * A keyword argument that is positional is moved to the end
+
+    Args:
+        func (Callable): The function definition
+        call (ast.Call): The ast call site to be modified
+
+    Raises:
+        ValueError: Missing arguments, etc.
+
+    Returns:
+        Tuple[ast.Call, Type]: The modified call site and return type.
+    '''
     sig = inspect.signature(func)
     i_arg = 0
     arg_array = list(call.args)
@@ -133,7 +187,20 @@ T = TypeVar('T')
 
 def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: ast.AST) \
         -> Tuple[ObjectStream[T], ast.AST]:
+    '''Remap a call by a type. Given the type of `var_name` it will do its best
+    to follow the objects types through the expression.
 
+    Note:
+      * Complex expressions are not supported, like addition, etc.
+      * Method calls are well followed
+      * This isn't a complete type follower, unfortunately.
+
+    Raises:
+        ValueError: Forgotten arguments, etc.
+
+    Returns:
+        ObjectStream[T], ast: Updated stream and call site
+    '''
     S = TypeVar('S')
 
     class type_transformer(ast.NodeTransformer, Generic[S]):
@@ -225,7 +292,13 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
 
 def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
-        -> Tuple[ObjectStream[T], ast.AST]:
+        -> Tuple[ObjectStream[T], ast.Lambda]:
+    '''Helper function that will translate the contents of lambda
+    function with inline methods and special functions.
+
+    Returns:
+        ObjectStream[T], ast.AST: Updated stream and lambda function
+    '''
     orig_class = getattr(o_stream, '__orig_class__', None)
     var_types = None
     if orig_class is not None:
