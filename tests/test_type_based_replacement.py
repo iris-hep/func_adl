@@ -1,6 +1,6 @@
 import ast
-from func_adl.type_based_replacement import func_adl_callable, remap_by_types
-from typing import Iterable, Tuple, TypeVar
+from func_adl.type_based_replacement import func_adl_callable, remap_by_types, remap_from_lambda
+from typing import Iterable, Tuple, TypeVar, cast
 from func_adl import ObjectStream
 import copy
 import pytest
@@ -253,3 +253,32 @@ def test_function_with_keyword():
     assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(15)"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+
+
+def test_remap_lambda_helper():
+    'Test simple usage of helper function'
+    s = cast(ast.Lambda, ast.parse("lambda e: e.Jets('default')").body[0].value)  # type: ignore
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_from_lambda(objs, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("lambda e: e.Jets('default')").body[0].value)
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
+
+
+def test_remap_lambda_subclass():
+    'When objectstream is another class'
+
+    class MyStream(ObjectStream[T]):
+        def __init__(self, c):
+            super().__init__(c)
+
+    s = cast(ast.Lambda, ast.parse("lambda e: e.Jets('default')").body[0].value)  # type: ignore
+    objs = MyStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_from_lambda(objs, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("lambda e: e.Jets('default')").body[0].value)
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore

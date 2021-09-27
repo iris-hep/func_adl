@@ -4,7 +4,6 @@ import inspect
 from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
 import sys
-import typing
 
 from .object_stream import ObjectStream
 
@@ -72,6 +71,10 @@ def _find_keyword(keywords: List[ast.keyword], name: str) \
 if sys.version_info >= (3, 8):  # pragma: no cover
     def _as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
         return ast.Constant(value=p, kind=None)
+
+    def get_type_args(tp):
+        import typing
+        return typing.get_args(tp)
 else:  # pragma: no cover
     def _as_literal(p: Union[str, int, float, bool, None]):
         if isinstance(p, str):
@@ -84,6 +87,31 @@ else:  # pragma: no cover
             return ast.NameConstant(None)
         else:
             raise ValueError(f'Unknown type {type(p)} - do not know how to make a literal!')
+
+    def get_type_args(tp):
+        """Get type arguments with all substitutions performed.
+        For unions, basic simplifications used by Union constructor are performed.
+        Examples::
+            get_args(Dict[str, int]) == (str, int)
+            get_args(int) == ()
+            get_args(Union[int, Union[T, int], str][int]) == (int, str)
+            get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])
+            get_args(Callable[[], T][int]) == ([], int)
+        """
+        from typing import _AnnotatedAlias, GenericAlias, _GenericAlias, _is_param_expr
+        import collections
+        import types
+        if isinstance(tp, _AnnotatedAlias):
+            return (tp.__origin__,) + tp.__metadata__
+        if isinstance(tp, (_GenericAlias, GenericAlias)):
+            res = tp.__args__
+            if (tp.__origin__ is collections.abc.Callable
+                    and not (len(res) == 2 and _is_param_expr(res[0]))):
+                res = (list(res[:-1]), res[-1])
+            return res
+        if isinstance(tp, types.UnionType):
+            return tp.__args__
+        return ()
 
 
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
@@ -210,10 +238,17 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
 def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
         -> Tuple[ObjectStream[T], ast.AST]:
-    base_classes = getattr(o_stream, '__orig_bases__', None)
-    if base_classes is None:
-        return o_stream, l_func
-    var_types = typing.get_args(base_classes[0])
+    orig_class = getattr(o_stream, '__orig_class__', None)
+    var_types = None
+    if orig_class is not None:
+        var_types = get_type_args(orig_class)
+
+    if var_types is None:
+        base_classes = getattr(o_stream, '__orig_bases__', None)
+        if base_classes is None:
+            return o_stream, l_func
+        var_types = get_type_args(base_classes[0])
+
     if len(var_types) == 0:
         return o_stream, l_func
 

@@ -67,10 +67,12 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
-        from func_adl.type_based_replacement import remap_from_lambda
-        n_stream, n_ast = remap_from_lambda(self, parse_as_ast(func))
+        # from func_adl.type_based_replacement import remap_from_lambda
+        # n_stream, n_ast = remap_from_lambda(self, parse_as_ast(func))
+        # return ObjectStream[S](function_call("SelectMany",
+        #                                      [n_stream.query_ast, cast(ast.AST, n_ast)]))
         return ObjectStream[S](function_call("SelectMany",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
+                                             [self.query_ast, cast(ast.AST, parse_as_ast(func))]))
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> 'ObjectStream[S]':
         r"""
@@ -132,7 +134,6 @@ class ObjectStream(Generic[T]):
                         Exception will be thrown if the number of columns do not match.
 
         """
-
         # To get Pandas use the ResultPandasDF function call.
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
