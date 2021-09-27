@@ -98,20 +98,8 @@ else:  # pragma: no cover
             get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])
             get_args(Callable[[], T][int]) == ([], int)
         """
-        from typing import _AnnotatedAlias, GenericAlias, _GenericAlias, _is_param_expr
-        import collections
-        import types
-        if isinstance(tp, _AnnotatedAlias):
-            return (tp.__origin__,) + tp.__metadata__
-        if isinstance(tp, (_GenericAlias, GenericAlias)):
-            res = tp.__args__
-            if (tp.__origin__ is collections.abc.Callable
-                    and not (len(res) == 2 and _is_param_expr(res[0]))):
-                res = (list(res[:-1]), res[-1])
-            return res
-        if isinstance(tp, types.UnionType):
-            return tp.__args__
-        return ()
+        res = tp.__args__
+        return res
 
 
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
