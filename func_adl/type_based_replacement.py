@@ -1,7 +1,7 @@
 import ast
 import copy
 import inspect
-from typing import Any, Callable, Dict, Generic, NamedTuple, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union
 
 from .object_stream import ObjectStream
 
@@ -57,20 +57,38 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
     return decorate
 
 
+def _find_keyword(keywords: List[ast.keyword], name: str) \
+        -> Tuple[Optional[ast.AST], List[ast.keyword]]:
+    for kw in keywords:
+        if kw.arg == name:
+            new_kw = list(keywords)
+            new_kw.remove(kw)
+            return kw.value, new_kw
+    return None, keywords
+
+
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
     sig = inspect.signature(func)
     i_arg = 0
     arg_array = list(call.args)
+    keywords = list(call.keywords)
     for param in sig.parameters.values():
         if param.name != 'self':
             if len(arg_array) <= i_arg:
-                if param.default is param.empty:
+                # See if they specified it as a keyword
+                a, keywords = _find_keyword(keywords, param.name)
+                if a is not None:
+                    arg_array.append(a)  # type: ignore
+                elif param.default is not param.empty:
+                    a = ast.Constant(param.default)
+                    arg_array.append(a)
+                else:
                     raise ValueError(f'Argument {param.name} is required')
-                a = ast.Constant(param.default)
-                arg_array.append(a)
+
     if len(arg_array) != len(call.args):
         call = copy.copy(call)
         call.args = arg_array
+        call.keywords = keywords
 
     return call, sig.return_annotation
 

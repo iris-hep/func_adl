@@ -210,3 +210,19 @@ def test_function_with_default():
     assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(20)"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+
+
+def test_function_with_keyword():
+    'Define a function we can use'
+    @func_adl_callable()
+    def MySqrt(x: float = 20) -> float:
+        ...
+
+    s = ast.parse("MySqrt(x=15)")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(15)"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
