@@ -49,7 +49,7 @@ def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], as
         return s_update, a
     elif a.func.attr == 'EventNumber':
         new_call = copy.copy(a)
-        new_call.args = [ast.Constant(n=20)]
+        new_call.args = [ast.parse("20").body[0].value]  # type: ignore
         return s, new_call
     else:
         return s, a

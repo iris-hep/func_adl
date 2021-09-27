@@ -3,6 +3,7 @@ import copy
 import inspect
 from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
+import sys
 
 from .object_stream import ObjectStream
 
@@ -67,6 +68,23 @@ def _find_keyword(keywords: List[ast.keyword], name: str) \
     return None, keywords
 
 
+if sys.version_info >= (3, 8):  # pragma: no cover
+    def _as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
+        return ast.Constant(p)
+else:  # pragma: no cover
+    def _as_literal(p: Union[str, int, float, bool, None]):
+        if isinstance(p, str):
+            return ast.Str(p)
+        elif isinstance(p, (int, float)):
+            return ast.Num(p)
+        elif isinstance(p, bool):
+            return ast.NameConstant(p)
+        elif p is None:
+            return ast.NameConstant(None)
+        else:
+            raise ValueError(f'Unknown type {type(p)} - do not know how to make a literal!')
+
+
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
     sig = inspect.signature(func)
     i_arg = 0
@@ -80,7 +98,7 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
                 if a is not None:
                     arg_array.append(a)  # type: ignore
                 elif param.default is not param.empty:
-                    a = ast.Constant(param.default)
+                    a = _as_literal(param.default)
                     arg_array.append(a)
                 else:
                     raise ValueError(f'Argument {param.name} is required')
