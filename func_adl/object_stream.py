@@ -67,12 +67,10 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
-        # from func_adl.type_based_replacement import remap_from_lambda
-        # n_stream, n_ast = remap_from_lambda(self, parse_as_ast(func))
-        # return ObjectStream[S](function_call("SelectMany",
-        #                                      [n_stream.query_ast, cast(ast.AST, n_ast)]))
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast = remap_from_lambda(self, parse_as_ast(func))
         return ObjectStream[S](function_call("SelectMany",
-                                             [self.query_ast, cast(ast.AST, parse_as_ast(func))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> 'ObjectStream[S]':
         r"""
@@ -91,8 +89,10 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast = remap_from_lambda(self, parse_as_ast(f))
         return ObjectStream[S](function_call("Select",
-                                             [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
     def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream[T]':
         r'''
@@ -110,8 +110,10 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         '''
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast = remap_from_lambda(self, parse_as_ast(filter))
         return ObjectStream[T](function_call("Where",
-                                             [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
     def MetaData(self, metadata: Dict[str, Any]) -> 'ObjectStream[T]':
         '''Add metadata to the current object stream. The metadata is an arbitrary set of string
