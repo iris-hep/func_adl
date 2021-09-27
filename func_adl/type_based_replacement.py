@@ -70,13 +70,13 @@ def _find_keyword(keywords: List[ast.keyword], name: str) \
 
 if sys.version_info >= (3, 8):  # pragma: no cover
     def _as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
-        return ast.Constant(p)
+        return ast.Constant(value=p, kind=None)
 else:  # pragma: no cover
     def _as_literal(p: Union[str, int, float, bool, None]):
         if isinstance(p, str):
             return ast.Str(p)
         elif isinstance(p, (int, float)):
-            return ast.Num(value=p, kind=None)
+            return ast.Num(value=p)
         elif isinstance(p, bool):
             return ast.NameConstant(p)
         elif p is None:
