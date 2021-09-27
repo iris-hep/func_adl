@@ -163,10 +163,10 @@ def test_bogus_method():
 def test_function_with_processor():
     'Define a function we can use'
     def MySqrtProcessor(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
-        new_s = s.MetaData({'j': 'stuff'})
+        new_s = s.MetaData({'j': 'func_stuff'})
         return new_s, a
 
-    @func_adl_callable
+    @func_adl_callable(MySqrtProcessor)
     def MySqrt(x: float) -> float:
         ...
 
@@ -182,7 +182,7 @@ def test_function_with_processor():
 
 def test_function_with_simple():
     'Define a function we can use'
-    @func_adl_callable
+    @func_adl_callable()
     def MySqrt(x: float) -> float:
         ...
 
@@ -193,4 +193,20 @@ def test_function_with_simple():
 
     assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'func_stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+
+
+def test_function_with_default():
+    'Define a function we can use'
+    @func_adl_callable()
+    def MySqrt(x: float = 20) -> float:
+        ...
+
+    s = ast.parse("MySqrt()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(20)"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
