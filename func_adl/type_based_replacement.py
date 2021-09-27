@@ -237,7 +237,7 @@ def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
             return o_stream, l_func
         var_types = get_type_args(base_classes[0])
 
-    if len(var_types) == 0:
+    if var_types is None or len(var_types) == 0:
         return o_stream, l_func
 
     assert len(l_func.args.args) == 1
