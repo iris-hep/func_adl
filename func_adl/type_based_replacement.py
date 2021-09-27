@@ -4,6 +4,7 @@ import inspect
 from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
 import sys
+import typing
 
 from .object_stream import ObjectStream
 
@@ -144,7 +145,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 r_node, return_annotation = _fill_in_default_arguments(call_method, r_node)
 
                 # See if someone wants to process the call
-                attr = getattr(obj_type, '_func_adl_type_info')
+                attr = getattr(obj_type, '_func_adl_type_info', None)
                 if attr is not None:
                     r_stream, r_node = attr(self.stream, r_node)
                     assert isinstance(r_node, ast.AST)
@@ -205,3 +206,18 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
     r_a = tt.visit(a)
 
     return tt.stream, r_a
+
+
+def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
+        -> Tuple[ObjectStream[T], ast.AST]:
+    base_classes = getattr(o_stream, '__orig_bases__', None)
+    if base_classes is None:
+        return o_stream, l_func
+    var_types = typing.get_args(base_classes[0])
+    if len(var_types) == 0:
+        return o_stream, l_func
+
+    assert len(l_func.args.args) == 1
+    var_name = l_func.args.args[0].arg
+    stream, new_body = remap_by_types(o_stream, var_name, var_types[0], l_func.body)
+    return stream, ast.Lambda(l_func.args, new_body)

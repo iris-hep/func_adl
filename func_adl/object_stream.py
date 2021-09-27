@@ -1,4 +1,5 @@
 import ast
+import typing
 from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional,
                     TypeVar, Union, cast)
 
@@ -67,8 +68,10 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast = remap_from_lambda(self, parse_as_ast(func))
         return ObjectStream[S](function_call("SelectMany",
-                                             [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> 'ObjectStream[S]':
         r"""

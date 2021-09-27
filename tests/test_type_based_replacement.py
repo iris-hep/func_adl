@@ -160,6 +160,18 @@ def test_bogus_method():
         == ast.dump(ast.parse("e").body[0].value)  # type: ignore
 
 
+def test_plain_object_method():
+    'A method that is not typed'
+    s = ast.parse("j.pt()")
+    objs = ObjectStream[Jet](ast.Name(id='j', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'j', Jet, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("j.pt()"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("j").body[0].value)  # type: ignore
+
+
 def test_function_with_processor():
     'Define a function we can use'
     def MySqrtProcessor(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
