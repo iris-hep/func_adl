@@ -262,7 +262,8 @@ def test_remap_lambda_helper():
 
     new_objs, new_s = remap_from_lambda(objs, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("lambda e: e.Jets('default')").body[0].value)
+    assert ast.dump(new_s) == ast.dump(ast.parse(
+        "lambda e: e.Jets('default')").body[0].value)  # type: ignore
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
 
@@ -279,6 +280,7 @@ def test_remap_lambda_subclass():
 
     new_objs, new_s = remap_from_lambda(objs, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("lambda e: e.Jets('default')").body[0].value)
+    assert ast.dump(new_s) == ast.dump(ast.parse(
+        "lambda e: e.Jets('default')").body[0].value)  # type: ignore
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
