@@ -94,7 +94,7 @@ class ObjectStream(Generic[T]):
         return ObjectStream[S](function_call("Select",
                                              [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
-    def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream[T]':
+    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> 'ObjectStream[T]':
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
