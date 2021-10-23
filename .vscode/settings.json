@@ -55,5 +55,6 @@
     "python.analysis.typeCheckingMode": "basic",
     "python.testing.pytestArgs": [
         "--no-cov"
-    ]
+    ],
+    "restructuredtext.languageServer.disabled": true
 }
