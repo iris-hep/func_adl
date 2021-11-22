@@ -20,6 +20,24 @@ class _type_follower(ast.NodeVisitor):
         super().generic_visit(node)
         self._node_types[node] = self.lookup_node_type(node.body)
 
+    def visit_UnaryOp(self, node: ast.UnaryOp):
+        super().generic_visit(node)
+        self._node_types[node] = self.lookup_node_type(node.operand)
+
+    def visit_BinOp(self, node: ast.BinOp):
+        super().generic_visit(node)
+        t_left = self.lookup_node_type(node.left)
+        t_right = self.lookup_node_type(node.right)
+
+        if (t_left == Any) or (t_right == Any):
+            self._node_types[node] = Any
+        elif (t_left == float) or (t_right == float):
+            self._node_types[node] = float
+        elif isinstance(node.op, ast.Div):
+            self._node_types[node] = float
+        else:
+            self._node_types[node] = int
+
     def visit_Name(self, node: ast.Name):
         super().generic_visit(node)
         if node.id in self._named_types:
@@ -28,14 +46,7 @@ class _type_follower(ast.NodeVisitor):
             self._node_types[node] = Any
 
     def visit_Constant(self, node: ast.Constant):
-        if isinstance(node.value, str):
-            self._node_types[node] = str
-        elif isinstance(node.value, bool):
-            self._node_types[node] = bool
-        elif isinstance(node.value, int):
-            self._node_types[node] = int
-        elif isinstance(node.value, float):
-            self._node_types[node] = float
+        self._node_types[node] = type(node.value)
 
 
 def follow_types(call: ast.Lambda, args: Tuple[Type, ...]) -> Type:

@@ -16,6 +16,10 @@ def test_float():
     assert follow_types(ast_lambda('lambda x: 1.5'), (int,)) == float
 
 
+def test_neg_float():
+    assert follow_types(ast_lambda('lambda x: -1.5'), (int,)) == float
+
+
 def test_any():
     assert follow_types(ast_lambda('lambda x: x'), (Any,)) == Any
 
@@ -26,3 +30,38 @@ def test_bool():
 
 def test_str():
     assert follow_types(ast_lambda('lambda x: "hi"'), (Any,)) == str
+
+
+def test_add():
+    assert follow_types(ast_lambda('lambda x: x + 1'), (int,)) == int
+
+
+def test_add_float():
+    assert follow_types(ast_lambda('lambda x: x + 1'), (float,)) == float
+
+
+def test_sub():
+    assert follow_types(ast_lambda('lambda x: x - 1'), (int,)) == int
+
+
+def test_sub_float():
+    assert follow_types(ast_lambda('lambda x: x - 1.1'), (int,)) == float
+
+
+def test_mul():
+    assert follow_types(ast_lambda('lambda x: x * 1'), (int,)) == int
+
+
+def test_mul_float():
+    assert follow_types(ast_lambda('lambda x: x * 1.1'), (int,)) == float
+
+
+def test_div():
+    assert follow_types(ast_lambda('lambda x: x / 1'), (int,)) == float
+
+
+def test_class_method():
+    class Jet:
+        def pt(self) -> float:
+            ...
+    assert follow_types(ast_lambda('lambda x: x.pt()'), (Jet,)) == float
