@@ -224,6 +224,9 @@ def test_typed():
             ...
 
     class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a
@@ -241,6 +244,9 @@ def test_typed_with_select():
             ...
 
     class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a
@@ -261,6 +267,9 @@ def test_typed_with_selectmany():
             ...
 
     class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a
@@ -282,6 +291,9 @@ def test_typed_with_select_and_selectmany():
             ...
 
     class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a
@@ -300,6 +312,9 @@ def test_typed_with_where():
             ...
 
     class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a
@@ -316,6 +331,9 @@ def test_typed_with_metadata():
         ...
 
     class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a

@@ -5,8 +5,6 @@ from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Opt
 
 from make_it_sync import make_sync
 
-from func_adl.util_types import get_type_args
-
 from .util_ast import as_ast, function_call, parse_as_ast
 
 # Attribute that will be used to store the executor reference
@@ -35,12 +33,18 @@ class ObjectStream(Generic[T]):
     stream of `Jets` using the `SelectMany` method below. In that case, you'll no longer be able
     to tell the boundary between events.
     '''
-    def __init__(self, the_ast: ast.AST):
+    def __init__(self, the_ast: ast.AST, item_type: Type = Any):
         r"""
         Initialize the stream with the ast that will produce this stream of objects.
         The user will almost never use this initializer.
         """
         self._q_ast = the_ast
+        self._item_type = item_type
+
+    @property
+    def item_type(self) -> Type:
+        'Returns the type of the item this is a stream of. None if not known.'
+        return self._item_type
 
     @property
     def query_ast(self) -> ast.AST:
@@ -116,7 +120,8 @@ class ObjectStream(Generic[T]):
         from func_adl.type_based_replacement import remap_from_lambda
         n_stream, n_ast = remap_from_lambda(self, parse_as_ast(filter))
         return ObjectStream[T](function_call("Where",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
+                               self.item_type)
 
     def MetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
         '''Add metadata to the current object stream. The metadata is an arbitrary set of string
@@ -125,8 +130,8 @@ class ObjectStream(Generic[T]):
         Returns:
             ObjectStream: A new stream, of the same type and contents, but with metadata added.
         '''
-        v = self._get_item_parameter_type()
-        return ObjectStream[v](function_call("MetaData", [self._q_ast, as_ast(metadata)]))
+        return ObjectStream[T](function_call("MetaData", [self._q_ast, as_ast(metadata)]),
+                               self.item_type)
 
     def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
