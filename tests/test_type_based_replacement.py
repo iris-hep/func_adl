@@ -124,6 +124,18 @@ def test_method_on_collection():
         == ast.dump(ast.parse("MetaData(e, {'j': 'pxy stuff'})").body[0].value)  # type: ignore
 
 
+def test_method_on_method_on_collection():
+    'Call a method that requires some special stuff on a returend object'
+    s = ast.parse("e.MET().metobj().pxy()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast.parse("e.MET().metobj().pxy()"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast.parse("MetaData(e, {'j': 'pxy stuff'})").body[0].value)  # type: ignore
+
+
 def test_method_modify_ast():
     'Call a method that requires some special stuff on a returend object'
     s = ast.parse("e.EventNumber()")

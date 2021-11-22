@@ -1,8 +1,11 @@
+from __future__ import annotations
 import ast
-from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional,
+from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional, Type,
                     TypeVar, Union, cast)
 
 from make_it_sync import make_sync
+
+from func_adl.util_types import get_type_args
 
 from .util_ast import as_ast, function_call, parse_as_ast
 
@@ -49,7 +52,7 @@ class ObjectStream(Generic[T]):
         return self._q_ast
 
     def SelectMany(self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]) \
-            -> 'ObjectStream[S]':
+            -> ObjectStream[S]:
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -72,7 +75,7 @@ class ObjectStream(Generic[T]):
         return ObjectStream[S](function_call("SelectMany",
                                              [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
-    def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> 'ObjectStream[S]':
+    def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object. There is a one-to-one correspondence between the input objects and output objects.
@@ -94,7 +97,7 @@ class ObjectStream(Generic[T]):
         return ObjectStream[S](function_call("Select",
                                              [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
-    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> 'ObjectStream[T]':
+    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -115,16 +118,17 @@ class ObjectStream(Generic[T]):
         return ObjectStream[T](function_call("Where",
                                              [n_stream.query_ast, cast(ast.AST, n_ast)]))
 
-    def MetaData(self, metadata: Dict[str, Any]) -> 'ObjectStream[T]':
+    def MetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
         '''Add metadata to the current object stream. The metadata is an arbitrary set of string
         key-value pairs. The backend must be able to properly interpret the metadata.
 
         Returns:
             ObjectStream: A new stream, of the same type and contents, but with metadata added.
         '''
-        return ObjectStream[T](function_call("MetaData", [self._q_ast, as_ast(metadata)]))
+        v = self._get_item_parameter_type()
+        return ObjectStream[v](function_call("MetaData", [self._q_ast, as_ast(metadata)]))
 
-    def AsPandasDF(self, columns=[]) -> 'ObjectStream[ReturnedDataPlaceHolder]':
+    def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
         This `DataFrame` will contain all the data fed to it. Only non-array datatypes are
@@ -141,7 +145,7 @@ class ObjectStream(Generic[T]):
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
 
     def AsROOTTTree(self, filename, treename, columns=[]) \
-            -> 'ObjectStream[ReturnedDataPlaceHolder]':
+            -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -172,7 +176,7 @@ class ObjectStream(Generic[T]):
             )
 
     def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) \
-            -> 'ObjectStream[ReturnedDataPlaceHolder]':
+            -> ObjectStream[ReturnedDataPlaceHolder]:
         '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
         entry in the file. The times must be of types that the infrastructure can work with:
 
@@ -202,7 +206,7 @@ class ObjectStream(Generic[T]):
                                                      [self._q_ast, as_ast(columns),
                                                       as_ast(filename)]))
 
-    def AsAwkwardArray(self, columns=[]) -> 'ObjectStream[ReturnedDataPlaceHolder]':
+    def AsAwkwardArray(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r'''
         Return a pandas stream that contains one item, an `awkward` array, or dictionary of
         `awkward` arrays. This `awkward` will contain all the data fed to it.

@@ -89,6 +89,13 @@ It should be noted that the type and expression follower is not very sophisticat
 By adding a function and a reference in the type system, arbitrary code can be executed during the traversing of the `func_adl`. Keeping the query the same and the `events` definition the same, we can add the info directly to the python type declarations:
 
 ```python
+from func_adl import ObjectStream
+from typing import TypeVar
+
+# Generic type is required in order to preserve type checkers ability to see
+# changes in the type
+T = TypeVar('T')
+
 def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.AST]:
     return s.MetaData({'hi': 'there'}), a
 

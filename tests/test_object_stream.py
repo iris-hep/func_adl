@@ -207,3 +207,121 @@ async def test_passed_in_executor():
 
     assert (await r) == 1
     assert logged_ast is not None
+
+
+def test_untyped():
+    r = my_event()
+    assert r.item_type is None
+
+
+def test_typed():
+    class Jet:
+        def pt(self) -> float:
+            ...
+
+    class Evt:
+        def Jets(self) -> Iterable[Jet]:
+            ...
+
+    class evt_typed(EventDataset[Evt]):
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = evt_typed()
+    assert r.item_type is Evt
+
+
+def test_typed_with_select():
+    class Jet:
+        ...
+
+    class Evt:
+        def Jets(self) -> Iterable[Jet]:
+            ...
+
+    class evt_typed(EventDataset[Evt]):
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = (
+            evt_typed()
+            .Select(lambda e: e.Jets())
+    )
+    assert r.item_type is Iterable[Jet]
+
+
+def test_typed_with_selectmany():
+    class Jet:
+        ...
+
+    class Evt:
+        def Jets(self) -> Iterable[Jet]:
+            ...
+
+    class evt_typed(EventDataset[Evt]):
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = (
+            evt_typed()
+            .SelectMany(lambda e: e.Jets())
+    )
+    assert r.item_type is Jet
+
+
+def test_typed_with_select_and_selectmany():
+    class Jet:
+        def pt(self) -> float:
+            ...
+
+    class Evt:
+        def Jets(self) -> Iterable[Jet]:
+            ...
+
+    class evt_typed(EventDataset[Evt]):
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = (
+            evt_typed()
+            .SelectMany(lambda e: e.Jets())
+            .Select(lambda j: j.pt())
+    )
+    assert r.item_type is float
+
+
+def test_typed_with_where():
+    class Evt:
+        def MET(self) -> float:
+            ...
+
+    class evt_typed(EventDataset[Evt]):
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = (
+            evt_typed()
+            .Where(lambda e: e.MET() > 100)
+    )
+    assert r.item_type is Evt
+
+
+def test_typed_with_metadata():
+    class Evt:
+        ...
+
+    class evt_typed(EventDataset[Evt]):
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = (
+            evt_typed()
+            .MetaData({})
+    )
+    assert r.item_type is Evt
