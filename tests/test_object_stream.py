@@ -211,7 +211,7 @@ async def test_passed_in_executor():
 
 def test_untyped():
     r = my_event()
-    assert r.item_type is None
+    assert r.item_type == Any
 
 
 def test_typed():

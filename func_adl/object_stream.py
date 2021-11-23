@@ -5,6 +5,8 @@ from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Opt
 
 from make_it_sync import make_sync
 
+from func_adl.util_types import follow_types, unwrap_iterable
+
 from .util_ast import as_ast, function_call, parse_as_ast
 
 # Attribute that will be used to store the executor reference
@@ -76,8 +78,10 @@ class ObjectStream(Generic[T]):
         """
         from func_adl.type_based_replacement import remap_from_lambda
         n_stream, n_ast = remap_from_lambda(self, parse_as_ast(func))
+        func_type = unwrap_iterable(follow_types(n_ast, (n_stream.item_type,)))
         return ObjectStream[S](function_call("SelectMany",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
+                               func_type)
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
         r"""
@@ -98,8 +102,10 @@ class ObjectStream(Generic[T]):
         """
         from func_adl.type_based_replacement import remap_from_lambda
         n_stream, n_ast = remap_from_lambda(self, parse_as_ast(f))
+        func_type = follow_types(n_ast, (n_stream.item_type,))
         return ObjectStream[S](function_call("Select",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
+                               func_type)
 
     def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
         r'''

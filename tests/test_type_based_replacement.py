@@ -127,7 +127,7 @@ def test_method_on_collection():
 def test_method_on_method_on_collection():
     'Call a method that requires some special stuff on a returend object'
     s = ast.parse("e.MET().metobj().pxy()")
-    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()), Event)
 
     new_objs, new_s = remap_by_types(objs, 'e', Event, s)
 

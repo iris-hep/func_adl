@@ -1,5 +1,5 @@
 import ast
-from typing import Any, Dict, Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type, get_args
 import logging
 import inspect
 
@@ -81,3 +81,12 @@ def follow_types(call: ast.Lambda, args: Tuple[Type, ...]) -> Type:
     v = _type_follower({a[0]: a[1] for a in arg_types})
     v.visit(call)
     return v.lookup_node_type(call)
+
+
+def unwrap_iterable(t: Type) -> Type:
+    'Unwrap an iterable type'
+    if t == Any:
+        return Any
+    a = get_args(t)
+    assert len(a) == 1
+    return a[0]
