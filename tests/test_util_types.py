@@ -65,3 +65,17 @@ def test_class_method():
         def pt(self) -> float:
             ...
     assert follow_types(ast_lambda('lambda x: x.pt()'), (Jet,)) == float
+
+
+def test_class_bogus_method():
+    class Jet:
+        def pt(self) -> float:
+            ...
+    assert follow_types(ast_lambda('lambda x: x.ptt()'), (Jet,)) == Any
+
+
+def test_class_unannotated_method():
+    class Jet:
+        def pt(self):
+            ...
+    assert follow_types(ast_lambda('lambda x: x.pt()'), (Jet,)) == Any

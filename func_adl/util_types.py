@@ -1,7 +1,7 @@
-
-
 import ast
-from typing import Any, Dict, Optional, Tuple, Type
+from typing import Any, Dict, NamedTuple, Optional, Tuple, Type
+import logging
+import inspect
 
 
 class _type_follower(ast.NodeVisitor):
@@ -44,9 +44,30 @@ class _type_follower(ast.NodeVisitor):
             self._node_types[node] = self._named_types[node.id]
         else:
             self._node_types[node] = Any
+            logging.getLogger(__name__).warning(f'Unknown type for {node.id}')
 
     def visit_Constant(self, node: ast.Constant):
         self._node_types[node] = type(node.value)
+
+    def visit_Call(self, node: ast.Call):
+        super().generic_visit(node)
+        if isinstance(node.func, ast.Attribute):
+            # Use type hinting to get the type of the method!
+            t = self.lookup_node_type(node.func.value)
+            r = Any
+            if t is not Any:
+                attr = getattr(t, node.func.attr, None)
+                if attr is not None:
+                    sig = inspect.signature(attr)
+                    if sig.return_annotation is not inspect.Signature.empty:
+                        r = sig.return_annotation
+            self._node_types[node] = r
+            if r == Any:
+                logging.getLogger(__name__).warning(f'Unknown type for method {ast.dump(node.func)}')
+        else:
+            self._node_types[node] = Any
+            logging.getLogger(__name__) \
+                .warning(f'Unknown type for method call {ast.dump(node.func)}')
 
 
 def follow_types(call: ast.Lambda, args: Tuple[Type, ...]) -> Type:
