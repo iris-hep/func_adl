@@ -43,6 +43,9 @@ class dd_event:
 
 
 class my_event_with_type(EventDataset[dd_event]):
+    def __init__(self):
+        super().__init__(dd_event)
+
     async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
         await asyncio.sleep(0.01)
         return a
@@ -297,6 +300,9 @@ def test_typed_with_select_and_selectmany():
         async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
             await asyncio.sleep(0.01)
             return a
+
+        def Jets(self) -> Iterable[Jet]:
+            ...
 
     r = (
             evt_typed()

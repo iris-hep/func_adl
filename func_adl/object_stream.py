@@ -5,7 +5,7 @@ from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Opt
 
 from make_it_sync import make_sync
 
-from func_adl.util_types import follow_types, unwrap_iterable
+from func_adl.util_types import unwrap_iterable
 
 from .util_ast import as_ast, function_call, parse_as_ast
 

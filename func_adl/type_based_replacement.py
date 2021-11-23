@@ -201,7 +201,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
     Returns:
         ObjectStream[T]
         ast: Updated stream and call site with
-        Type: The return type of the expression given. `Any` means it couldn't 
+        Type: The return type of the expression given. `Any` means it couldn't
     '''
     S = TypeVar('S')
 
@@ -291,6 +291,12 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                     t_node = self.process_function_call(t_node, _global_functions[t_node.func.id])
             return t_node
 
+        def visit_Compare(self, node: ast.Compare) -> Any:
+            t_node = self.generic_visit(node)
+            self._found_types[node] = bool
+            self._found_types[t_node] = bool
+            return t_node
+
         def visit_Name(self, node: ast.Name) -> ast.Name:
             if node.id in self._found_types:
                 self._found_types[node] = self._found_types[node.id]
@@ -312,21 +318,8 @@ def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
         ast.AST: Updated stream and lambda function
         Type: Return type of the lambda function, Any if not known.
     '''
-    orig_class = getattr(o_stream, '__orig_class__', None)
-    var_types = None
-    if orig_class is not None:
-        var_types = get_type_args(orig_class)
-
-    if var_types is None:
-        base_classes = getattr(o_stream, '__orig_bases__', None)
-        if base_classes is None:
-            return o_stream, l_func, Any
-        var_types = get_type_args(base_classes[0])
-
-    if var_types is None or len(var_types) == 0:
-        return o_stream, l_func, Any
-
     assert len(l_func.args.args) == 1
+    orig_type = o_stream.item_type
     var_name = l_func.args.args[0].arg
-    stream, new_body, return_type = remap_by_types(o_stream, var_name, var_types[0], l_func.body)
+    stream, new_body, return_type = remap_by_types(o_stream, var_name, orig_type, l_func.body)
     return stream, ast.Lambda(l_func.args, new_body), return_type

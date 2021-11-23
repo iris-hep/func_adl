@@ -1,6 +1,6 @@
 import ast
 from func_adl.type_based_replacement import func_adl_callable, remap_by_types, remap_from_lambda
-from typing import Any, Iterable, Tuple, TypeVar, cast
+from typing import Any, Iterable, Tuple, Type, TypeVar, cast
 from func_adl import ObjectStream
 import copy
 import pytest
@@ -55,7 +55,7 @@ class met:
 
     def pxy(self) -> float:
         ...
-    
+
     def metobj(self) -> met_extra:
         ...
 
@@ -95,6 +95,19 @@ class Event:
 
     def EventNumber(self) -> int:
         ...
+
+
+def test_bool_expression():
+    'A bool expression'
+    s = ast_lambda("1 > 2")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("1 > 2"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == bool
 
 
 def test_collection():
@@ -223,13 +236,14 @@ def test_function_with_processor():
         ...
 
     s = ast_lambda("MySqrt(2)")
-    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()), item_type=Event)
 
     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast_lambda("MetaData(e, {'j': 'func_stuff'})"))
+    assert new_objs.item_type == Event
     assert expr_type == float
 
 
@@ -302,7 +316,7 @@ def test_function_with_keyword():
 def test_remap_lambda_helper():
     'Test simple usage of helper function'
     s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
-    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()), item_type=Event)
 
     new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
 
@@ -310,6 +324,7 @@ def test_remap_lambda_helper():
         "lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
+    assert new_objs.item_type == Event
     assert rtn_type == Iterable[Jet]
 
 
@@ -317,11 +332,11 @@ def test_remap_lambda_subclass():
     'When objectstream is another class'
 
     class MyStream(ObjectStream[T]):
-        def __init__(self, c):
-            super().__init__(c)
+        def __init__(self, c, item_type: Type):
+            super().__init__(c, item_type)
 
     s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
-    objs = MyStream[Event](ast.Name(id='e', ctx=ast.Load()))
+    objs = MyStream[Event](ast.Name(id='e', ctx=ast.Load()), Event)
 
     new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
 
