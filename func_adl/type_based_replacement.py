@@ -186,7 +186,7 @@ T = TypeVar('T')
 
 
 def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: ast.AST) \
-        -> Tuple[ObjectStream[T], ast.AST]:
+        -> Tuple[ObjectStream[T], ast.AST, Type]:
     '''Remap a call by a type. Given the type of `var_name` it will do its best
     to follow the objects types through the expression.
 
@@ -199,7 +199,9 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
         ValueError: Forgotten arguments, etc.
 
     Returns:
-        ObjectStream[T], ast: Updated stream and call site
+        ObjectStream[T]
+        ast: Updated stream and call site with
+        Type: The return type of the expression given. `Any` means it couldn't 
     '''
     S = TypeVar('S')
 
@@ -213,6 +215,13 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
         @property
         def stream(self) -> ObjectStream[S]:
             return self._stream  # type: ignore
+
+        def lookup_type(self, name: Union[str, object]) -> Type:
+            'Return the type for a node, Any if we do not know about it'
+            if name in self._found_types:
+                return self._found_types[name]
+            else:
+                return Any
 
         def process_method_call(self, node: ast.Call, obj_type: type) -> ast.AST:
             # Make reference copies that we'll populate as we go
@@ -236,6 +245,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
                 # And if we have a return annotation, then we should record it!
                 self._found_types[r_node] = return_annotation
+                self._found_types[node] = return_annotation
 
                 return r_node
             except Exception as e:
@@ -261,6 +271,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 # We do it this late because we might be changing the `r_node`
                 # value above!
                 self._found_types[r_node] = return_annotation
+                self._found_types[node] = return_annotation
 
                 return r_node
             except Exception as e:
@@ -288,16 +299,18 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
     tt = type_transformer(o_stream)
     r_a = tt.visit(a)
 
-    return tt.stream, r_a
+    return tt.stream, r_a, tt.lookup_type(a)
 
 
 def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
-        -> Tuple[ObjectStream[T], ast.Lambda]:
+        -> Tuple[ObjectStream[T], ast.Lambda, Type]:
     '''Helper function that will translate the contents of lambda
     function with inline methods and special functions.
 
     Returns:
-        ObjectStream[T], ast.AST: Updated stream and lambda function
+        ObjectStream[T]
+        ast.AST: Updated stream and lambda function
+        Type: Return type of the lambda function, Any if not known.
     '''
     orig_class = getattr(o_stream, '__orig_class__', None)
     var_types = None
@@ -307,13 +320,13 @@ def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
     if var_types is None:
         base_classes = getattr(o_stream, '__orig_bases__', None)
         if base_classes is None:
-            return o_stream, l_func
+            return o_stream, l_func, Any
         var_types = get_type_args(base_classes[0])
 
     if var_types is None or len(var_types) == 0:
-        return o_stream, l_func
+        return o_stream, l_func, Any
 
     assert len(l_func.args.args) == 1
     var_name = l_func.args.args[0].arg
-    stream, new_body = remap_by_types(o_stream, var_name, var_types[0], l_func.body)
-    return stream, ast.Lambda(l_func.args, new_body)
+    stream, new_body, return_type = remap_by_types(o_stream, var_name, var_types[0], l_func.body)
+    return stream, ast.Lambda(l_func.args, new_body), return_type

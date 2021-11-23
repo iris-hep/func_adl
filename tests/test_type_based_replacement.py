@@ -1,6 +1,6 @@
 import ast
 from func_adl.type_based_replacement import func_adl_callable, remap_by_types, remap_from_lambda
-from typing import Iterable, Tuple, TypeVar, cast
+from typing import Any, Iterable, Tuple, TypeVar, cast
 from func_adl import ObjectStream
 import copy
 import pytest
@@ -25,7 +25,24 @@ class Jet:
         ...
 
 
+def ast_lambda(lambda_func: str) -> ast.Lambda:
+    'Return the ast starting from the Lambda node'
+    return ast.parse(lambda_func).body[0].value  # type: ignore
+
+
 T = TypeVar('T')
+
+
+def add_met_extra_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
+    s_update = s.MetaData({'j': 'pxyz stuff'})
+    return s_update, a
+
+
+class met_extra:
+    _func_adl_type_info = add_met_extra_info
+
+    def pxy(self) -> float:
+        ...
 
 
 def add_met_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
@@ -38,6 +55,9 @@ class met:
 
     def pxy(self) -> float:
         ...
+    
+    def metobj(self) -> met_extra:
+        ...
 
 
 def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.AST]:
@@ -49,7 +69,7 @@ def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], as
         return s_update, a
     elif a.func.attr == 'EventNumber':
         new_call = copy.copy(a)
-        new_call.args = [ast.parse("20").body[0].value]  # type: ignore
+        new_call.args = [ast_lambda("20")]
         return s, new_call
     else:
         return s, a
@@ -79,19 +99,20 @@ class Event:
 
 def test_collection():
     'A simple collection'
-    s = ast.parse("e.Jets('default')")
+    s = ast_lambda("e.Jets('default')")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.Jets('default')"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
+    assert expr_type == Iterable[Jet]
 
 
 def test_required_arg():
     'A simple collection'
-    s = ast.parse("e.Jets_req()")
+    s = ast_lambda("e.Jets_req()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
     with pytest.raises(ValueError) as e:
@@ -102,86 +123,93 @@ def test_required_arg():
 
 def test_collection_with_default():
     'A simple collection'
-    s = ast.parse("e.Jets()")
+    s = ast_lambda("e.Jets()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.Jets('default')"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
+    assert expr_type == Iterable[Jet]
 
 
 def test_method_on_collection():
     'Call a method that requires some special stuff on a returend object'
-    s = ast.parse("e.MET().pxy()")
+    s = ast_lambda("e.MET().pxy()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.MET().pxy()"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().pxy()"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'pxy stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'pxy stuff'})"))
+    assert expr_type == float
 
 
 def test_method_on_method_on_collection():
     'Call a method that requires some special stuff on a returend object'
-    s = ast.parse("e.MET().pxy()")
+    s = ast_lambda("e.MET().metobj().pxy()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()), Event)
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.MET().pxy()"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().metobj().pxy()"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'pxy stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(MetaData(e, {'j': 'pxy stuff'}), {'j': 'pxyz stuff'})"))
+    assert expr_type == float
 
 
 def test_method_modify_ast():
     'Call a method that requires some special stuff on a returend object'
-    s = ast.parse("e.EventNumber()")
+    s = ast_lambda("e.EventNumber()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.EventNumber(20)"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.EventNumber(20)"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == int
 
 
 def test_method_with_no_return_type():
     'A simple collection'
-    s = ast.parse("e.MET_noreturntype().pxy()")
+    s = ast_lambda("e.MET_noreturntype().pxy()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.MET_noreturntype().pxy()"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_noreturntype().pxy()"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == Any
 
 
 def test_bogus_method():
     'A method that is not typed'
-    s = ast.parse("e.Jetsss('default')")
+    s = ast_lambda("e.Jetsss('default')")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("e.Jetsss('default')"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jetsss('default')"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == Any
 
 
 def test_plain_object_method():
     'A method that is not typed'
-    s = ast.parse("j.pt()")
+    s = ast_lambda("j.pt()")
     objs = ObjectStream[Jet](ast.Name(id='j', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'j', Jet, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'j', Jet, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("j.pt()"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("j.pt()"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("j").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("j"))
+    assert expr_type == float
 
 
 def test_function_with_processor():
@@ -194,14 +222,15 @@ def test_function_with_processor():
     def MySqrt(x: float) -> float:
         ...
 
-    s = ast.parse("MySqrt(2)")
+    s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(2)"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'func_stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'func_stuff'})"))
+    assert expr_type == float
 
 
 def test_function_with_simple():
@@ -210,14 +239,15 @@ def test_function_with_simple():
     def MySqrt(x: float) -> float:
         ...
 
-    s = ast.parse("MySqrt(2)")
+    s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(2)"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == float
 
 
 def test_function_with_missing_arg():
@@ -226,7 +256,7 @@ def test_function_with_missing_arg():
     def MySqrt(my_x: float) -> float:
         ...
 
-    s = ast.parse("MySqrt()")
+    s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
     with pytest.raises(ValueError) as e:
@@ -241,14 +271,15 @@ def test_function_with_default():
     def MySqrt(x: float = 20) -> float:
         ...
 
-    s = ast.parse("MySqrt()")
+    s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(20)"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(20)"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == float
 
 
 def test_function_with_keyword():
@@ -257,27 +288,29 @@ def test_function_with_keyword():
     def MySqrt(x: float = 20) -> float:
         ...
 
-    s = ast.parse("MySqrt(x=15)")
+    s = ast_lambda("MySqrt(x=15)")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse("MySqrt(15)"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(15)"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("e").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == float
 
 
 def test_remap_lambda_helper():
     'Test simple usage of helper function'
-    s = cast(ast.Lambda, ast.parse("lambda e: e.Jets('default')").body[0].value)  # type: ignore
+    s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_from_lambda(objs, s)
+    new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse(
-        "lambda e: e.Jets('default')").body[0].value)  # type: ignore
+    assert ast.dump(new_s) == ast.dump(ast_lambda(
+        "lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
+    assert rtn_type == Iterable[Jet]
 
 
 def test_remap_lambda_subclass():
@@ -287,12 +320,13 @@ def test_remap_lambda_subclass():
         def __init__(self, c):
             super().__init__(c)
 
-    s = cast(ast.Lambda, ast.parse("lambda e: e.Jets('default')").body[0].value)  # type: ignore
+    s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
     objs = MyStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-    new_objs, new_s = remap_from_lambda(objs, s)
+    new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
 
-    assert ast.dump(new_s) == ast.dump(ast.parse(
-        "lambda e: e.Jets('default')").body[0].value)  # type: ignore
+    assert ast.dump(new_s) == ast.dump(ast_lambda(
+        "lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast.parse("MetaData(e, {'j': 'stuff'})").body[0].value)  # type: ignore
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
+    assert rtn_type == Iterable[Jet]
