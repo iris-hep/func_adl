@@ -370,6 +370,14 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             self._found_types[node] = type(node.value)
             return node
 
+        def visit_Num(self, node: ast.Num) -> Any:
+            self._found_types[node] = type(node.n)
+            return node
+
+        def visit_Str(self, node: ast.Str) -> Any:
+            self._found_types[node] = str
+            return node
+
     tt = type_transformer(o_stream)
     r_a = tt.visit(a)
 
