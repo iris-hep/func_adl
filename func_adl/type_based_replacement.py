@@ -371,11 +371,20 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             return node
 
         def visit_Num(self, node: ast.Num) -> Any:
+            '3.7 compatability'
             self._found_types[node] = type(node.n)
             return node
 
         def visit_Str(self, node: ast.Str) -> Any:
+            '3.7 compatability'
             self._found_types[node] = str
+            return node
+
+        def visit_NameConstant(self, node: ast.NameConstant) -> Any:
+            '3.7 compatability'
+            if node.value is None:
+                raise ValueError('Do not know how to work with pythons None')
+            self._found_types[node] = bool
             return node
 
     tt = type_transformer(o_stream)
