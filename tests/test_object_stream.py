@@ -145,6 +145,15 @@ def test_nested_query_rendered_correctly():
     assert "Select(source" not in ast.dump(r)
 
 
+def test_bad_where():
+    with pytest.raises(ValueError):
+        my_event() \
+            .Where("lambda e: 10") \
+            .SelectMany("lambda e: e.jets()") \
+            .AsROOTTTree("junk.root", "analysis", "jetPT") \
+            .value()
+
+
 @pytest.mark.asyncio
 async def test_await_exe_from_coroutine_with_throw():
     with pytest.raises(MyTestException):

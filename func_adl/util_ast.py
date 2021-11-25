@@ -223,8 +223,6 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
     ret = cast(ast.Return, f.body[0])
     return ast.Lambda(args, ret.value)
 
-    return f
-
 
 def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     r'''Return an AST for a lambda function from several sources.
