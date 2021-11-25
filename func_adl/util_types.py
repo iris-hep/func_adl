@@ -7,6 +7,7 @@ else:
     from typing import _AnnotatedAlias, GenericAlias, _GenericAlias, _is_param_expr
     import types
     import collections
+
     def get_args(tp):
         if isinstance(tp, _AnnotatedAlias):
             return (tp.__origin__,) + tp.__metadata__
