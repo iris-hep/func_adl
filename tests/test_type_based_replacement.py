@@ -1,4 +1,5 @@
 import ast
+import logging
 from func_adl.type_based_replacement import func_adl_callable, remap_by_types, remap_from_lambda
 from typing import Any, Iterable, Tuple, Type, TypeVar, cast
 from func_adl import ObjectStream
@@ -97,17 +98,73 @@ class Event:
         ...
 
 
+def return_type_test(expr: str, arg_type: type, expected_type: type):
+    s = ast_lambda(expr)
+    objs = ObjectStream(ast.Name(id='e', ctx=ast.Load()), arg_type)
+
+    _, _, expr_type = remap_by_types(objs, 'e', arg_type, s)
+    assert expr_type == expected_type
+
+
+def test_int():
+    return_type_test('1', int, int)
+
+
+def test_bool():
+    return_type_test('False', int, bool)
+
+
+def test_str():
+    return_type_test('"hi"', int, str)
+
+
+def test_float():
+    return_type_test('1.5', int, float)
+
+
+def test_any():
+    return_type_test('e', Any, Any)
+
+
+def test_neg_float():
+    return_type_test('-1.5', int, float)
+
+
+def test_add_int():
+    return_type_test('e+1', int, int)
+
+
+def test_add_float():
+    return_type_test('e+1.5', int, float)
+
+
+def test_sub_int():
+    return_type_test('e-1', int, int)
+
+
+def test_sub_float():
+    return_type_test('e-1.5', int, float)
+
+
+def test_mul_int():
+    return_type_test('e*1', int, int)
+
+
+def test_mul_float():
+    return_type_test('e*1.5', int, float)
+
+
+def test_div_int():
+    return_type_test('e/2', int, float)
+
+
+def test_dib_float():
+    return_type_test('e/1.5', int, float)
+
+
 def test_bool_expression():
     'A bool expression'
-    s = ast_lambda("1 > 2")
-    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
-
-    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
-
-    assert ast.dump(new_s) == ast.dump(ast_lambda("1 > 2"))
-    assert ast.dump(new_objs.query_ast) \
-        == ast.dump(ast_lambda("e"))
-    assert expr_type == bool
+    return_type_test('1 > 2', int, bool)
 
 
 def test_collection():
@@ -186,8 +243,9 @@ def test_method_modify_ast():
     assert expr_type == int
 
 
-def test_method_with_no_return_type():
+def test_method_with_no_return_type(caplog):
     'A simple collection'
+    caplog.set_level(logging.WARNING)
     s = ast_lambda("e.MET_noreturntype().pxy()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
@@ -197,6 +255,37 @@ def test_method_with_no_return_type():
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast_lambda("e"))
     assert expr_type == Any
+    assert "MET_noreturntype" in caplog.text
+
+
+def test_method_with_no_prototype(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+    s = ast_lambda("e.MET_bogus().pxy()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_bogus().pxy()"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == Any
+    assert "MET_bogus" in caplog.text
+
+
+def test_method_with_no_inital_type(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+    s = ast_lambda("e.MET_bogus().pxy()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Any, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_bogus().pxy()"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == Any
+    assert len(caplog.text) == 0
 
 
 def test_bogus_method():

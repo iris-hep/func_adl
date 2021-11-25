@@ -1,9 +1,10 @@
 import ast
 import copy
 import inspect
+import logging
+import sys
 from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
-import sys
 
 from .object_stream import ObjectStream
 
@@ -179,7 +180,14 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
         call.args = arg_array
         call.keywords = keywords
 
-    return call, sig.return_annotation
+    # Mark the return type - especially if it is missing
+    return_type = sig.return_annotation
+    if return_type is inspect.Signature.empty:
+        logging.getLogger(__name__).warning(f'Missing return annotation for {func.__name__}'
+                                            ' - assuming Any')
+        return_type = Any
+
+    return call, return_type
 
 
 T = TypeVar('T')
@@ -218,10 +226,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
         def lookup_type(self, name: Union[str, object]) -> Type:
             'Return the type for a node, Any if we do not know about it'
-            if name in self._found_types:
-                return self._found_types[name]
-            else:
-                return Any
+            return self._found_types.get(name, Any)
 
         def process_method_call(self, node: ast.Call, obj_type: type) -> ast.AST:
             # Make reference copies that we'll populate as we go
@@ -232,6 +237,10 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 assert isinstance(r_node.func, ast.Attribute)
                 call_method = getattr(obj_type, r_node.func.attr, None)
                 if call_method is None:
+                    self._found_types[node] = Any
+                    if obj_type != Any:
+                        logging.getLogger(__name__).warning(f'Function {r_node.func.attr} not found on'
+                                                            f' object {obj_type}')
                     return r_node
 
                 r_node, return_annotation = _fill_in_default_arguments(call_method, r_node)
@@ -283,13 +292,37 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             assert isinstance(t_node, ast.Call)
             if isinstance(t_node.func, ast.Attribute):
                 # Do we know the type of the value?
-                found_type = self._found_types.get(t_node.func.value, None)
+                found_type = self.lookup_type(t_node.func.value)
                 if found_type is not None:
                     t_node = self.process_method_call(t_node, found_type)
             elif isinstance(t_node.func, ast.Name):
                 if t_node.func.id in _global_functions:
                     t_node = self.process_function_call(t_node, _global_functions[t_node.func.id])
             return t_node
+
+        def visit_UnaryOp(self, node: ast.UnaryOp) -> Any:
+            t_node = self.generic_visit(node)
+            self._found_types[node] = self._found_types[node.operand]
+            self._found_types[t_node] = self._found_types[node.operand]
+
+        def visit_BinOp(self, node: ast.BinOp):
+            t_node = super().generic_visit(node)
+            assert isinstance(t_node, ast.BinOp)
+            t_left = self.lookup_type(t_node.left)
+            t_right = self.lookup_type(t_node.right)
+
+            if (t_left == Any) or (t_right == Any):
+                self._found_types[node] = Any
+                self._found_types[t_node] = Any
+            elif (t_left == float) or (t_right == float):
+                self._found_types[node] = float
+                self._found_types[t_node] = float
+            elif isinstance(node.op, ast.Div):
+                self._found_types[node] = float
+                self._found_types[t_node] = float
+            else:
+                self._found_types[node] = int
+                self._found_types[t_node] = int
 
         def visit_Compare(self, node: ast.Compare) -> Any:
             t_node = self.generic_visit(node)
@@ -300,6 +333,13 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
         def visit_Name(self, node: ast.Name) -> ast.Name:
             if node.id in self._found_types:
                 self._found_types[node] = self._found_types[node.id]
+            else:
+                logging.getLogger(__name__).warning(f'Unknown type for variable {node.id}')
+                self._found_types[node] = Any
+            return node
+
+        def visit_Constant(self, node: ast.Constant) -> Any:
+            self._found_types[node] = type(node.value)
             return node
 
     tt = type_transformer(o_stream)
