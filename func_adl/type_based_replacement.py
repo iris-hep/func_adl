@@ -6,6 +6,8 @@ import sys
 from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
 
+from func_adl.util_types import unwrap_iterable
+
 from .object_stream import ObjectStream
 
 # Internal named tuple containing info for a global function
@@ -328,6 +330,32 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             t_node = self.generic_visit(node)
             self._found_types[node] = bool
             self._found_types[t_node] = bool
+            return t_node
+
+        def visit_IfExp(self, node: ast.IfExp) -> Any:
+            t_node = self.generic_visit(node)
+            assert isinstance(t_node, ast.IfExp)
+            t_true = self.lookup_type(t_node.body)
+            t_false = self.lookup_type(t_node.orelse)
+
+            final_type = Any
+            if t_true == t_false:
+                final_type = t_true
+            elif t_true in [int, float] and t_false in [int, float]:
+                final_type = float
+            else:
+                raise ValueError(f'IfExp branches have different types: {t_true} and {t_false}'
+                                 ' - must be compatible')
+            self._found_types[node] = final_type
+            self._found_types[t_node] = final_type
+            return t_node
+
+        def visit_Subscript(self, node: ast.Subscript) -> Any:
+            t_node = self.generic_visit(node)
+            assert isinstance(t_node, ast.Subscript)
+            inner_type = unwrap_iterable(self.lookup_type(t_node.value))
+            self._found_types[node] = inner_type
+            self._found_types[t_node] = inner_type
             return t_node
 
         def visit_Name(self, node: ast.Name) -> ast.Name:

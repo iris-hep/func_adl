@@ -167,6 +167,31 @@ def test_bool_expression():
     return_type_test('1 > 2', int, bool)
 
 
+def test_ifexpr_onetype():
+    'A ? expression'
+    return_type_test('1 if True else 2', int, int)
+
+
+def test_ifexpr_onetype_twotype_math():
+    'A ? expression'
+    return_type_test('1 if True else 2.2', int, float)
+
+
+def test_ifexpr_onetype_twotypes():
+    'A ? expression'
+    with pytest.raises(ValueError) as e:
+        return_type_test('1 if True else "2.2"', int, float)
+    assert "str" in str(e)
+
+
+def test_subscript():
+    return_type_test('e[0]', Iterable[int], int)
+
+
+def test_subscript_any():
+    return_type_test('e[0]', Any, Any)
+
+
 def test_collection():
     'A simple collection'
     s = ast_lambda("e.Jets('default')")
