@@ -307,7 +307,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             self._found_types[node] = self._found_types[node.operand]
             self._found_types[t_node] = self._found_types[node.operand]
 
-        def visit_BinOp(self, node: ast.BinOp):
+        def visit_BinOp(self, node: ast.BinOp) -> Any:
             t_node = super().generic_visit(node)
             assert isinstance(t_node, ast.BinOp)
             t_left = self.lookup_type(t_node.left)
@@ -325,6 +325,8 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             else:
                 self._found_types[node] = int
                 self._found_types[t_node] = int
+
+            return t_node
 
         def visit_Compare(self, node: ast.Compare) -> Any:
             t_node = self.generic_visit(node)
