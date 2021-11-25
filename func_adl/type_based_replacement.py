@@ -241,8 +241,8 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 if call_method is None:
                     self._found_types[node] = Any
                     if obj_type != Any:
-                        logging.getLogger(__name__).warning(f'Function {r_node.func.attr} not found on'
-                                                            f' object {obj_type}')
+                        logging.getLogger(__name__).warning(f'Function {r_node.func.attr} not '
+                                                            f'found on object {obj_type}')
                     return r_node
 
                 r_node, return_annotation = _fill_in_default_arguments(call_method, r_node)
