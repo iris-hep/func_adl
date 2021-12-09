@@ -50,6 +50,6 @@ setup(name="func_adl.ast",
                    "Topic :: Utilities",
       ],
       data_files=[],
-      python_requires='>=3.6, <3.10',
+      python_requires='>=3.6, <3.11',
       platforms="Any",
       )
