@@ -35,5 +35,5 @@ def unwrap_iterable(t: Type) -> Type:
         return Any
 
     a = get_args(t)
-    assert len(a) == 1
+    assert len(a) == 1, f'Coding error - expected iterable type with a parameter, got {t}'
     return a[0]
