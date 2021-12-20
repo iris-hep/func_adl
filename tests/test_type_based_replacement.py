@@ -25,6 +25,7 @@ class Jet:
     def tracks(self) -> Iterable[Track]:
         ...
 
+
 def ast_lambda(lambda_func: str) -> ast.Lambda:
     'Return the ast starting from the Lambda node'
     return ast.parse(lambda_func).body[0].value  # type: ignore

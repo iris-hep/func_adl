@@ -1,6 +1,5 @@
 from typing import Any, Iterable
 
-import pytest
 from func_adl.util_types import unwrap_iterable
 
 
@@ -20,7 +19,7 @@ def test_inherrited():
 
 
 def test_non_iterable():
-        assert unwrap_iterable(int) == Any
+    assert unwrap_iterable(int) == Any
 
 
 def test_non_iterable_obj():
