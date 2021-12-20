@@ -110,6 +110,10 @@ def test_int():
     return_type_test('1', int, int)
 
 
+def test_int_neg():
+    return_type_test('-11', int, int)
+
+
 def test_bool():
     return_type_test('False', int, bool)
 
@@ -165,6 +169,21 @@ def test_dib_float():
 def test_bool_expression():
     'A bool expression'
     return_type_test('1 > 2', int, bool)
+
+
+def test_abs_function_int_e():
+    'A call to abs with an integer'
+    return_type_test('abs(e)', int, float)
+
+
+def test_abs_function_int_const():
+    'A call to abs with an integer'
+    return_type_test('abs(-23)', int, float)
+
+
+def test_abs_function_float():
+    'A call to abs with an float'
+    return_type_test('abs(e)', float, float)
 
 
 def test_ifexpr_onetype():

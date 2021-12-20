@@ -24,6 +24,19 @@ _FuncAdlFunction = NamedTuple('_FuncAdlFunction', [
 _global_functions: Dict[str, _FuncAdlFunction] = {}
 
 
+def _load_default_global_functions():
+    'Define the python standard functions that map straight through'
+    # TODO: Add in other functions
+
+    def my_abs(x: float) -> float:
+        ...
+
+    _global_functions['abs'] = _FuncAdlFunction('abs', my_abs, None)
+
+
+_load_default_global_functions()
+
+
 def reset_global_functions():
     '''Resets all the global functions we know about.
 
@@ -31,6 +44,7 @@ def reset_global_functions():
     '''
     global _global_functions
     _global_functions = {}
+    _load_default_global_functions()
 
 
 V = TypeVar('V')
@@ -306,6 +320,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             t_node = self.generic_visit(node)
             self._found_types[node] = self._found_types[node.operand]
             self._found_types[t_node] = self._found_types[node.operand]
+            return t_node
 
         def visit_BinOp(self, node: ast.BinOp) -> Any:
             t_node = super().generic_visit(node)
@@ -364,7 +379,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             if node.id in self._found_types:
                 self._found_types[node] = self._found_types[node.id]
             else:
-                logging.getLogger(__name__).warning(f'Unknown type for variable {node.id}')
+                logging.getLogger(__name__).warning(f'Unknown type for name {node.id}')
                 self._found_types[node] = Any
             return node
 
