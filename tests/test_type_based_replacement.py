@@ -25,7 +25,6 @@ class Jet:
     def tracks(self) -> Iterable[Track]:
         ...
 
-
 def ast_lambda(lambda_func: str) -> ast.Lambda:
     'Return the ast starting from the Lambda node'
     return ast.parse(lambda_func).body[0].value  # type: ignore
@@ -55,6 +54,9 @@ class met:
     _func_adl_type_info = add_met_info
 
     def pxy(self) -> float:
+        ...
+
+    def isGood(self) -> bool:
         ...
 
     def metobj(self) -> met_extra:
@@ -259,6 +261,16 @@ def test_method_on_collection():
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast_lambda("MetaData(e, {'j': 'pxy stuff'})"))
     assert expr_type == float
+
+
+def test_method_on_collection_bool():
+    'Call a method that requires some special stuff on a returend object'
+    s = ast_lambda("e.MET().isGood()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    _, _, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == bool
 
 
 def test_method_on_method_on_collection():
