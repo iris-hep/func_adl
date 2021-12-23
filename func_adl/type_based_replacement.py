@@ -5,6 +5,7 @@ import logging
 import sys
 from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
+import typing
 
 from func_adl.util_types import unwrap_iterable
 
@@ -197,8 +198,11 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
         call.keywords = keywords
 
     # Mark the return type - especially if it is missing
-    return_type = sig.return_annotation
-    if return_type is inspect.Signature.empty:
+    t_info = typing.get_type_hints(func)
+    return_type = Any
+    if 'return' in t_info:
+        return_type = t_info['return']
+    else:
         logging.getLogger(__name__).warning(f'Missing return annotation for {func.__name__}'
                                             ' - assuming Any')
         return_type = Any

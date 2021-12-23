@@ -84,6 +84,8 @@ This is not required, but when this is done:
 
 It should be noted that the type and expression follower is not very sophisticated! While it can follow method calls, it won't follow much else!
 
+The code should work find in python 3.11 or if `from __future__ import annotations` is used.
+
 ### Type-based callbacks
 
 By adding a function and a reference in the type system, arbitrary code can be executed during the traversing of the `func_adl`. Keeping the query the same and the `events` definition the same, we can add the info directly to the python type declarations:
