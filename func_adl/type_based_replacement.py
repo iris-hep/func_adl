@@ -352,6 +352,8 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             self._found_types[node] = bool
             self._found_types[t_node] = bool
 
+            return t_node
+
         def visit_Compare(self, node: ast.Compare) -> Any:
             t_node = self.generic_visit(node)
             self._found_types[node] = bool
