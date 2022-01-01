@@ -174,6 +174,17 @@ def test_bool_expression():
     return_type_test('1 > 2', int, bool)
 
 
+def test_bool_and_expression():
+    'Using and'
+    return_type_test('True and True', int, bool)
+
+
+def test_bool_or_expression():
+    'Using and'
+    return_type_test('True or True', int, bool)
+
+
+
 def test_abs_function_int_e():
     'A call to abs with an integer'
     return_type_test('abs(e)', int, float)
