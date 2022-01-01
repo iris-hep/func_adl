@@ -184,7 +184,6 @@ def test_bool_or_expression():
     return_type_test('True or True', int, bool)
 
 
-
 def test_abs_function_int_e():
     'A call to abs with an integer'
     return_type_test('abs(e)', int, float)
@@ -339,6 +338,17 @@ def test_method_with_no_prototype(caplog):
         == ast.dump(ast_lambda("e"))
     assert expr_type == Any
     assert "MET_bogus" in caplog.text
+
+
+def test_math_method(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+    s = ast_lambda("abs(e.MET.pxy())")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert len(caplog.text) == 0
 
 
 def test_method_with_no_inital_type(caplog):

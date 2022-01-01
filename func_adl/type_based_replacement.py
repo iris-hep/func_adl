@@ -389,6 +389,8 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
         def visit_Name(self, node: ast.Name) -> ast.Name:
             if node.id in self._found_types:
                 self._found_types[node] = self._found_types[node.id]
+            elif node.id in _global_functions:
+                self._found_types[node] = Callable
             else:
                 logging.getLogger(__name__).warning(f'Unknown type for name {node.id}')
                 self._found_types[node] = Any
