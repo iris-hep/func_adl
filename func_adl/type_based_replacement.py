@@ -1,13 +1,14 @@
+from __future__ import annotations
 import ast
 import copy
 import inspect
 import logging
 import sys
-from typing import (Any, Callable, Dict, Generic, List, NamedTuple, Optional,
+from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
 import typing
 
-from func_adl.util_types import unwrap_iterable
+from func_adl.util_types import is_iterable, unwrap_iterable
 
 from .object_stream import ObjectStream
 
@@ -159,6 +160,25 @@ else:  # pragma: no cover
         return res
 
 
+StreamItem = TypeVar('StreamItem')
+
+
+class _ObjectStreamOtherMethods(ObjectStream[StreamItem]):
+    def __init__(self, _: ast.AST, item_type: Type):
+        self._item_type = item_type
+
+    @property
+    def item_type(self) -> Type:
+        return self._item_type
+
+    def First(self) -> StreamItem:
+        return self._item_type()
+
+    def Count(self) -> int:
+        return 5
+
+    # TODO: Add all other items that belong here
+
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
     '''Given a call and the function definition:
 
@@ -248,29 +268,90 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             'Return the type for a node, Any if we do not know about it'
             return self._found_types.get(name, Any)
 
+        def process_method_call_on_os_stream(self, m_name: str, node: ast.Call, obj_type: type) \
+                -> Optional[Tuple[ast.AST, Any]]:
+            'Check for one fo the ObjectStream sequence calls'
+            if not is_iterable(obj_type):
+                return None
+
+            return None
+
+        def process_method_call_on_stream_obj(self, s_type: type, g_name: str,
+                                              m_name: str,
+                                              node: ast.Call, sequence_type: type) \
+                -> Optional[Tuple[ast.AST, Any]]:
+            'Check for other LINQ like calls that do not work at the top level'
+            if not is_iterable(sequence_type):
+                return None
+            obj_type = unwrap_iterable(sequence_type)
+
+            s = s_type(ast.Name('basic'), obj_type)
+
+            call_method = getattr(s, m_name, None)
+            if call_method is None:
+                return None
+
+            # Call it. We can only deal with a single argument here...
+            if len(node.args) == 0:
+                r = call_method()
+            elif len(node.args) == 1:
+                r = call_method(node.args[0])
+            else:
+                return None
+
+            # Make sure we have the right type
+            if isinstance(r, s_type):
+                return node, Iterable[r.item_type]
+            return node, type(r)
+
+        def process_method_call_on_type(self, m_name: str, node: ast.Call, obj_type: type) \
+                -> Optional[Tuple[ast.AST, Any]]:
+            'Check an object for a call'
+            call_method = getattr(obj_type, m_name, None)
+            if call_method is None:
+                return None
+
+            r_node, return_annotation = _fill_in_default_arguments(call_method, node)
+
+            # See if there is a call-back to process the call or not
+            # (adding something to the stream)
+            attr = getattr(obj_type, '_func_adl_type_info', None)
+            if attr is not None:
+                r_stream, r_node = attr(self.stream, r_node)
+                assert isinstance(r_node, ast.AST)
+                self._stream = r_stream
+
+            return (r_node, return_annotation)
+
         def process_method_call(self, node: ast.Call, obj_type: type) -> ast.AST:
             # Make reference copies that we'll populate as we go
             r_node = node
 
             # Deal with default arguments and the method signature
+            #  - Could be a method on the object we are looking at
+            #  - If it is a collection, could be First, Select, etc.
             try:
-                assert isinstance(r_node.func, ast.Attribute)
-                call_method = getattr(obj_type, r_node.func.attr, None)
-                if call_method is None:
+                assert isinstance(r_node.func, ast.Attribute), \
+                        f"Only method named calls are supported {ast.dump(r_node.func)}"
+
+                r_result = self.process_method_call_on_type(r_node.func.attr, r_node, obj_type)
+                if r_result is None:
+                    for obj, g_name in ((ObjectStream, "~T"),
+                                        (_ObjectStreamOtherMethods, "~StreamItem")):
+                        r_result = self.process_method_call_on_stream_obj(obj, g_name,
+                                                                          r_node.func.attr,
+                                                                          r_node, obj_type)
+                        if r_result is not None:
+                            break
+
+                if r_result is None:
                     self._found_types[node] = Any
                     if obj_type != Any:
                         logging.getLogger(__name__).warning(f'Function {r_node.func.attr} not '
                                                             f'found on object {obj_type}')
                     return r_node
 
-                r_node, return_annotation = _fill_in_default_arguments(call_method, r_node)
-
-                # See if someone wants to process the call
-                attr = getattr(obj_type, '_func_adl_type_info', None)
-                if attr is not None:
-                    r_stream, r_node = attr(self.stream, r_node)
-                    assert isinstance(r_node, ast.AST)
-                    self._stream = r_stream
+                r_node, return_annotation = r_result
 
                 # And if we have a return annotation, then we should record it!
                 self._found_types[r_node] = return_annotation
@@ -319,6 +400,11 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 if t_node.func.id in _global_functions:
                     t_node = self.process_function_call(t_node, _global_functions[t_node.func.id])
             return t_node
+
+        def visit_Lambda(self, node: ast.Lambda) -> Any:
+            'Prevent looking into a lambda until we actually call it'
+            self._found_types[node] = Callable
+            return node
 
         def visit_UnaryOp(self, node: ast.UnaryOp) -> Any:
             t_node = self.generic_visit(node)

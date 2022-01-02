@@ -11,6 +11,14 @@ else:  # pragma: no cover
 
 def is_iterable(t: Type) -> bool:
     'Is this type iterable?'
+    while (t is not Any) and (not _is_iterable_direct(t)):
+        t = get_inherited(t)
+
+    return t is not Any
+
+
+def _is_iterable_direct(t: Type) -> bool:
+    'Is this type iterable?'
     if getattr(t, '_name', None) == 'Iterable':
         return True
     return False
@@ -28,7 +36,7 @@ def get_inherited(t: Type) -> Type:
 def unwrap_iterable(t: Type) -> Type:
     'Unwrap an iterable type'
     # Try to find an iterable in the history somehow
-    while (t is not Any) and (not is_iterable(t)):
+    while (t is not Any) and (not _is_iterable_direct(t)):
         t = get_inherited(t)
 
     if t == Any:

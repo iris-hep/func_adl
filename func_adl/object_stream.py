@@ -34,6 +34,9 @@ class ObjectStream(Generic[T]):
     stream is an array. You can also lift this second array of `Jets` and turn it into a plain
     stream of `Jets` using the `SelectMany` method below. In that case, you'll no longer be able
     to tell the boundary between events.
+
+    `TypeVar` T is the item type (so this represents, if one were to think of this as loop-a-ble,
+    `Iterable[T]`).
     '''
     def __init__(self, the_ast: ast.AST, item_type: Type = Any):
         r"""

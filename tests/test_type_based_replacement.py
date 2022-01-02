@@ -261,6 +261,48 @@ def test_collection_with_default():
     assert expr_type == Iterable[Jet]
 
 
+def test_collection_First(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.Jets().First()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == Jet
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Where(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.Jets().Where(lambda f: True)")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == Iterable[Jet]
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Select(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.Jets().Select(lambda j: j.pt())")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == Iterable[float]
+
+    assert len(caplog.text) == 0
+
+
 def test_method_on_collection():
     'Call a method that requires some special stuff on a returend object'
     s = ast_lambda("e.MET().pxy()")
