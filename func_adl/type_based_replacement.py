@@ -179,6 +179,7 @@ class _ObjectStreamOtherMethods(ObjectStream[StreamItem]):
 
     # TODO: Add all other items that belong here
 
+
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
     '''Given a call and the function definition:
 
