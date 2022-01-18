@@ -1,6 +1,6 @@
-from typing import Any, Iterable
+from typing import Any, Iterable, TypeVar
 
-from func_adl.util_types import is_iterable, unwrap_iterable
+from func_adl.util_types import get_inherited, is_iterable, unwrap_iterable
 
 
 def test_is_iter_int():
@@ -35,6 +35,17 @@ def test_inherrited():
     assert unwrap_iterable(bogus) == float
 
 
+def test_inherrited_generic():
+    T = TypeVar('T')
+
+    class bogus(Iterable[T]):
+        pass
+
+    myc = bogus[int]
+
+    assert unwrap_iterable(myc) == int
+
+
 def test_non_iterable():
     assert unwrap_iterable(int) == Any
 
@@ -44,3 +55,18 @@ def test_non_iterable_obj():
         pass
 
     assert unwrap_iterable(bogus) == Any
+
+
+def test_get_inherited_int():
+    assert get_inherited(int) == Any
+
+
+def test_get_inherited_generic():
+    T = TypeVar('T')
+
+    class bogus(Iterable[T]):
+        pass
+
+    myc = bogus[int]
+
+    assert get_inherited(myc) == Iterable[int]

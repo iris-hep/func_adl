@@ -269,14 +269,6 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             'Return the type for a node, Any if we do not know about it'
             return self._found_types.get(name, Any)
 
-        def process_method_call_on_os_stream(self, m_name: str, node: ast.Call, obj_type: type) \
-                -> Optional[Tuple[ast.AST, Any]]:
-            'Check for one fo the ObjectStream sequence calls'
-            if not is_iterable(obj_type):
-                return None
-
-            return None
-
         def process_method_call_on_stream_obj(self, s_type: type, g_name: str,
                                               m_name: str,
                                               node: ast.Call, sequence_type: type) \
@@ -313,6 +305,13 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 return None
 
             r_node, return_annotation = _fill_in_default_arguments(call_method, node)
+
+            # Process the return code if this is a typed function
+            if isinstance(return_annotation, TypeVar):
+                t_type_all = typing.get_args(obj_type)
+                if len(t_type_all) != 1:
+                    raise ValueError(f'Can only handle typed methods on classes with one type argument: {obj_type}')
+                return_annotation = t_type_all[0]
 
             # See if there is a call-back to process the call or not
             # (adding something to the stream)

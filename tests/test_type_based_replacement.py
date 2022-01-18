@@ -79,10 +79,19 @@ def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], as
         return s, a
 
 
+class MyIterable(Iterable[T]):
+    def Last(self) -> T:
+        'Return the last element in the sequence'
+        ...
+
+
 class Event:
     _func_adl_type_info = add_collection
 
     def Jets(self, bank: str = 'default') -> Iterable[Jet]:
+        ...
+
+    def JetsIterSub(self, bank: str = 'default') -> MyIterable[Jet]:
         ...
 
     def Jets_req(self, bank_required: str) -> Iterable[Jet]:
@@ -266,6 +275,20 @@ def test_collection_First(caplog):
     caplog.set_level(logging.WARNING)
 
     s = ast_lambda("e.Jets().First()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == Jet
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_CustomIterable(caplog):
+    'A simple collection from an iterable with its own defined terminals'
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.JetsIterSub().Last()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)

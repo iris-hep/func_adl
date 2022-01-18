@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any, Type, get_args
 import sys
 
 if sys.version_info >= (3, 8):
@@ -30,12 +30,20 @@ def get_inherited(t: Type) -> Type:
     if base_classes is None:
         return Any
 
-    return t.__orig_bases__[0]
+    r = t.__orig_bases__[0]
+
+    g_args = get_args(t)
+    if len(g_args) > 0:
+        r.__args__ = g_args
+
+    return r
 
 
 def unwrap_iterable(t: Type) -> Type:
     'Unwrap an iterable type'
     # Try to find an iterable in the history somehow
+
+    generic_args = ()
     while (t is not Any) and (not _is_iterable_direct(t)):
         t = get_inherited(t)
 
