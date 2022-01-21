@@ -15,6 +15,24 @@ class Track:
         ...
 
 
+T = TypeVar('T')
+
+
+def add_track_extra_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
+    s_update = s.MetaData({'t': 'track stuff'})
+    return s_update, a
+
+
+class TrackStuff:
+    _func_adl_type_info = add_track_extra_info
+
+    def pt(self) -> float:
+        ...
+
+    def eta(self) -> float:
+        ...
+
+
 class Jet:
     def pt(self) -> float:
         ...
@@ -29,9 +47,6 @@ class Jet:
 def ast_lambda(lambda_func: str) -> ast.Lambda:
     'Return the ast starting from the Lambda node'
     return ast.parse(lambda_func).body[0].value  # type: ignore
-
-
-T = TypeVar('T')
 
 
 def add_met_extra_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
@@ -104,6 +119,9 @@ class Event:
         ...
 
     def Tracks(self) -> Iterable[Track]:
+        ...
+
+    def TrackStuffs(self) -> Iterable[TrackStuff]:
         ...
 
     def EventNumber(self) -> int:
@@ -322,6 +340,22 @@ def test_collection_Select(caplog):
     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
     assert expr_type == Iterable[float]
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Select_meta(caplog):
+    'A simple collection'
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.TrackStuffs().Select(lambda t: t.pt())")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == Iterable[float]
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("MetaData(e, {'t': 'track stuff'})"))
 
     assert len(caplog.text) == 0
 

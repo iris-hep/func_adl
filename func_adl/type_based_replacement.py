@@ -7,6 +7,7 @@ import sys
 from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple, Optional,
                     Tuple, Type, TypeVar, Union)
 import typing
+from func_adl.util_ast import scan_for_metadata
 
 from func_adl.util_types import is_iterable, unwrap_iterable
 
@@ -294,6 +295,9 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
             # Make sure we have the right type
             if isinstance(r, s_type):
+                def add_md(md: ast.arg):
+                    self._stream = self._stream.MetaData(ast.literal_eval(md))
+                scan_for_metadata(r.query_ast, add_md)
                 return node, Iterable[r.item_type]
             return node, type(r)
 
