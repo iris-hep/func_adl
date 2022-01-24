@@ -562,6 +562,24 @@ def test_function_with_default():
     assert expr_type == float
 
 
+def test_function_with_default_inside():
+    'A function with a default arg that is inside a select'
+    @func_adl_callable()
+    def MySqrt(x: float = 20) -> float:
+        ...
+
+    s = ast_lambda("e.Jets().Select(lambda j: MySqrt())")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default').Select(lambda j: MySqrt(20))"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("e"))
+    assert expr_type == float
+
+
+
 def test_function_with_keyword():
     'Define a function we can use'
     @func_adl_callable()
