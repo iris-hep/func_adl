@@ -25,17 +25,25 @@ def _is_iterable_direct(t: Type) -> bool:
 
 
 def get_inherited(t: Type) -> Type:
-    'Get the inherited type'
-    base_classes = getattr(t, '__orig_bases__', None)
-    if base_classes is None:
-        import logging
-        logging.warning(f"Could not find orig bases: {t}.")
-        logging.warning(f'and class is {t.__class__}')
-        logging.warning(f'everything is {t.__dict__}')
-        logging.warning(f'and base is {t.__bases__}')
+    '''Returns the inherited type of `t`
+
+    Notes:
+    * This works for 3.7 forward (but not back!)
+
+    Args:
+        t (Type): The type (a class) that we should look at
+
+    Returns:
+        Type: The type for an inherited class, or `Any` if none can be found
+    '''
+    if hasattr(t, '__orig_bases__'):
+        base_classes = getattr(t, '__orig_bases__', None)
+    elif hasattr(t, '__origin__'):
+        base_classes = t.__origin__.__orig_bases__
+    else:
         return Any
 
-    r = base_classes[0]
+    r = base_classes[0]  # type: ignore
 
     g_args = get_args(t)
     if len(g_args) > 0:
