@@ -1,8 +1,8 @@
-import pytest
+import pytest_asyncio
 import func_adl.type_based_replacement as tbr
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 def setup_and_teardown():
     tbr.reset_global_functions()
     yield
