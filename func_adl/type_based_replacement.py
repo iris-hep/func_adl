@@ -314,7 +314,8 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             if isinstance(return_annotation, TypeVar):
                 t_type_all = typing.get_args(obj_type)
                 if len(t_type_all) != 1:
-                    raise ValueError(f'Can only handle typed methods on classes with one type argument: {obj_type}')
+                    raise ValueError('Can only handle typed methods on classes '
+                                     f'with one type argument: {obj_type}')
                 return_annotation = t_type_all[0]
 
             # See if there is a call-back to process the call or not
