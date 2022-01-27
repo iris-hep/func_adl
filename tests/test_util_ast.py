@@ -7,7 +7,7 @@ import pytest
 from func_adl.util_ast import (
     as_ast, function_call, lambda_args, lambda_body_replace, lambda_build,
     lambda_call, lambda_is_identity, lambda_is_true, lambda_test,
-    lambda_unwrap, parse_as_ast, rewrite_func_as_lambda)
+    lambda_unwrap, parse_as_ast, rewrite_func_as_lambda, scan_for_metadata)
 
 
 # Ast parsing
@@ -305,3 +305,16 @@ def test_parse_continues_one_line():
             .do_it(lambda x: x + 1).do_it(lambda y: y * 2)
 
     assert "two" in str(e.value)
+
+
+def test_parse_metadata_there():
+    recoreded = None
+
+    def callback(a: ast.arg):
+        nonlocal recoreded
+        recoreded = a
+
+    scan_for_metadata(ast.parse("MetaData(e, 22)"), callback)
+
+    assert recoreded is not None
+    assert 22 == ast.literal_eval(recoreded)

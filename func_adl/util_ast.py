@@ -223,8 +223,6 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
     ret = cast(ast.Return, f.body[0])
     return ast.Lambda(args, ret.value)
 
-    return f
-
 
 def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     r'''Return an AST for a lambda function from several sources.
@@ -246,7 +244,7 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
         source = inspect.getsource(ast_source).strip()
 
         # Look for the name of the calling function (e.g. 'Select' or 'Where')
-        caller_name = inspect.currentframe().f_back.f_code.co_name
+        caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
         caller_idx = source.find(caller_name)
         # If found, parse the string between the parentheses of the function call
         if caller_idx > -1:
@@ -303,3 +301,18 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     else:
         assert isinstance(ast_source, ast.AST)
         return lambda_unwrap(ast_source)
+
+
+def scan_for_metadata(a: ast.AST, callback: Callable[[ast.arg], None]):
+    '''Scan an ast for any MetaData function calls, and pass the metadata argument
+    to the call back.
+    '''
+
+    class metadata_finder(ast.NodeVisitor):
+        def visit_Call(self, node: ast.Call):
+            self.generic_visit(node)
+
+            if isinstance(node.func, ast.Name) and node.func.id == 'MetaData':
+                callback(node.args[1])
+
+    metadata_finder().visit(a)

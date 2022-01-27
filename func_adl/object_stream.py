@@ -1,8 +1,11 @@
+from __future__ import annotations
 import ast
-from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional,
+from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional, Type,
                     TypeVar, Union, cast)
 
 from make_it_sync import make_sync
+
+from func_adl.util_types import unwrap_iterable
 
 from .util_ast import as_ast, function_call, parse_as_ast
 
@@ -31,13 +34,22 @@ class ObjectStream(Generic[T]):
     stream is an array. You can also lift this second array of `Jets` and turn it into a plain
     stream of `Jets` using the `SelectMany` method below. In that case, you'll no longer be able
     to tell the boundary between events.
+
+    `TypeVar` T is the item type (so this represents, if one were to think of this as loop-a-ble,
+    `Iterable[T]`).
     '''
-    def __init__(self, the_ast: ast.AST):
+    def __init__(self, the_ast: ast.AST, item_type: Type = Any):
         r"""
         Initialize the stream with the ast that will produce this stream of objects.
         The user will almost never use this initializer.
         """
         self._q_ast = the_ast
+        self._item_type = item_type
+
+    @property
+    def item_type(self) -> Type:
+        'Returns the type of the item this is a stream of. None if not known.'
+        return self._item_type
 
     @property
     def query_ast(self) -> ast.AST:
@@ -49,7 +61,7 @@ class ObjectStream(Generic[T]):
         return self._q_ast
 
     def SelectMany(self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]) \
-            -> 'ObjectStream[S]':
+            -> ObjectStream[S]:
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -67,10 +79,13 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(func))
         return ObjectStream[S](function_call("SelectMany",
-                                             [self._q_ast, cast(ast.AST, parse_as_ast(func))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
+                               unwrap_iterable(rtn_type))
 
-    def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> 'ObjectStream[S]':
+    def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object. There is a one-to-one correspondence between the input objects and output objects.
@@ -87,10 +102,13 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(f))
         return ObjectStream[S](function_call("Select",
-                                             [self._q_ast, cast(ast.AST, parse_as_ast(f))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
+                               rtn_type)
 
-    def Where(self, filter: Union[str, ast.Lambda, Callable]) -> 'ObjectStream[T]':
+    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
         r'''
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -106,19 +124,25 @@ class ObjectStream(Generic[T]):
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         '''
+        from func_adl.type_based_replacement import remap_from_lambda
+        n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(filter))
+        if rtn_type != bool:
+            raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
         return ObjectStream[T](function_call("Where",
-                                             [self._q_ast, cast(ast.AST, parse_as_ast(filter))]))
+                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
+                               self.item_type)
 
-    def MetaData(self, metadata: Dict[str, Any]) -> 'ObjectStream[T]':
+    def MetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
         '''Add metadata to the current object stream. The metadata is an arbitrary set of string
         key-value pairs. The backend must be able to properly interpret the metadata.
 
         Returns:
             ObjectStream: A new stream, of the same type and contents, but with metadata added.
         '''
-        return ObjectStream[T](function_call("MetaData", [self._q_ast, as_ast(metadata)]))
+        return ObjectStream[T](function_call("MetaData", [self._q_ast, as_ast(metadata)]),
+                               self.item_type)
 
-    def AsPandasDF(self, columns=[]) -> 'ObjectStream[ReturnedDataPlaceHolder]':
+    def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
         This `DataFrame` will contain all the data fed to it. Only non-array datatypes are
@@ -130,13 +154,12 @@ class ObjectStream(Generic[T]):
                         Exception will be thrown if the number of columns do not match.
 
         """
-
         # To get Pandas use the ResultPandasDF function call.
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
 
     def AsROOTTTree(self, filename, treename, columns=[]) \
-            -> 'ObjectStream[ReturnedDataPlaceHolder]':
+            -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -167,7 +190,7 @@ class ObjectStream(Generic[T]):
             )
 
     def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) \
-            -> 'ObjectStream[ReturnedDataPlaceHolder]':
+            -> ObjectStream[ReturnedDataPlaceHolder]:
         '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
         entry in the file. The times must be of types that the infrastructure can work with:
 
@@ -197,7 +220,7 @@ class ObjectStream(Generic[T]):
                                                      [self._q_ast, as_ast(columns),
                                                       as_ast(filename)]))
 
-    def AsAwkwardArray(self, columns=[]) -> 'ObjectStream[ReturnedDataPlaceHolder]':
+    def AsAwkwardArray(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r'''
         Return a pandas stream that contains one item, an `awkward` array, or dictionary of
         `awkward` arrays. This `awkward` will contain all the data fed to it.

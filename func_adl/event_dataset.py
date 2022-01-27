@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import ast
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, Type, TypeVar
 
 from .object_stream import ObjectStream, executor_attr_name
 from .util_ast import function_call
@@ -14,7 +14,7 @@ class EventDataset(ObjectStream[T], ABC):
     should be sub-classed with the information about the actual dataset, and
     should never be created on its own.
     '''
-    def __init__(self):
+    def __init__(self, item_type: Type = Any):
         '''
         Should not be called directly. Make sure to initialize this ctor
         or tracking information will be lost.
@@ -31,7 +31,7 @@ class EventDataset(ObjectStream[T], ABC):
         setattr(ed_ast, '_eds_object', self)
 
         # Let ObjectStream take care of passing around this AST.
-        super().__init__(ed_ast)
+        super().__init__(ed_ast, item_type)
 
     def __repr__(self):
         return f"'{self.__class__.__name__}'"
