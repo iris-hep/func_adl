@@ -298,7 +298,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 def add_md(md: ast.arg):
                     self._stream = self._stream.MetaData(ast.literal_eval(md))
                 scan_for_metadata(r.query_ast, add_md)
-                return node, Iterable[r.item_type]
+                return node, Iterable[r.item_type]  # type: ignore
             return node, type(r)
 
         def process_method_call_on_type(self, m_name: str, node: ast.Call, obj_type: type) \
@@ -312,7 +312,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
             # Process the return code if this is a typed function
             if isinstance(return_annotation, TypeVar):
-                t_type_all = typing.get_args(obj_type)
+                t_type_all = get_type_args(obj_type)
                 if len(t_type_all) != 1:
                     raise ValueError('Can only handle typed methods on classes '
                                      f'with one type argument: {obj_type}')
