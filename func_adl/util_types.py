@@ -28,6 +28,8 @@ def get_inherited(t: Type) -> Type:
     'Get the inherited type'
     base_classes = getattr(t, '__orig_bases__', None)
     if base_classes is None:
+        import logging
+        logging.warning(f"Could not find orig bases: {t}.")
         return Any
 
     r = t.__orig_bases__[0]
