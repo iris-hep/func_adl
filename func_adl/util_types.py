@@ -30,6 +30,7 @@ def get_inherited(t: Type) -> Type:
     if base_classes is None:
         import logging
         logging.warning(f"Could not find orig bases: {t}.")
+        logging.warning(f'and base is {t.__class__}')
         logging.warning(f'and base is {t.__bases__}')
         return Any
 
