@@ -6,7 +6,7 @@ if sys.version_info >= (3, 8):
 else:  # pragma: no cover
     def get_args(tp):
         'Return arguments - this is done very simply and will fail ugly'
-        return tp.__args__
+        return getattr(tp, '__args__', ())
 
 
 def is_iterable(t: Type) -> bool:
