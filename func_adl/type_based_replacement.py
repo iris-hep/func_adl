@@ -158,7 +158,6 @@ else:  # pragma: no cover
             get_args(Callable[[], T][int]) == ([], int)
         """
         return getattr(tp, "__args__", ())
-        return res
 
 
 StreamItem = TypeVar('StreamItem')
