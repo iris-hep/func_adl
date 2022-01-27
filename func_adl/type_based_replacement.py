@@ -85,7 +85,7 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
     translates it to, must be given by another route (e.g. via `MetaData`
     and the `processor` argument).
 
-    ```
+    ```python
     @func_adl_callable
     def my_func(arg1: float, arg2: float = 10) -> float:
         ...
@@ -97,7 +97,17 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
 
     If `processor` is provided, it will be called as the call site is being
     processed. One can add items to the `ObjectStream` or even modify/check the
-    arguments of the call.
+    arguments of the call. An example:
+
+    ```python
+    def processor(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
+        new_s = s.MetaData({'j': 'func_stuff'})
+        return new_s, a
+
+    @func_adl_callable(MySqrtProcessor)
+    def MySqrt(x: float) -> float:
+        ...
+    ```
 
     Args:
         processor (Optional[Callable[[ObjectStream[W], ast.Call],
