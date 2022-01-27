@@ -157,7 +157,7 @@ else:  # pragma: no cover
             get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])
             get_args(Callable[[], T][int]) == ([], int)
         """
-        res = tp.__args__
+        return getattr(tp, "__args__", ())
         return res
 
 
