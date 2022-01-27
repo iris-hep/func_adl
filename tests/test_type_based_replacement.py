@@ -574,11 +574,11 @@ def test_function_with_default():
 
 #     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-#     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default').Select(lambda j: MySqrt(20))"))
+#     assert ast.dump(new_s) \
+#           == ast.dump(ast_lambda("e.Jets('default').Select(lambda j: MySqrt(20))"))
 #     assert ast.dump(new_objs.query_ast) \
 #         == ast.dump(ast_lambda("e"))
 #     assert expr_type == float
-
 
 
 def test_function_with_keyword():
