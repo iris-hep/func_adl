@@ -15,4 +15,4 @@ from .event_dataset import EventDataset, find_EventDataset  # NOQA
 from .functions import Range  # NOQA
 
 # Decorators to add extra functionally to the module
-from .type_based_replacement import func_adl_callable  # NOQA
+from .type_based_replacement import func_adl_callable, register_func_adl_os_collection  # NOQA

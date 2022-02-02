@@ -1,10 +1,13 @@
 import ast
-import logging
-from func_adl.type_based_replacement import func_adl_callable, remap_by_types, remap_from_lambda
-from typing import Any, Iterable, Tuple, Type, TypeVar, cast
-from func_adl import ObjectStream
 import copy
+import logging
+from typing import Any, Iterable, Tuple, Type, TypeVar, cast
+
 import pytest
+from func_adl import ObjectStream
+from func_adl.type_based_replacement import (func_adl_callable,
+                                             register_func_adl_os_collection,
+                                             remap_by_types, remap_from_lambda)
 
 
 class Track:
@@ -295,6 +298,104 @@ def test_collection_First(caplog):
     s = ast_lambda("e.Jets().First()")
     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
+    _, _, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == Jet
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Custom_Method_int(caplog):
+    'A custom collection method not pre-given'
+    caplog.set_level(logging.WARNING)
+
+    M = TypeVar('M')
+
+    @register_func_adl_os_collection
+    class CustomCollection (ObjectStream[M]):
+        def __init__(self, a: ast.AST):
+            super().__init__(a)
+
+        def MyFirst(self) -> int:
+            ...
+
+    s = ast_lambda("e.Jets().MyFirst()")
+    objs = CustomCollection[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    _, _, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == int
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Custom_Method_multiple_args(caplog):
+    'A custom collection method not pre-given'
+    caplog.set_level(logging.WARNING)
+
+    M = TypeVar('M')
+
+    @register_func_adl_os_collection
+    class CustomCollection (ObjectStream[M]):
+        def __init__(self, a: ast.AST):
+            super().__init__(a)
+
+        def MyFirst(self, arg1: int, arg2: int) -> int:
+            ...
+
+    s = ast_lambda("e.Jets().MyFirst(1,3)")
+    objs = CustomCollection[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    _, _, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == int
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Custom_Method_default(caplog):
+    'A custom collection method not pre-given'
+    caplog.set_level(logging.WARNING)
+
+    M = TypeVar('M')
+
+    @register_func_adl_os_collection
+    class CustomCollection_default (ObjectStream[M]):
+        def __init__(self, a: ast.AST, item_type):
+            super().__init__(a, item_type)
+
+        def Take(self, n: int = 5) -> ObjectStream[M]:
+            ...
+
+    s = ast_lambda("e.Jets().Take()")
+    objs = CustomCollection_default[Event](ast.Name(id='e', ctx=ast.Load()), Event)
+
+    _, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert expr_type == ObjectStream[Jet]
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default').Take(5)"))
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_Custom_Method_Jet(caplog):
+    'A custom collection method not pre-given'
+    caplog.set_level(logging.WARNING)
+
+    M = TypeVar('M')
+
+    class CustomCollection_Jet (ObjectStream[M]):
+        def __init__(self, a: ast.AST, item_type):
+            super().__init__(a, item_type)
+
+        def MyFirst(self) -> M:
+            ...
+
+    register_func_adl_os_collection(CustomCollection_Jet)
+
+    s = ast_lambda("e.Jets().MyFirst()")
+    objs = CustomCollection_Jet[Event](ast.Name(id='e', ctx=ast.Load()), Event)
+
     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
     assert expr_type == Jet
@@ -325,7 +426,7 @@ def test_collection_Where(caplog):
 
     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-    assert expr_type == Iterable[Jet]
+    assert expr_type == ObjectStream[Jet]
 
     assert len(caplog.text) == 0
 
@@ -562,23 +663,22 @@ def test_function_with_default():
     assert expr_type == float
 
 
-# TODO: this is a bug, but not ready to fix yet.
-# def test_function_with_default_inside():
-#     'A function with a default arg that is inside a select'
-#     @func_adl_callable()
-#     def MySqrt(x: float = 20) -> float:
-#         ...
+def test_function_with_default_inside():
+    'A function with a default arg that is inside a select'
+    @func_adl_callable()
+    def MySqrt(x: float = 20) -> float:
+        ...
 
-#     s = ast_lambda("e.Jets().Select(lambda j: MySqrt())")
-#     objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+    s = ast_lambda("e.Jets().Select(lambda j: MySqrt())")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
 
-#     new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
 
-#     assert ast.dump(new_s) \
-#           == ast.dump(ast_lambda("e.Jets('default').Select(lambda j: MySqrt(20))"))
-#     assert ast.dump(new_objs.query_ast) \
-#         == ast.dump(ast_lambda("e"))
-#     assert expr_type == float
+    assert ast.dump(new_s) \
+        == ast.dump(ast_lambda("e.Jets('default').Select(lambda j: MySqrt(20))"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
+    assert expr_type == Iterable[float]
 
 
 def test_function_with_keyword():

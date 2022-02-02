@@ -8,7 +8,7 @@ import copy
 import pytest
 
 #
-# NOTE: Keep the tests here the same as in the file `test_type_based_replacement_py310`.
+# NOTE: Keep the tests here the same as in the file `test_type_based_replacement`.
 # When 3.11 is the lowest version this file can be deleted.
 # THis makes sure that delayed type-hint resolution will work properly!
 #
