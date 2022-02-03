@@ -244,7 +244,21 @@ def _load_g_collection_classes():
 def func_adl_callback(
         callback: Callable[[ObjectStream[StreamItem], ast.Call],
                            Tuple[ObjectStream[StreamItem], ast.Call]]):
-    # TODO: Add something here to describe how to use this
+    '''Decorator to use on either classes or class methods that participate
+    in `func_adl` queries. As these classes are traversed by the `func-adl`
+    query, the given callback will be called.
+
+    This allows the system to inject `MetaData` and other things into the query
+    stream modifying the query on the fly.
+
+    - If applied at the class level, the call back will be invoked any time any
+      method is invoked on this class
+    - If applied at the method level, when the method is invoked it will be applied.
+    - If applied at both levels, the class level callback will be invoked first.
+
+    Args:
+        callback (Callable[[ObjectStream[StreamItem], ast.Call], Tuple[ObjectStream[StreamItem], ast.Call]]): Callback when object or function is used.
+    '''
     def decorator(cls: C_TYPE) -> C_TYPE:
         cls._func_adl_type_info = callback  # type: ignore
         return cls
