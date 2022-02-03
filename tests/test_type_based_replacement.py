@@ -3,9 +3,11 @@ import copy
 import logging
 from typing import Any, Iterable, Tuple, Type, TypeVar, cast
 
+import func_adl
 import pytest
 from func_adl import ObjectStream
 from func_adl.type_based_replacement import (func_adl_callable,
+                                             func_adl_callback,
                                              register_func_adl_os_collection,
                                              remap_by_types, remap_from_lambda)
 
@@ -21,14 +23,13 @@ class Track:
 T = TypeVar('T')
 
 
-def add_track_extra_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
+def add_track_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
     s_update = s.MetaData({'t': 'track stuff'})
     return s_update, a
 
 
+@func_adl_callback(add_track_extra_info)
 class TrackStuff:
-    _func_adl_type_info = add_track_extra_info
-
     def pt(self) -> float:
         ...
 
@@ -52,26 +53,29 @@ def ast_lambda(lambda_func: str) -> ast.Lambda:
     return ast.parse(lambda_func).body[0].value  # type: ignore
 
 
-def add_met_extra_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
+def add_met_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
     s_update = s.MetaData({'j': 'pxyz stuff'})
     return s_update, a
 
 
+@func_adl_callback(add_met_extra_info)
 class met_extra:
-    _func_adl_type_info = add_met_extra_info
-
     def pxy(self) -> float:
         ...
 
 
-def add_met_info(s: ObjectStream[T], a: ast.AST) -> Tuple[ObjectStream[T], ast.AST]:
+def add_met_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
     s_update = s.MetaData({'j': 'pxy stuff'})
     return s_update, a
 
 
-class met:
-    _func_adl_type_info = add_met_info
+def add_met_method_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
+    s_update = s.MetaData({'j': 'custom stuff'})
+    return s_update, a
 
+
+@func_adl_callback(add_met_info)
+class met:
     def pxy(self) -> float:
         ...
 
@@ -79,6 +83,10 @@ class met:
         ...
 
     def metobj(self) -> met_extra:
+        ...
+
+    @func_adl_callback(add_met_method_info)
+    def custom(self) -> float:
         ...
 
 
@@ -103,9 +111,8 @@ class MyIterable(Iterable[T]):
         ...
 
 
+@func_adl_callback(add_collection)
 class Event:
-    _func_adl_type_info = add_collection
-
     def Jets(self, bank: str = 'default') -> Iterable[Jet]:
         ...
 
@@ -471,6 +478,19 @@ def test_method_on_collection():
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().pxy()"))
     assert ast.dump(new_objs.query_ast) \
         == ast.dump(ast_lambda("MetaData(e, {'j': 'pxy stuff'})"))
+    assert expr_type == float
+
+
+def test_method_callback():
+    'Call a method that requires some special stuff on a returend object'
+    s = ast_lambda("e.MET().custom()")
+    objs = ObjectStream[Event](ast.Name(id='e', ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, 'e', Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().custom()"))
+    assert ast.dump(new_objs.query_ast) \
+        == ast.dump(ast_lambda("MetaData(MetaData(e, {'j': 'pxy stuff'}), {'j': 'custom stuff'})"))
     assert expr_type == float
 
 

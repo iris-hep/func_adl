@@ -90,7 +90,7 @@ The code should work find in python 3.11 or if `from __future__ import annotatio
 
 ### Type-based callbacks
 
-By adding a function and a reference in the type system, arbitrary code can be executed during the traversing of the `func_adl`. Keeping the query the same and the `events` definition the same, we can add the info directly to the python type declarations:
+By adding a function and a reference in the type system, arbitrary code can be executed during the traversing of the `func_adl`. Keeping the query the same and the `events` definition the same, we can add the info directly to the python type declarations using a decorator for a class definition:
 
 ```python
 from func_adl import ObjectStream
@@ -104,9 +104,8 @@ def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], a
     return s.MetaData({'hi': 'there'}), a
 
 
+@func_adl_callback(add_md_for_type)
 class dd_event:
-    _func_adl_type_info = add_md_for_type
-
     def Jets(self, bank: str) -> Iterable[dd_jet]:
         ...
 ```

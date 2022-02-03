@@ -241,6 +241,16 @@ def _load_g_collection_classes():
     register_func_adl_os_collection(ObjectStreamInternalMethods)
 
 
+def func_adl_callback(
+        callback: Callable[[ObjectStream[StreamItem], ast.Call],
+                           Tuple[ObjectStream[StreamItem], ast.Call]]):
+    # TODO: Add something here to describe how to use this
+    def decorator(cls: C_TYPE) -> C_TYPE:
+        cls._func_adl_type_info = callback  # type: ignore
+        return cls
+    return decorator
+
+
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
     '''Given a call and the function definition:
 
@@ -452,13 +462,14 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                     _g_collection_classes[get_origin(obj_type)],
                     m_name, node, get_args(obj_type)[0])
 
-            # See if there is a call-back to process the call or not
-            # (adding something to the stream)
-            attr = getattr(obj_type, '_func_adl_type_info', None)
-            if attr is not None:
-                r_stream, r_node = attr(self.stream, r_node)
-                assert isinstance(r_node, ast.AST)
-                self._stream = r_stream
+            # See if there is a call-back to process the call on the
+            # object or the function
+            for base_obj in [obj_type, call_method]:
+                attr = getattr(base_obj, '_func_adl_type_info', None)
+                if attr is not None:
+                    r_stream, r_node = attr(self.stream, r_node)
+                    assert isinstance(r_node, ast.AST)
+                    self._stream = r_stream
 
             return (r_node, return_annotation)
 
