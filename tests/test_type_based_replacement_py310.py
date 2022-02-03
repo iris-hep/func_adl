@@ -1,11 +1,15 @@
 from __future__ import annotations
+
 import ast
-import logging
-from func_adl.type_based_replacement import func_adl_callable, func_adl_callback, remap_by_types, remap_from_lambda
-from typing import Any, Iterable, Tuple, Type, TypeVar, cast
-from func_adl import ObjectStream
 import copy
+import logging
+from typing import Any, Iterable, Tuple, Type, TypeVar, cast
+
 import pytest
+from func_adl import ObjectStream
+from func_adl.type_based_replacement import (func_adl_callable,
+                                             func_adl_callback, remap_by_types,
+                                             remap_from_lambda)
 
 #
 # NOTE: Keep the tests here the same as in the file `test_type_based_replacement`.

@@ -257,7 +257,8 @@ def func_adl_callback(
     - If applied at both levels, the class level callback will be invoked first.
 
     Args:
-        callback (Callable[[ObjectStream[StreamItem], ast.Call], Tuple[ObjectStream[StreamItem], ast.Call]]): Callback when object or function is used.
+        callback (Callable[[ObjectStream[StreamItem], ast.Call],
+            Tuple[ObjectStream[StreamItem], ast.Call]]): Callback when object or function is used.
     '''
     def decorator(cls: C_TYPE) -> C_TYPE:
         cls._func_adl_type_info = callback  # type: ignore

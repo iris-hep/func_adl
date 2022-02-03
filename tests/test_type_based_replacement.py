@@ -3,7 +3,6 @@ import copy
 import logging
 from typing import Any, Iterable, Tuple, Type, TypeVar, cast
 
-import func_adl
 import pytest
 from func_adl import ObjectStream
 from func_adl.type_based_replacement import (func_adl_callable,
@@ -90,7 +89,7 @@ class met:
         ...
 
 
-def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.AST]:
+def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
     '''Add a collection to the object stream
     '''
     assert isinstance(a.func, ast.Attribute)
