@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 if sys.version_info >= (3, 8):
     from typing import get_args
 else:  # pragma: no cover
+    # TODO: Remove this when we drop support for 3.7
     def get_args(tp):
         'Return arguments - this is done very simply and will fail ugly'
         return getattr(tp, '__args__', ())

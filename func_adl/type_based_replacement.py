@@ -5,11 +5,12 @@ import copy
 import inspect
 import logging
 import sys
-import typing
 from dataclasses import dataclass
 from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple,
-                    Optional, Tuple, Type, TypeVar, Union, get_args,
-                    get_origin)
+                    Optional, Tuple, Type, TypeVar, Union,
+                    get_origin, get_type_hints)
+
+from util_types import get_args
 
 from func_adl.util_ast import scan_for_metadata
 from func_adl.util_types import (get_class_name, get_method_and_class,
@@ -299,7 +300,7 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
         call._old_ast = old_call_ast  # type: ignore
 
     # Mark the return type - especially if it is missing
-    t_info = typing.get_type_hints(func)
+    t_info = get_type_hints(func)
     return_type = Any
     if 'return' in t_info:
         return_type = t_info['return']
