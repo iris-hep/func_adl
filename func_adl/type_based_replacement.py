@@ -7,17 +7,13 @@ import logging
 import sys
 from dataclasses import dataclass
 from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple,
-                    Optional, Tuple, Type, TypeVar, Union,
-                    get_origin, get_type_hints)
-
-from util_types import get_args
-
-from func_adl.util_ast import scan_for_metadata
-from func_adl.util_types import (get_class_name, get_method_and_class,
-                                 is_iterable, resolve_type_vars,
-                                 unwrap_iterable)
+                    Optional, Tuple, Type, TypeVar, Union, get_origin,
+                    get_type_hints)
 
 from .object_stream import ObjectStream
+from .util_ast import scan_for_metadata
+from .util_types import (get_args, get_class_name, get_method_and_class,
+                         is_iterable, resolve_type_vars, unwrap_iterable)
 
 # Internal named tuple containing info for a global function
 # definitions. Functions with these names can be used inline
