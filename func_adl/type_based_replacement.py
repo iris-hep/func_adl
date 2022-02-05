@@ -259,6 +259,9 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
     * A follower is left to the original to help with recovering modifications to
       nested expressions.
 
+    # TODO: Use python's signature bind to do this:
+    #   https://docs.python.org/3/library/inspect.html#inspect.Signature.bind)
+
     Args:
         func (Callable): The function definition
         call (ast.Call): The ast call site to be modified

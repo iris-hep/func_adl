@@ -1,6 +1,5 @@
 import inspect
 import sys
-import typing
 from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
 if sys.version_info >= (3, 8):
