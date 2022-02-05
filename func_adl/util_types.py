@@ -87,7 +87,7 @@ def build_type_dict_from_type(t: Type, at_class: Optional[Type] = None) -> Dict[
         Dict[str, Type]: The dictionary of type variables
     '''
     d = {}
-    generic_type = typing.get_origin(t)
+    generic_type = get_origin(t)
     if generic_type is None:
         if at_class is not None:
             raise TypeError(f'Could not find type {str(at_class)} in {str(t)}')
@@ -196,7 +196,7 @@ def get_method_and_class(class_object: Type, method_name: str) -> Optional[Tuple
     # Check for templated classes
     # TODO: Use inspect.getmro
     if not hasattr(class_object, '__mro__'):
-        class_object = typing.get_origin(class_object)
+        class_object = get_origin(class_object)
 
     # Walk the resolution hierarchy to find the method
     found_obj = None
