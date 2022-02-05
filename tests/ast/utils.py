@@ -1,11 +1,11 @@
 import ast
 from typing import Tuple, cast
 
-import pytest_asyncio
+import pytest
 from func_adl.ast.function_simplifier import make_args_unique
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest.fixture(autouse=True)
 def reset_ast_counters():
     import func_adl.ast.function_simplifier as fs
     fs.argument_var_counter = 0

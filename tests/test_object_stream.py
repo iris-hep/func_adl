@@ -6,6 +6,7 @@ from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 import pytest
 from func_adl import EventDataset
+from func_adl.type_based_replacement import func_adl_callback
 
 
 class my_event(EventDataset):
@@ -31,13 +32,12 @@ class dd_jet:
 T = TypeVar('T')
 
 
-def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.AST]:
+def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
     return s.MetaData({'hi': 'there'}), a
 
 
+@func_adl_callback(add_md_for_type)
 class dd_event:
-    _func_adl_type_info = add_md_for_type
-
     def Jets(self, bank: str) -> Iterable[dd_jet]:
         ...
 

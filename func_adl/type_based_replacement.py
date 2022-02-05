@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 import ast
 import copy
 import inspect
 import logging
 import sys
-from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple, Optional,
-                    Tuple, Type, TypeVar, Union)
-import typing
-from func_adl.util_ast import scan_for_metadata
-
-from func_adl.util_types import is_iterable, unwrap_iterable
+from dataclasses import dataclass
+from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple,
+                    Optional, Tuple, Type, TypeVar, Union, get_type_hints)
 
 from .object_stream import ObjectStream
+from .util_ast import scan_for_metadata
+from .util_types import (get_args, get_class_name, get_method_and_class,
+                         get_origin, is_iterable, resolve_type_vars,
+                         unwrap_iterable)
 
 # Internal named tuple containing info for a global function
 # definitions. Functions with these names can be used inline
@@ -38,16 +40,6 @@ def _load_default_global_functions():
 
 
 _load_default_global_functions()
-
-
-def reset_global_functions():
-    '''Resets all the global functions we know about.
-
-    Generally only used between tests.
-    '''
-    global _global_functions
-    _global_functions = {}
-    _load_default_global_functions()
 
 
 V = TypeVar('V')
@@ -85,7 +77,7 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
     translates it to, must be given by another route (e.g. via `MetaData`
     and the `processor` argument).
 
-    ```
+    ```python
     @func_adl_callable
     def my_func(arg1: float, arg2: float = 10) -> float:
         ...
@@ -97,12 +89,24 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
 
     If `processor` is provided, it will be called as the call site is being
     processed. One can add items to the `ObjectStream` or even modify/check the
-    arguments of the call.
+    arguments of the call. An example:
+
+    ```python
+    def processor(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
+        new_s = s.MetaData({'j': 'func_stuff'})
+        return new_s, a
+
+    @func_adl_callable(MySqrtProcessor)
+    def MySqrt(x: float) -> float:
+        ...
+    ```
 
     Args:
         processor (Optional[Callable[[ObjectStream[W], ast.Call],
                   Tuple[ObjectStream[W], ast.AST]]], optional): [description]. Defaults to None.
     '''
+    # TODO: Do we really need to register this inside the decorator? Can we just register
+    #       and return the function?
     def decorate(function: Callable):
         register_func_adl_function(function, processor)
         return function
@@ -160,24 +164,91 @@ else:  # pragma: no cover
         return getattr(tp, "__args__", ())
 
 
+@dataclass
+class CollectionClassInfo:
+    'Info for a collection class'
+    obj_type: Type
+
+
+_g_collection_classes: Dict[Type, CollectionClassInfo] = {}
+
+
+C_TYPE = TypeVar('C_TYPE')
+
+
+def register_func_adl_os_collection(c: C_TYPE) -> C_TYPE:
+    '''Register a func_adl collections
+
+    Args:
+        c (type): Class to register
+
+    Returns:
+        [type]: [description]
+    '''
+    _g_collection_classes[c] = CollectionClassInfo(c)
+    return c
+
+
 StreamItem = TypeVar('StreamItem')
 
 
-class _ObjectStreamOtherMethods(ObjectStream[StreamItem]):
-    def __init__(self, _: ast.AST, item_type: Type):
-        self._item_type = item_type
+@register_func_adl_os_collection
+class ObjectStreamInternalMethods(ObjectStream[StreamItem]):
+    '''There are a number of methods and manipulations that are not
+    available at the event level, but are at the collection level. For default
+    behavior, we collect those here.
+
+    If you have a custom type for your collections, it would probably be easiest to
+    in inherit from this and add your own custom methods on top of this.
+
+    Note that these methods are *never* called. The key part of this is following
+    the `item_type` through!! This is because this package does not yet know how
+    to follow generics in python at runtime (think of this as poor man's type resolution).
+    '''
+    def __init__(self, a: ast.AST, item_type: Type):
+        super().__init__(a, item_type)
 
     @property
     def item_type(self) -> Type:
         return self._item_type
 
     def First(self) -> StreamItem:
-        return self._item_type()
+        return self.item_type
 
     def Count(self) -> int:
-        return 5
+        ...
 
     # TODO: Add all other items that belong here
+
+
+def _load_g_collection_classes():
+    'Use for testing to reset a global collection'
+    register_func_adl_os_collection(ObjectStreamInternalMethods)
+
+
+def func_adl_callback(
+        callback: Callable[[ObjectStream[StreamItem], ast.Call],
+                           Tuple[ObjectStream[StreamItem], ast.Call]]):
+    '''Decorator to use on either classes or class methods that participate
+    in `func_adl` queries. As these classes are traversed by the `func-adl`
+    query, the given callback will be called.
+
+    This allows the system to inject `MetaData` and other things into the query
+    stream modifying the query on the fly.
+
+    - If applied at the class level, the call back will be invoked any time any
+      method is invoked on this class
+    - If applied at the method level, when the method is invoked it will be applied.
+    - If applied at both levels, the class level callback will be invoked first.
+
+    Args:
+        callback (Callable[[ObjectStream[StreamItem], ast.Call],
+            Tuple[ObjectStream[StreamItem], ast.Call]]): Callback when object or function is used.
+    '''
+    def decorator(cls: C_TYPE) -> C_TYPE:
+        cls._func_adl_type_info = callback  # type: ignore
+        return cls
+    return decorator
 
 
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
@@ -185,6 +256,11 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
 
     * Defaults are filled in
     * A keyword argument that is positional is moved to the end
+    * A follower is left to the original to help with recovering modifications to
+      nested expressions.
+
+    # TODO: Use python's signature bind to do this:
+    #   https://docs.python.org/3/library/inspect.html#inspect.Signature.bind)
 
     Args:
         func (Callable): The function definition
@@ -213,13 +289,17 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
                 else:
                     raise ValueError(f'Argument {param.name} is required')
 
+    # If we are making a change to the call, put in a reference back to the
+    # original call.
     if len(arg_array) != len(call.args):
+        old_call_ast = call
         call = copy.copy(call)
         call.args = arg_array
         call.keywords = keywords
+        call._old_ast = old_call_ast  # type: ignore
 
     # Mark the return type - especially if it is missing
-    t_info = typing.get_type_hints(func)
+    t_info = get_type_hints(func)
     return_type = Any
     if 'return' in t_info:
         return_type = t_info['return']
@@ -229,6 +309,42 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
         return_type = Any
 
     return call, return_type
+
+
+def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Call) -> ast.Call:
+    'Update the ast, if needed, with modifications'
+
+    class arg_fixer(ast.NodeVisitor):
+        def __init__(self, old_copy):
+            self._old_copy = old_copy
+            self._new_copy = None
+
+        @property
+        def redone_ast(self) -> ast.Call:
+            if self._new_copy is not None:
+                return self._new_copy
+            assert self._old_copy is not None
+            return self._old_copy
+
+        def _update_copy(self):
+            if self._new_copy is None:
+                self._new_copy = copy.copy(self._old_copy)
+                self._old_copy = None
+
+        def visit_Call(self, node: ast.Call):
+            self.generic_visit(node)
+            orig_ast = getattr(node, '_old_ast', None)
+            if orig_ast is None:
+                return node
+
+            self._update_copy()
+            n_old_args = len(orig_ast.args)
+            for a in node.args[n_old_args:]:
+                orig_ast.args.append(a)
+
+    fixer = arg_fixer(original_ast)
+    fixer.visit(transformed_ast)
+    return fixer.redone_ast
 
 
 T = TypeVar('T')
@@ -269,61 +385,94 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             'Return the type for a node, Any if we do not know about it'
             return self._found_types.get(name, Any)
 
-        def process_method_call_on_stream_obj(self, s_type: type, g_name: str,
-                                              m_name: str,
-                                              node: ast.Call, sequence_type: type) \
+        def process_method_call_on_stream_obj(self, obj_info: CollectionClassInfo,
+                                              call_method_name: str,
+                                              call_node: ast.Call,
+                                              item_type: type
+                                              ) \
                 -> Optional[Tuple[ast.AST, Any]]:
-            'Check for other LINQ like calls that do not work at the top level'
-            if not is_iterable(sequence_type):
-                return None
-            obj_type = unwrap_iterable(sequence_type)
+            '''The type following and resolution system in func_adl is pretty limited.
+            When it fails, we fall back to try another method - basically, someone providing
+            dummy classes that implement an `ObjectStream` like interface:
+                `object_stream.query_ast`
+                `object_stream.item_type`
 
-            s = s_type(ast.Name('basic'), obj_type)
+            They are expected to build new versions of themselves much like `object_stream`.
 
-            call_method = getattr(s, m_name, None)
-            if call_method is None:
-                return None
+            The reason they are here is that the API for event level is different than for
+            object level. For example, `First` is defined not to make sense at the event level,
+            but it very much makes sense at the object level. This provides a way to track
+            the types through those calls.
+
+            Returns:
+                None if we can't figure out what to do here
+                (updated call site, return annotation)
+                Return annotation is replaced with the original object (e.g. Iterable)
+                if that is what is started out as.
+            '''
+            # Create the object and grab the method. This is where the API
+            # of the dummy object comes into play
+            s = obj_info.obj_type(ast.Name('basic'), item_type)
+            call_method = getattr(s, call_method_name, None)
+            assert call_method is not None
 
             # Call it. We can only deal with a single argument here...
-            if len(node.args) == 0:
+            if len(call_node.args) == 0:
                 r = call_method()
-            elif len(node.args) == 1:
-                r = call_method(node.args[0])
+            elif len(call_node.args) == 1:
+                r = call_method(call_node.args[0])
             else:
                 return None
 
             # Make sure we have the right type
-            if isinstance(r, s_type):
+            if hasattr(r, "query_ast"):
                 def add_md(md: ast.arg):
                     self._stream = self._stream.MetaData(ast.literal_eval(md))
                 scan_for_metadata(r.query_ast, add_md)
-                return node, Iterable[r.item_type]  # type: ignore
-            return node, type(r)
+                call_node = fixup_ast_from_modifications(r.query_ast, call_node)
+                return call_node, Iterable[r.item_type]  # type: ignore
+            return call_node, type(r)
 
         def process_method_call_on_type(self, m_name: str, node: ast.Call, obj_type: type) \
                 -> Optional[Tuple[ast.AST, Any]]:
-            'Check an object for a call'
-            call_method = getattr(obj_type, m_name, None)
-            if call_method is None:
+            '''Process the method call against the type `obj_type`. We do method lookup
+            and first try simple type following. If that fails, we move onto ObjectStream
+            methods (which are a hack!).
+
+            Returns:
+                - None if we can't figure out the method call
+                - Tuple of the class site and the return type information if we can.
+            '''
+            # Get method and its attached class
+            call_method_info = get_method_and_class(obj_type, m_name)
+            if call_method_info is None:
                 return None
+            call_method_class, call_method = call_method_info
 
-            r_node, return_annotation = _fill_in_default_arguments(call_method, node)
+            # Fill in default arguments next. This might update the call site, and
+            # it will also get us any return annotation information.
+            r_node, return_annotation_raw = _fill_in_default_arguments(call_method, node)
 
-            # Process the return code if this is a typed function
-            if isinstance(return_annotation, TypeVar):
-                t_type_all = get_type_args(obj_type)
-                if len(t_type_all) != 1:
-                    raise ValueError('Can only handle typed methods on classes '
-                                     f'with one type argument: {obj_type}')
-                return_annotation = t_type_all[0]
+            # Get back all the TypeVar's this guy has on it.
+            return_annotation = resolve_type_vars(return_annotation_raw, obj_type,
+                                                  at_class=call_method_class)
 
-            # See if there is a call-back to process the call or not
-            # (adding something to the stream)
-            attr = getattr(obj_type, '_func_adl_type_info', None)
-            if attr is not None:
-                r_stream, r_node = attr(self.stream, r_node)
-                assert isinstance(r_node, ast.AST)
-                self._stream = r_stream
+            # If we failed with simple type resolution here, then there is something
+            # more complex going on. For example, the return type depends on a lambda
+            # function (for example, the lambda function in the `Select` method).
+            if return_annotation is None and (get_origin(obj_type) in _g_collection_classes):
+                return self.process_method_call_on_stream_obj(
+                    _g_collection_classes[get_origin(obj_type)],
+                    m_name, node, get_args(obj_type)[0])
+
+            # See if there is a call-back to process the call on the
+            # object or the function
+            for base_obj in [obj_type, call_method]:
+                attr = getattr(base_obj, '_func_adl_type_info', None)
+                if attr is not None:
+                    r_stream, r_node = attr(self.stream, r_node)
+                    assert isinstance(r_node, ast.AST)
+                    self._stream = r_stream
 
             return (r_node, return_annotation)
 
@@ -339,12 +488,18 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                         f"Only method named calls are supported {ast.dump(r_node.func)}"
 
                 r_result = self.process_method_call_on_type(r_node.func.attr, r_node, obj_type)
-                if r_result is None:
-                    for obj, g_name in ((ObjectStream, "~T"),
-                                        (_ObjectStreamOtherMethods, "~StreamItem")):
-                        r_result = self.process_method_call_on_stream_obj(obj, g_name,
-                                                                          r_node.func.attr,
-                                                                          r_node, obj_type)
+
+                if r_result is None and is_iterable(obj_type):
+                    # This could be a method call against one of the ObjectStream like
+                    # classes. All these are wrapers around an item. So `obj_type` should
+                    # be a sequence of some sort - of an item type.
+                    item_type = unwrap_iterable(obj_type)
+
+                    # Loop over all the possible object stream like objects we know
+                    # about
+                    for c in _g_collection_classes:
+                        r_result = self.process_method_call_on_type(r_node.func.attr, r_node,
+                                                                    c[item_type])
                         if r_result is not None:
                             break
 
@@ -365,7 +520,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             except Exception as e:
                 f_name = node.func.attr  # type: ignore
                 raise ValueError(f'Error processing method call {f_name} on '
-                                 f'class {obj_type.__name__} ({str(e)}).') from e
+                                 f'class {get_class_name(obj_type)} ({str(e)}).') from e
 
         def process_function_call(self, node: ast.Call, func_info: _FuncAdlFunction) -> ast.AST:
             # Make reference copies that we'll populate as we go
@@ -528,3 +683,15 @@ def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
     var_name = l_func.args.args[0].arg
     stream, new_body, return_type = remap_by_types(o_stream, var_name, orig_type, l_func.body)
     return stream, ast.Lambda(l_func.args, new_body), return_type
+
+
+def reset_global_functions():
+    '''Resets all the global functions we know about.
+
+    Generally only used between tests.
+    '''
+    global _global_functions, _g_collection_classes
+    _global_functions = {}
+    _load_default_global_functions()
+    _g_collection_classes = {}
+    _load_g_collection_classes()
