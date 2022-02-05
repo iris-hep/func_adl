@@ -45,18 +45,6 @@ def _load_default_global_functions():
 _load_default_global_functions()
 
 
-def reset_global_functions():
-    '''Resets all the global functions we know about.
-
-    Generally only used between tests.
-    '''
-    global _global_functions, _g_collection_classes
-    _global_functions = {}
-    _load_default_global_functions()
-    _g_collection_classes = {}
-    _load_g_collection_classes()
-
-
 V = TypeVar('V')
 
 
@@ -695,3 +683,15 @@ def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
     var_name = l_func.args.args[0].arg
     stream, new_body, return_type = remap_by_types(o_stream, var_name, orig_type, l_func.body)
     return stream, ast.Lambda(l_func.args, new_body), return_type
+
+
+def reset_global_functions():
+    '''Resets all the global functions we know about.
+
+    Generally only used between tests.
+    '''
+    global _global_functions, _g_collection_classes
+    _global_functions = {}
+    _load_default_global_functions()
+    _g_collection_classes = {}
+    _load_g_collection_classes()
