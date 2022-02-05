@@ -161,14 +161,14 @@ def resolve_type_vars(parameterized_type: Type, context_type: Type,
 
 
 def get_class_name(t: Type) -> str:
-    'Return a name of a class'
-    n = getattr(t, '__name__', None)
-    if n is not None:
-        return n
-
+    'Return a name of a class (parameterized if this is a generic)'
     n = getattr(t, '_name', None)
     if n is not None:
         return f'{n}[{",".join(get_class_name(a) for a in t.__args__)}]'
+
+    n = getattr(t, '__name__', None)
+    if n is not None:
+        return n
 
     # bail because we don't know how to do it nicely here.
     return str(t)
