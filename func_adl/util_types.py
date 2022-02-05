@@ -194,6 +194,7 @@ def get_method_and_class(class_object: Type, method_name: str) -> Optional[Tuple
         return None
 
     # Check for templated classes
+    # TODO: Use inspect.getmro
     if not hasattr(class_object, '__mro__'):
         class_object = typing.get_origin(class_object)
 
