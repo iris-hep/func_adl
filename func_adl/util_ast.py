@@ -1,8 +1,26 @@
 import ast
 import inspect
+import sys
 from typing import Any, Callable, Dict, List, Optional, Union, cast
 
-from func_adl.type_based_replacement import as_literal
+# Some functions to enable backwards compatibility.
+# Capability may be degraded in older versions - particularly 3.6.
+if sys.version_info >= (3, 8):  # pragma: no cover
+    def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
+        return ast.Constant(value=p, kind=None)
+
+else:  # pragma: no cover
+    def as_literal(p: Union[str, int, float, bool, None]):
+        if isinstance(p, str):
+            return ast.Str(p)
+        elif isinstance(p, (int, float)):
+            return ast.Num(p)
+        elif isinstance(p, bool):
+            return ast.NameConstant(p)
+        elif p is None:
+            return ast.NameConstant(None)
+        else:
+            raise ValueError(f'Unknown type {type(p)} - do not know how to make a literal!')
 
 
 def as_ast(p_var: Any) -> ast.AST:
