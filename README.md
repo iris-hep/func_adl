@@ -31,7 +31,7 @@ met_cut = 50
 good_met = good_met_expr.value()
 ```
 
-The cut will be applied at 40, because that was the value of `met_cut` when the `Where` function was called.
+The cut will be applied at 40, because that was the value of `met_cut` when the `Where` function was called. This will also work for variables captured inside functions.
 
 ## Extensibility
 
