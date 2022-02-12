@@ -1,6 +1,5 @@
 import ast
 import inspect
-from re import A
 from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 
@@ -299,7 +298,7 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
             lda = rewrite_func_as_lambda(src_ast.body[0])  # type: ignore
         else:
             lda = next((node for node in ast.walk(src_ast)
-                    if isinstance(node, ast.Lambda)), None)
+                        if isinstance(node, ast.Lambda)), None)
 
             if lda is None:
                 raise ValueError(f'Unable to recover source for function {ast_source}.')
