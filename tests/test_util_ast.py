@@ -241,6 +241,13 @@ def test_parse_nested_lambda():
     assert isinstance(r.body, ast.Call)
 
 
+def test_parse_lambda_capture():
+    cut_value = 30
+    r = parse_as_ast(lambda x: x > cut_value)
+    r_true = parse_as_ast(lambda x: x > 30)
+    assert ast.dump(r) == ast.dump(r_true)
+
+
 def test_parse_simple_func():
     'A oneline function defined at local scope'
     def doit(x):
@@ -265,6 +272,24 @@ def test_parse_global_simple_func():
     assert isinstance(f, ast.Lambda)
     assert len(f.args.args) == 1
     assert isinstance(f.body, ast.BinOp)
+
+
+g_val = 50
+
+
+def global_doit_capture(x):
+    return x + g_val
+
+
+def global_doit_capture_true(x):
+    return x + 50
+
+
+def test_parse_global_capture():
+    'Global function, which includes variable capture'
+    f = parse_as_ast(global_doit_capture)
+    f_true = parse_as_ast(global_doit_capture_true)
+    assert ast.dump(f) == ast.dump(f_true)
 
 
 def test_parse_continues():

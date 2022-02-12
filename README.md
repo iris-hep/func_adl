@@ -20,6 +20,19 @@ one of the following packages:
 
 See the documentation for more information on what expressions and capabilities are possible in each of these backends.
 
+## Captured Variables
+
+Python supports closures in `lambda` values and functions. This library will resolve those closures at the point where the select method is called. For example (where `ds` is a dataset):
+
+```python
+met_cut = 40
+good_met_expr = ds.Where(lambda e: e.met > met_cut).Select(lambda e: e.met)
+met_cut = 50
+good_met = good_met_expr.value()
+```
+
+The cut will be applied at 40, because that was the value of `met_cut` when the `Where` function was called. This will also work for variables captured inside functions.
+
 ## Extensibility
 
 There are two several extensibility points:
