@@ -2,6 +2,8 @@ import ast
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union, cast
 
+from func_adl.type_based_replacement import as_literal
+
 
 def as_ast(p_var: Any) -> ast.AST:
     '''Convert any python constant into an ast
@@ -231,7 +233,7 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
     def visit_Name(self, node: ast.Name) -> Any:
         if node.id in self._lookup_dict:
-            return ast.Constant(self._lookup_dict[node.id])
+            return as_literal(self._lookup_dict[node.id])
         return node
 
 

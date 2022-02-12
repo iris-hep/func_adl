@@ -132,14 +132,14 @@ def _find_keyword(keywords: List[ast.keyword], name: str) \
 # Some functions to enable backwards compatibility.
 # Capability may be degraded in older versions - particularly 3.6.
 if sys.version_info >= (3, 8):  # pragma: no cover
-    def _as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
+    def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
         return ast.Constant(value=p, kind=None)
 
     def get_type_args(tp):
         import typing
         return typing.get_args(tp)
 else:  # pragma: no cover
-    def _as_literal(p: Union[str, int, float, bool, None]):
+    def as_literal(p: Union[str, int, float, bool, None]):
         if isinstance(p, str):
             return ast.Str(p)
         elif isinstance(p, (int, float)):
@@ -284,7 +284,7 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
                 if a is not None:
                     arg_array.append(a)  # type: ignore
                 elif param.default is not param.empty:
-                    a = _as_literal(param.default)
+                    a = as_literal(param.default)
                     arg_array.append(a)
                 else:
                     raise ValueError(f'Argument {param.name} is required')
