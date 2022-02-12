@@ -1,6 +1,7 @@
 import ast
 import inspect
-from typing import Any, Callable, List, Optional, Union, cast
+from re import A
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 
 def as_ast(p_var: Any) -> ast.AST:
@@ -224,6 +225,17 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
     return ast.Lambda(args, ret.value)
 
 
+class _rewrite_captured_vars(ast.NodeTransformer):
+    def __init__(self, cv: inspect.ClosureVars):
+        self._lookup_dict: Dict[str, Any] = dict(cv.nonlocals)
+        self._lookup_dict.update(cv.globals)
+
+    def visit_Name(self, node: ast.Name) -> Any:
+        if node.id in self._lookup_dict:
+            return ast.Constant(self._lookup_dict[node.id])
+        return node
+
+
 def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     r'''Return an AST for a lambda function from several sources.
 
@@ -284,15 +296,18 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
 
         # If this is a function, not a lambda, then we can morph and return that.
         if len(src_ast.body) == 1 and isinstance(src_ast.body[0], ast.FunctionDef):
-            return rewrite_func_as_lambda(src_ast.body[0])  # type: ignore
+            lda = rewrite_func_as_lambda(src_ast.body[0])  # type: ignore
+        else:
+            lda = next((node for node in ast.walk(src_ast)
+                    if isinstance(node, ast.Lambda)), None)
 
-        lda = next((node for node in ast.walk(src_ast)
-                   if isinstance(node, ast.Lambda)), None)
+            if lda is None:
+                raise ValueError(f'Unable to recover source for function {ast_source}.')
 
-        if lda is None:
-            raise ValueError(f'Unable to recover source for function {ast_source}.')
+        # Since this is a function in python, we can look for lambda capture.
+        call_args = inspect.getclosurevars(ast_source)
 
-        return lda
+        return _rewrite_captured_vars(call_args).visit(lda)
 
     elif isinstance(ast_source, str):
         a = ast.parse(ast_source.strip())  # type: ignore
@@ -313,6 +328,6 @@ def scan_for_metadata(a: ast.AST, callback: Callable[[ast.arg], None]):
             self.generic_visit(node)
 
             if isinstance(node.func, ast.Name) and node.func.id == 'MetaData':
-                callback(node.args[1])
+                callback(node.args[1])  # type: ignore
 
     metadata_finder().visit(a)
