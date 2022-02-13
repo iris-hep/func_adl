@@ -6,10 +6,12 @@ from typing import Any, Callable, Dict, List, Optional, Union, cast
 # Some functions to enable backwards compatibility.
 # Capability may be degraded in older versions - particularly 3.6.
 if sys.version_info >= (3, 8):  # pragma: no cover
+
     def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
         return ast.Constant(value=p, kind=None)
 
 else:  # pragma: no cover
+
     def as_literal(p: Union[str, int, float, bool, None]):
         if isinstance(p, str):
             return ast.Str(p)
@@ -20,11 +22,11 @@ else:  # pragma: no cover
         elif p is None:
             return ast.NameConstant(None)
         else:
-            raise ValueError(f'Unknown type {type(p)} - do not know how to make a literal!')
+            raise ValueError(f"Unknown type {type(p)} - do not know how to make a literal!")
 
 
 def as_ast(p_var: Any) -> ast.AST:
-    '''Convert any python constant into an ast
+    """Convert any python constant into an ast
 
     Args:
         p_var   Some python variable that can be rendered with str(p_var)
@@ -34,7 +36,7 @@ def as_ast(p_var: Any) -> ast.AST:
         A python AST representing the object. For example, if a list is passed in, then
         the result will be an AST node of type ast.List.
 
-    '''
+    """
     # If we are dealing with a string, we have to special case this.
     if isinstance(p_var, str):
         p_var = f"'{p_var}'"
@@ -48,20 +50,18 @@ def as_ast(p_var: Any) -> ast.AST:
 
 
 def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
-    '''
+    """
     Generate a function call to `function_name` with a list of `args`.
 
     Args:
         function_name   String that is the function name
         args            List of ast's, each one is an argument.
-    '''
-    return ast.Call(ast.Name(function_name, ast.Load()),
-                    args,
-                    [])
+    """
+    return ast.Call(ast.Name(function_name, ast.Load()), args, [])
 
 
 def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
-    '''Given an AST of a lambda node, return the lambda node. If it is burried in a module, then
+    """Given an AST of a lambda node, return the lambda node. If it is burried in a module, then
     unwrap it first Python, when it parses an module, returns the lambda wrapped in a `Module` AST
     node. This gets rid of it, but is also flexible.
 
@@ -73,30 +73,31 @@ def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
 
     Exceptions:
         If the AST node isn't a lambda or a module wrapping a lambda.
-    '''
+    """
     lb = cast(ast.Expr, lam.body[0]).value if isinstance(lam, ast.Module) else lam
     if not isinstance(lb, ast.Lambda):
-        raise Exception(f'Attempt to get lambda expression body from {type(lam)}, '
-                        'which is not a lambda.')
+        raise Exception(
+            f"Attempt to get lambda expression body from {type(lam)}, " "which is not a lambda."
+        )
 
     return lb
 
 
 def lambda_args(lam: Union[ast.Module, ast.Lambda]) -> ast.arguments:
-    'Return the arguments of a lambda, no matter what form the lambda is in.'
+    "Return the arguments of a lambda, no matter what form the lambda is in."
     return lambda_unwrap(lam).args
 
 
 def lambda_body(lam: Union[ast.Lambda, ast.Module]) -> ast.AST:
-    '''
+    """
     Given an AST lambda node, get the expression it uses and return it. This just makes life
     easier, no real logic is occuring here.
-    '''
+    """
     return lambda_unwrap(lam).body
 
 
 def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module]) -> ast.Call:
-    '''
+    """
     Create a `Call` AST that calls a lambda with the named args.
 
     Args:
@@ -106,7 +107,7 @@ def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module])
 
     Returns:
         A `Call` AST that calls the lambda with the given arguments.
-    '''
+    """
     if isinstance(args, str):
         args = [args]
     named_args = [ast.Name(x, ast.Load()) for x in args]
@@ -114,7 +115,7 @@ def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module])
 
 
 def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
-    '''
+    """
     Given a named argument(s), and an expression, build a `Lambda` AST node.
 
     Args:
@@ -123,7 +124,7 @@ def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
 
     Returns:
         The `Lambda` AST node.
-    '''
+    """
     if type(args) is str:
         args = [args]
 
@@ -134,7 +135,7 @@ def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
 
 
 def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
-    '''
+    """
     Return a new lambda function that has new_expr as the body rather than the old one. Otherwise,
     everything is the same.
 
@@ -145,32 +146,34 @@ def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
     Returns:
         new_lam: New lambda that looks just like the old one, other than the expression is new. If
         the old one was an ast.Module, so will this one be.
-    '''
+    """
     if type(lam) is not ast.Lambda:
-        raise Exception(f'Attempt to get lambda expression body from {type(lam)}, '
-                        'which is not a lambda.')
+        raise Exception(
+            f"Attempt to get lambda expression body from {type(lam)}, " "which is not a lambda."
+        )
 
     new_lam = ast.Lambda(lam.args, new_expr)
     return new_lam
 
 
 def lambda_assure(east: ast.AST, nargs: Optional[int] = None):
-    r'''
+    r"""
     Make sure the Python expression ast is a lambda call, and that it has the right number of args.
 
     Args:
         east:        python expression ast (module ast)
         nargs:      number of args it is required to have. If None, no check is done.
-    '''
+    """
     if not lambda_test(east, nargs):
         raise Exception(
-            'Expression AST is not a lambda function with the right number of arguments')
+            "Expression AST is not a lambda function with the right number of arguments"
+        )
 
     return east
 
 
 def lambda_is_identity(lam: ast.AST) -> bool:
-    'Return true if this is a lambda with 1 argument that returns the argument'
+    "Return true if this is a lambda with 1 argument that returns the argument"
     if not lambda_test(lam, 1):
         return False
 
@@ -183,7 +186,7 @@ def lambda_is_identity(lam: ast.AST) -> bool:
 
 
 def lambda_is_true(lam: ast.AST) -> bool:
-    'Return true if this lambda always returns true'
+    "Return true if this lambda always returns true"
     if not lambda_test(lam):
         return False
     rl = lambda_unwrap(lam)
@@ -194,8 +197,7 @@ def lambda_is_true(lam: ast.AST) -> bool:
 
 
 def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
-    r''' Test arguments
-    '''
+    r"""Test arguments"""
     if not isinstance(lam, ast.Lambda):
         if not isinstance(lam, ast.Module):
             return False
@@ -214,7 +216,7 @@ def lambda_test(lam: ast.AST, nargs: Optional[int] = None) -> bool:
 
 
 def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
-    '''Rewrite a function definition as a lambda. The function can contain only
+    """Rewrite a function definition as a lambda. The function can contain only
     a single return statement. ValueError is throw otherwise.
 
     Args:
@@ -230,13 +232,15 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
 
         - It is assumed that the ast passed in won't be altered in place - no deep copy is
           done of the statement or args - they are just re-used.
-    '''
+    """
     if len(f.body) != 1:
-        raise ValueError(f'Can handle simple functions of only one line - "{f.name}"'
-                         f' has {len(f.body)}.')
+        raise ValueError(
+            f'Can handle simple functions of only one line - "{f.name}"' f" has {len(f.body)}."
+        )
     if not isinstance(f.body[0], ast.Return):
-        raise ValueError(f'Simple function must use return statement - "{f.name}" does '
-                         'not seem to.')
+        raise ValueError(
+            f'Simple function must use return statement - "{f.name}" does ' "not seem to."
+        )
 
     # the arguments
     args = f.args
@@ -256,7 +260,7 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
 
 def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
-    r'''Return an AST for a lambda function from several sources.
+    r"""Return an AST for a lambda function from several sources.
 
     We are handed one of several things:
         - An AST that is a lambda function
@@ -270,7 +274,7 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
 
     Returns:
         An ast starting from the Lambda AST node.
-    '''
+    """
     if callable(ast_source):
         source = inspect.getsource(ast_source).strip()
 
@@ -279,25 +283,26 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
         caller_idx = source.find(caller_name)
         # If found, parse the string between the parentheses of the function call
         if caller_idx > -1:
-            source = source[caller_idx + len(caller_name):]
+            source = source[caller_idx + len(caller_name) :]
             i = 0
             open_count = 0
             while True:
                 c = source[i]
-                if c == '(':
+                if c == "(":
                     open_count += 1
-                elif c == ')':
+                elif c == ")":
                     open_count -= 1
                 if open_count == 0:
                     break
                 i += 1
-            stem = source[i + 1:]
-            new_line = stem.find('\n')
+            stem = source[i + 1 :]
+            new_line = stem.find("\n")
             next_caller = stem.find(caller_name)
             if next_caller > -1 and (new_line < 0 or new_line > next_caller):
-                raise ValueError(f'Found two calls to {caller_name} on same line - '
-                                 'split accross lines')
-            source = source[:i + 1]
+                raise ValueError(
+                    f"Found two calls to {caller_name} on same line - " "split accross lines"
+                )
+            source = source[: i + 1]
 
         def parse(src: str) -> Optional[ast.Module]:
             try:
@@ -307,21 +312,20 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
 
         # Special case ending with a close parenthesis at the end of a line.
         src_ast = parse(source)
-        if not src_ast and source.endswith(')'):
+        if not src_ast and source.endswith(")"):
             src_ast = parse(source[:-1])
 
         if not src_ast:
-            raise ValueError(f'Unable to recover source for function {ast_source}.')
+            raise ValueError(f"Unable to recover source for function {ast_source}.")
 
         # If this is a function, not a lambda, then we can morph and return that.
         if len(src_ast.body) == 1 and isinstance(src_ast.body[0], ast.FunctionDef):
             lda = rewrite_func_as_lambda(src_ast.body[0])  # type: ignore
         else:
-            lda = next((node for node in ast.walk(src_ast)
-                        if isinstance(node, ast.Lambda)), None)
+            lda = next((node for node in ast.walk(src_ast) if isinstance(node, ast.Lambda)), None)
 
             if lda is None:
-                raise ValueError(f'Unable to recover source for function {ast_source}.')
+                raise ValueError(f"Unable to recover source for function {ast_source}.")
 
         # Since this is a function in python, we can look for lambda capture.
         call_args = inspect.getclosurevars(ast_source)
@@ -338,15 +342,15 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
 
 
 def scan_for_metadata(a: ast.AST, callback: Callable[[ast.arg], None]):
-    '''Scan an ast for any MetaData function calls, and pass the metadata argument
+    """Scan an ast for any MetaData function calls, and pass the metadata argument
     to the call back.
-    '''
+    """
 
     class metadata_finder(ast.NodeVisitor):
         def visit_Call(self, node: ast.Call):
             self.generic_visit(node)
 
-            if isinstance(node.func, ast.Name) and node.func.id == 'MetaData':
+            if isinstance(node.func, ast.Name) and node.func.id == "MetaData":
                 callback(node.args[1])  # type: ignore
 
     metadata_finder().visit(a)

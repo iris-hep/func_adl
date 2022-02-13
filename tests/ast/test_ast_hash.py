@@ -11,24 +11,30 @@ class my_event(EventDataset):
 
 
 def build_ast() -> ast.AST:
-    return my_event() \
-        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()') \
-        .AsROOTTTree('dude.root', 'analysis', 'JetPt') \
+    return (
+        my_event()
+        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()')
+        .AsROOTTTree("dude.root", "analysis", "JetPt")
         .value()
+    )
 
 
 def build_ast_array_1() -> ast.AST:
-    return my_event() \
-        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()') \
-        .AsROOTTTree('dude.root', 'analysis', ['JetPt']) \
+    return (
+        my_event()
+        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()')
+        .AsROOTTTree("dude.root", "analysis", ["JetPt"])
         .value()
+    )
 
 
 def build_ast_array_2() -> ast.AST:
-    return my_event() \
-        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()') \
-        .AsROOTTTree('dude.root', 'analysis', ['JetPt', 'JetEta']) \
+    return (
+        my_event()
+        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()')
+        .AsROOTTTree("dude.root", "analysis", ["JetPt", "JetEta"])
         .value()
+    )
 
 
 def test_ast_hash_works():

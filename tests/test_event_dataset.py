@@ -20,7 +20,7 @@ class my_event(EventDataset):
 class my_event_extra_args(EventDataset):
     def __init__(self):
         super().__init__()
-        cast(ast.Call, self.query_ast).args.append(ast.Str(s='hi'))
+        cast(ast.Call, self.query_ast).args.append(ast.Str(s="hi"))
 
     async def execute_result_async(self, a: ast.AST) -> Any:
         return 10
@@ -37,16 +37,16 @@ def test_string_rep():
 
 
 def test_eds_recovery():
-    'Make sure we can get back the event dataset'
+    "Make sure we can get back the event dataset"
     r = my_event()
     found_node = find_EventDataset(r.query_ast)
-    assert hasattr(found_node, '_eds_object')
+    assert hasattr(found_node, "_eds_object")
     assert found_node._eds_object == r  # type: ignore
 
 
 def test_eds_recovery_with_select():
     r = my_event()
-    q = r.Select(lambda a: a+1)
+    q = r.Select(lambda a: a + 1)
     found_node = find_EventDataset(q.query_ast)
     assert found_node._eds_object == r  # type: ignore
 
@@ -62,7 +62,7 @@ def test_eds_recovery_two_ds():
     with pytest.raises(Exception) as e:
         find_EventDataset(q.query_ast)
 
-    assert 'more than one' in str(e)
+    assert "more than one" in str(e)
 
 
 def test_eds_recovery_no_root():
@@ -70,7 +70,7 @@ def test_eds_recovery_no_root():
     with pytest.raises(Exception) as e:
         find_EventDataset(q.query_ast)
 
-    assert 'no root' in str(e)
+    assert "no root" in str(e)
 
 
 def test_eds_recovery_with_odd_call():

@@ -5,30 +5,31 @@ from typing import Any, Optional, Type, TypeVar
 from .object_stream import ObjectStream, executor_attr_name
 from .util_ast import function_call
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class EventDataset(ObjectStream[T], ABC):
-    r'''
+    r"""
     A source of event objects (a ROOT file, or a xAOD file). This class
     should be sub-classed with the information about the actual dataset, and
     should never be created on its own.
-    '''
+    """
+
     def __init__(self, item_type: Type = Any):
-        '''
+        """
         Should not be called directly. Make sure to initialize this ctor
         or tracking information will be lost.
-        '''
+        """
 
         # Create the base AST node.
-        ed_ast = function_call('EventDataset', [])
+        ed_ast = function_call("EventDataset", [])
 
         # Safely store a reference to our executor in the AST in an attribute not used by the
         # the native Python ast module.
         setattr(ed_ast, executor_attr_name, self.execute_result_async)
 
         # Safely store a reference to this object
-        setattr(ed_ast, '_eds_object', self)
+        setattr(ed_ast, "_eds_object", self)
 
         # Let ObjectStream take care of passing around this AST.
         super().__init__(ed_ast, item_type)
@@ -41,15 +42,15 @@ class EventDataset(ObjectStream[T], ABC):
 
     @abstractmethod
     async def execute_result_async(self, a: ast.AST, title: Optional[str] = None) -> Any:
-        '''
+        """
         Override in your sub-class. The infrastructure will call this to render the result
         "locally", or as requested by the AST.
-        '''
+        """
         pass  # pragma: no cover
 
 
 def find_EventDataset(a: ast.AST) -> ast.Call:
-    r'''
+    r"""
     Given an input query ast, find the EventDataset `ast` and return it.
 
     Args:
@@ -61,7 +62,7 @@ def find_EventDataset(a: ast.AST) -> ast.Call:
     Exceptions:
         If there is more than one `EventDataset` found in the query or if there
         is no `EventDataset` at the root of the query, then an exception is thrown.
-    '''
+    """
 
     class ds_finder(ast.NodeVisitor):
         def __init__(self):
@@ -70,7 +71,7 @@ def find_EventDataset(a: ast.AST) -> ast.Call:
         def visit_Call(self, node: ast.Call):
             if not isinstance(node.func, ast.Name):
                 return self.generic_visit(node)
-            if node.func.id != 'EventDataset':
+            if node.func.id != "EventDataset":
                 return self.generic_visit(node)
 
             if self.ds is not None:
