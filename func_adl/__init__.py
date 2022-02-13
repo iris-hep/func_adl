@@ -10,6 +10,8 @@ from .functions import Range
 from .object_stream import ObjectStream
 
 # Decorators to add extra functionally to the module
-from .type_based_replacement import (func_adl_callable,
-                                     func_adl_callback,
-                                     register_func_adl_os_collection)
+from .type_based_replacement import (
+    func_adl_callable,
+    func_adl_callback,
+    register_func_adl_os_collection,
+)

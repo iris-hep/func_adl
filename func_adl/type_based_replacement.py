@@ -6,51 +6,76 @@ import inspect
 import logging
 import sys
 from dataclasses import dataclass
-from typing import (Any, Callable, Dict, Generic, Iterable, List, NamedTuple,
-                    Optional, Tuple, Type, TypeVar, Union, get_type_hints)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    get_type_hints,
+)
 
 from .object_stream import ObjectStream
 from .util_ast import as_literal, scan_for_metadata
-from .util_types import (get_args, get_class_name, get_method_and_class,
-                         get_origin, is_iterable, resolve_type_vars,
-                         unwrap_iterable)
+from .util_types import (
+    get_args,
+    get_class_name,
+    get_method_and_class,
+    get_origin,
+    is_iterable,
+    resolve_type_vars,
+    unwrap_iterable,
+)
 
 # Internal named tuple containing info for a global function
 # definitions. Functions with these names can be used inline
 # in func_adl expressions, and will trigger the processor and
 # also be subject to normal argument resolution.
-U = TypeVar('U')
-_FuncAdlFunction = NamedTuple('_FuncAdlFunction', [
-    ('name', str),
-    ('function', Callable),
-    ('processor_function', Optional[Callable[[ObjectStream[U], ast.Call],
-                                             Tuple[ObjectStream[U], ast.AST]]])
-    ])
+U = TypeVar("U")
+_FuncAdlFunction = NamedTuple(
+    "_FuncAdlFunction",
+    [
+        ("name", str),
+        ("function", Callable),
+        (
+            "processor_function",
+            Optional[Callable[[ObjectStream[U], ast.Call], Tuple[ObjectStream[U], ast.AST]]],
+        ),
+    ],
+)
 _global_functions: Dict[str, _FuncAdlFunction] = {}
 
 
 def _load_default_global_functions():
-    'Define the python standard functions that map straight through'
+    "Define the python standard functions that map straight through"
     # TODO: Add in other functions
 
     def my_abs(x: float) -> float:
         ...
 
-    _global_functions['abs'] = _FuncAdlFunction('abs', my_abs, None)
+    _global_functions["abs"] = _FuncAdlFunction("abs", my_abs, None)
 
 
 _load_default_global_functions()
 
 
-V = TypeVar('V')
+V = TypeVar("V")
 
 
 def register_func_adl_function(
     function: Callable,
-    processor_function: Optional[Callable[[ObjectStream[V], ast.Call],
-                                          Tuple[ObjectStream[V], ast.AST]]]
-        ) -> None:
-    '''Register a new function for use inside a func_adl expression.
+    processor_function: Optional[
+        Callable[[ObjectStream[V], ast.Call], Tuple[ObjectStream[V], ast.AST]]
+    ],
+) -> None:
+    """Register a new function for use inside a func_adl expression.
 
     * A function registered will have its arguments filled in - defaults,
     keywords converted to positional, etc.
@@ -62,17 +87,20 @@ def register_func_adl_function(
         processor_function (Callable[[ObjectStream[T], ast.Call],
             Tuple[ObjectStream[T], ast.AST]]):
             The processor function that can modify the stream, etc.
-    '''
+    """
     info = _FuncAdlFunction(function.__name__, function, processor_function)
     _global_functions[info.name] = info
 
 
-W = TypeVar('W')
+W = TypeVar("W")
 
 
-def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
-                                                   Tuple[ObjectStream[W], ast.AST]]] = None):
-    '''Dectorator that will declare a function that can be used inline in
+def func_adl_callable(
+    processor: Optional[
+        Callable[[ObjectStream[W], ast.Call], Tuple[ObjectStream[W], ast.AST]]
+    ] = None
+):
+    """Dectorator that will declare a function that can be used inline in
     a `func_adl` expression. The body of the function, what the backend
     translates it to, must be given by another route (e.g. via `MetaData`
     and the `processor` argument).
@@ -104,7 +132,7 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
     Args:
         processor (Optional[Callable[[ObjectStream[W], ast.Call],
                   Tuple[ObjectStream[W], ast.AST]]], optional): [description]. Defaults to None.
-    '''
+    """
     # TODO: Do we really need to register this inside the decorator? Can we just register
     #       and return the function?
     def decorate(function: Callable):
@@ -114,13 +142,14 @@ def func_adl_callable(processor: Optional[Callable[[ObjectStream[W], ast.Call],
     return decorate
 
 
-def _find_keyword(keywords: List[ast.keyword], name: str) \
-        -> Tuple[Optional[ast.AST], List[ast.keyword]]:
-    '''Find an argument in a keyword list.
+def _find_keyword(
+    keywords: List[ast.keyword], name: str
+) -> Tuple[Optional[ast.AST], List[ast.keyword]]:
+    """Find an argument in a keyword list.
 
     Returns:
         [type]: The argument or None if not found.
-    '''
+    """
     for kw in keywords:
         if kw.arg == name:
             new_kw = list(keywords)
@@ -132,10 +161,14 @@ def _find_keyword(keywords: List[ast.keyword], name: str) \
 # Some functions to enable backwards compatibility.
 # Capability may be degraded in older versions - particularly 3.6.
 if sys.version_info >= (3, 8):  # pragma: no cover
+
     def get_type_args(tp):
         import typing
+
         return typing.get_args(tp)
+
 else:  # pragma: no cover
+
     def get_type_args(tp):
         """Get type arguments with all substitutions performed.
         For unions, basic simplifications used by Union constructor are performed.
@@ -151,35 +184,35 @@ else:  # pragma: no cover
 
 @dataclass
 class CollectionClassInfo:
-    'Info for a collection class'
+    "Info for a collection class"
     obj_type: Type
 
 
 _g_collection_classes: Dict[Type, CollectionClassInfo] = {}
 
 
-C_TYPE = TypeVar('C_TYPE')
+C_TYPE = TypeVar("C_TYPE")
 
 
 def register_func_adl_os_collection(c: C_TYPE) -> C_TYPE:
-    '''Register a func_adl collections
+    """Register a func_adl collections
 
     Args:
         c (type): Class to register
 
     Returns:
         [type]: [description]
-    '''
+    """
     _g_collection_classes[c] = CollectionClassInfo(c)
     return c
 
 
-StreamItem = TypeVar('StreamItem')
+StreamItem = TypeVar("StreamItem")
 
 
 @register_func_adl_os_collection
 class ObjectStreamInternalMethods(ObjectStream[StreamItem]):
-    '''There are a number of methods and manipulations that are not
+    """There are a number of methods and manipulations that are not
     available at the event level, but are at the collection level. For default
     behavior, we collect those here.
 
@@ -189,7 +222,8 @@ class ObjectStreamInternalMethods(ObjectStream[StreamItem]):
     Note that these methods are *never* called. The key part of this is following
     the `item_type` through!! This is because this package does not yet know how
     to follow generics in python at runtime (think of this as poor man's type resolution).
-    '''
+    """
+
     def __init__(self, a: ast.AST, item_type: Type):
         super().__init__(a, item_type)
 
@@ -207,14 +241,16 @@ class ObjectStreamInternalMethods(ObjectStream[StreamItem]):
 
 
 def _load_g_collection_classes():
-    'Use for testing to reset a global collection'
+    "Use for testing to reset a global collection"
     register_func_adl_os_collection(ObjectStreamInternalMethods)
 
 
 def func_adl_callback(
-        callback: Callable[[ObjectStream[StreamItem], ast.Call],
-                           Tuple[ObjectStream[StreamItem], ast.Call]]):
-    '''Decorator to use on either classes or class methods that participate
+    callback: Callable[
+        [ObjectStream[StreamItem], ast.Call], Tuple[ObjectStream[StreamItem], ast.Call]
+    ]
+):
+    """Decorator to use on either classes or class methods that participate
     in `func_adl` queries. As these classes are traversed by the `func-adl`
     query, the given callback will be called.
 
@@ -229,15 +265,17 @@ def func_adl_callback(
     Args:
         callback (Callable[[ObjectStream[StreamItem], ast.Call],
             Tuple[ObjectStream[StreamItem], ast.Call]]): Callback when object or function is used.
-    '''
+    """
+
     def decorator(cls: C_TYPE) -> C_TYPE:
         cls._func_adl_type_info = callback  # type: ignore
         return cls
+
     return decorator
 
 
 def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call, Type]:
-    '''Given a call and the function definition:
+    """Given a call and the function definition:
 
     * Defaults are filled in
     * A keyword argument that is positional is moved to the end
@@ -256,13 +294,13 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
 
     Returns:
         Tuple[ast.Call, Type]: The modified call site and return type.
-    '''
+    """
     sig = inspect.signature(func)
     i_arg = 0
     arg_array = list(call.args)
     keywords = list(call.keywords)
     for param in sig.parameters.values():
-        if param.name != 'self':
+        if param.name != "self":
             if len(arg_array) <= i_arg:
                 # See if they specified it as a keyword
                 a, keywords = _find_keyword(keywords, param.name)
@@ -272,7 +310,7 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
                     a = as_literal(param.default)
                     arg_array.append(a)
                 else:
-                    raise ValueError(f'Argument {param.name} is required')
+                    raise ValueError(f"Argument {param.name} is required")
 
     # If we are making a change to the call, put in a reference back to the
     # original call.
@@ -286,18 +324,19 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
     # Mark the return type - especially if it is missing
     t_info = get_type_hints(func)
     return_type = Any
-    if 'return' in t_info:
-        return_type = t_info['return']
+    if "return" in t_info:
+        return_type = t_info["return"]
     else:
-        logging.getLogger(__name__).warning(f'Missing return annotation for {func.__name__}'
-                                            ' - assuming Any')
+        logging.getLogger(__name__).warning(
+            f"Missing return annotation for {func.__name__}" " - assuming Any"
+        )
         return_type = Any
 
     return call, return_type
 
 
 def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Call) -> ast.Call:
-    'Update the ast, if needed, with modifications'
+    "Update the ast, if needed, with modifications"
 
     class arg_fixer(ast.NodeVisitor):
         def __init__(self, old_copy):
@@ -318,7 +357,7 @@ def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Cal
 
         def visit_Call(self, node: ast.Call):
             self.generic_visit(node)
-            orig_ast = getattr(node, '_old_ast', None)
+            orig_ast = getattr(node, "_old_ast", None)
             if orig_ast is None:
                 return node
 
@@ -332,12 +371,13 @@ def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Cal
     return fixer.redone_ast
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
-def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: ast.AST) \
-        -> Tuple[ObjectStream[T], ast.AST, Type]:
-    '''Remap a call by a type. Given the type of `var_name` it will do its best
+def remap_by_types(
+    o_stream: ObjectStream[T], var_name: str, var_type: Any, a: ast.AST
+) -> Tuple[ObjectStream[T], ast.AST, Type]:
+    """Remap a call by a type. Given the type of `var_name` it will do its best
     to follow the objects types through the expression.
 
     Note:
@@ -352,31 +392,30 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
         ObjectStream[T]
         ast: Updated stream and call site with
         Type: The return type of the expression given. `Any` means it couldn't
-    '''
-    S = TypeVar('S')
+    """
+    S = TypeVar("S")
 
     class type_transformer(ast.NodeTransformer, Generic[S]):
         def __init__(self, o_stream: ObjectStream[S]):
             self._stream = o_stream
-            self._found_types: Dict[Union[str, object], type] = {
-                var_name: var_type
-            }
+            self._found_types: Dict[Union[str, object], type] = {var_name: var_type}
 
         @property
         def stream(self) -> ObjectStream[S]:
             return self._stream  # type: ignore
 
         def lookup_type(self, name: Union[str, object]) -> Type:
-            'Return the type for a node, Any if we do not know about it'
+            "Return the type for a node, Any if we do not know about it"
             return self._found_types.get(name, Any)
 
-        def process_method_call_on_stream_obj(self, obj_info: CollectionClassInfo,
-                                              call_method_name: str,
-                                              call_node: ast.Call,
-                                              item_type: type
-                                              ) \
-                -> Optional[Tuple[ast.AST, Any]]:
-            '''The type following and resolution system in func_adl is pretty limited.
+        def process_method_call_on_stream_obj(
+            self,
+            obj_info: CollectionClassInfo,
+            call_method_name: str,
+            call_node: ast.Call,
+            item_type: type,
+        ) -> Optional[Tuple[ast.AST, Any]]:
+            """The type following and resolution system in func_adl is pretty limited.
             When it fails, we fall back to try another method - basically, someone providing
             dummy classes that implement an `ObjectStream` like interface:
                 `object_stream.query_ast`
@@ -394,10 +433,10 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 (updated call site, return annotation)
                 Return annotation is replaced with the original object (e.g. Iterable)
                 if that is what is started out as.
-            '''
+            """
             # Create the object and grab the method. This is where the API
             # of the dummy object comes into play
-            s = obj_info.obj_type(ast.Name('basic'), item_type)
+            s = obj_info.obj_type(ast.Name("basic"), item_type)
             call_method = getattr(s, call_method_name, None)
             assert call_method is not None
 
@@ -411,23 +450,26 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
             # Make sure we have the right type
             if hasattr(r, "query_ast"):
+
                 def add_md(md: ast.arg):
                     self._stream = self._stream.MetaData(ast.literal_eval(md))
+
                 scan_for_metadata(r.query_ast, add_md)
                 call_node = fixup_ast_from_modifications(r.query_ast, call_node)
                 return call_node, Iterable[r.item_type]  # type: ignore
             return call_node, type(r)
 
-        def process_method_call_on_type(self, m_name: str, node: ast.Call, obj_type: type) \
-                -> Optional[Tuple[ast.AST, Any]]:
-            '''Process the method call against the type `obj_type`. We do method lookup
+        def process_method_call_on_type(
+            self, m_name: str, node: ast.Call, obj_type: type
+        ) -> Optional[Tuple[ast.AST, Any]]:
+            """Process the method call against the type `obj_type`. We do method lookup
             and first try simple type following. If that fails, we move onto ObjectStream
             methods (which are a hack!).
 
             Returns:
                 - None if we can't figure out the method call
                 - Tuple of the class site and the return type information if we can.
-            '''
+            """
             # Get method and its attached class
             call_method_info = get_method_and_class(obj_type, m_name)
             if call_method_info is None:
@@ -439,8 +481,9 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             r_node, return_annotation_raw = _fill_in_default_arguments(call_method, node)
 
             # Get back all the TypeVar's this guy has on it.
-            return_annotation = resolve_type_vars(return_annotation_raw, obj_type,
-                                                  at_class=call_method_class)
+            return_annotation = resolve_type_vars(
+                return_annotation_raw, obj_type, at_class=call_method_class
+            )
 
             # If we failed with simple type resolution here, then there is something
             # more complex going on. For example, the return type depends on a lambda
@@ -448,12 +491,15 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             if return_annotation is None and (get_origin(obj_type) in _g_collection_classes):
                 return self.process_method_call_on_stream_obj(
                     _g_collection_classes[get_origin(obj_type)],
-                    m_name, node, get_args(obj_type)[0])
+                    m_name,
+                    node,
+                    get_args(obj_type)[0],
+                )
 
             # See if there is a call-back to process the call on the
             # object or the function
             for base_obj in [obj_type, call_method]:
-                attr = getattr(base_obj, '_func_adl_type_info', None)
+                attr = getattr(base_obj, "_func_adl_type_info", None)
                 if attr is not None:
                     r_stream, r_node = attr(self.stream, r_node)
                     assert isinstance(r_node, ast.AST)
@@ -469,8 +515,9 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             #  - Could be a method on the object we are looking at
             #  - If it is a collection, could be First, Select, etc.
             try:
-                assert isinstance(r_node.func, ast.Attribute), \
-                        f"Only method named calls are supported {ast.dump(r_node.func)}"
+                assert isinstance(
+                    r_node.func, ast.Attribute
+                ), f"Only method named calls are supported {ast.dump(r_node.func)}"
 
                 r_result = self.process_method_call_on_type(r_node.func.attr, r_node, obj_type)
 
@@ -483,16 +530,18 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                     # Loop over all the possible object stream like objects we know
                     # about
                     for c in _g_collection_classes:
-                        r_result = self.process_method_call_on_type(r_node.func.attr, r_node,
-                                                                    c[item_type])
+                        r_result = self.process_method_call_on_type(
+                            r_node.func.attr, r_node, c[item_type]
+                        )
                         if r_result is not None:
                             break
 
                 if r_result is None:
                     self._found_types[node] = Any
                     if obj_type != Any:
-                        logging.getLogger(__name__).warning(f'Function {r_node.func.attr} not '
-                                                            f'found on object {obj_type}')
+                        logging.getLogger(__name__).warning(
+                            f"Function {r_node.func.attr} not " f"found on object {obj_type}"
+                        )
                     return r_node
 
                 r_node, return_annotation = r_result
@@ -504,8 +553,10 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
                 return r_node
             except Exception as e:
                 f_name = node.func.attr  # type: ignore
-                raise ValueError(f'Error processing method call {f_name} on '
-                                 f'class {get_class_name(obj_type)} ({str(e)}).') from e
+                raise ValueError(
+                    f"Error processing method call {f_name} on "
+                    f"class {get_class_name(obj_type)} ({str(e)})."
+                ) from e
 
         def process_function_call(self, node: ast.Call, func_info: _FuncAdlFunction) -> ast.AST:
             # Make reference copies that we'll populate as we go
@@ -529,8 +580,10 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
 
                 return r_node
             except Exception as e:
-                raise ValueError(f'Error processing function call {node} on '
-                                 f'function {func_info.function.__name__} ({str(e)})') from e
+                raise ValueError(
+                    f"Error processing function call {node} on "
+                    f"function {func_info.function.__name__} ({str(e)})"
+                ) from e
 
         def visit_Call(self, node: ast.Call) -> ast.AST:
             t_node = self.generic_visit(node)
@@ -546,7 +599,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             return t_node
 
         def visit_Lambda(self, node: ast.Lambda) -> Any:
-            'Prevent looking into a lambda until we actually call it'
+            "Prevent looking into a lambda until we actually call it"
             self._found_types[node] = Callable
             return node
 
@@ -602,8 +655,10 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             elif t_true in [int, float] and t_false in [int, float]:
                 final_type = float
             else:
-                raise ValueError(f'IfExp branches have different types: {t_true} and {t_false}'
-                                 ' - must be compatible')
+                raise ValueError(
+                    f"IfExp branches have different types: {t_true} and {t_false}"
+                    " - must be compatible"
+                )
             self._found_types[node] = final_type
             self._found_types[t_node] = final_type
             return t_node
@@ -622,7 +677,7 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             elif node.id in _global_functions:
                 self._found_types[node] = Callable
             else:
-                logging.getLogger(__name__).warning(f'Unknown type for name {node.id}')
+                logging.getLogger(__name__).warning(f"Unknown type for name {node.id}")
                 self._found_types[node] = Any
             return node
 
@@ -631,19 +686,19 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
             return node
 
         def visit_Num(self, node: ast.Num) -> Any:  # pragma: no cover
-            '3.7 compatability'
+            "3.7 compatability"
             self._found_types[node] = type(node.n)
             return node
 
         def visit_Str(self, node: ast.Str) -> Any:  # pragma: no cover
-            '3.7 compatability'
+            "3.7 compatability"
             self._found_types[node] = str
             return node
 
         def visit_NameConstant(self, node: ast.NameConstant) -> Any:  # pragma: no cover
-            '3.7 compatability'
+            "3.7 compatability"
             if node.value is None:
-                raise ValueError('Do not know how to work with pythons None')
+                raise ValueError("Do not know how to work with pythons None")
             self._found_types[node] = bool
             return node
 
@@ -653,16 +708,17 @@ def remap_by_types(o_stream: ObjectStream[T], var_name: str, var_type: Any, a: a
     return tt.stream, r_a, tt.lookup_type(a)
 
 
-def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
-        -> Tuple[ObjectStream[T], ast.Lambda, Type]:
-    '''Helper function that will translate the contents of lambda
+def remap_from_lambda(
+    o_stream: ObjectStream[T], l_func: ast.Lambda
+) -> Tuple[ObjectStream[T], ast.Lambda, Type]:
+    """Helper function that will translate the contents of lambda
     function with inline methods and special functions.
 
     Returns:
         ObjectStream[T]
         ast.AST: Updated stream and lambda function
         Type: Return type of the lambda function, Any if not known.
-    '''
+    """
     assert len(l_func.args.args) == 1
     orig_type = o_stream.item_type
     var_name = l_func.args.args[0].arg
@@ -671,10 +727,10 @@ def remap_from_lambda(o_stream: ObjectStream[T], l_func: ast.Lambda) \
 
 
 def reset_global_functions():
-    '''Resets all the global functions we know about.
+    """Resets all the global functions we know about.
 
     Generally only used between tests.
-    '''
+    """
     global _global_functions, _g_collection_classes
     _global_functions = {}
     _load_default_global_functions()

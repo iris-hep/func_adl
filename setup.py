@@ -1,6 +1,7 @@
 # Need setuptools even though it isn't used - loads some plugins.
-from setuptools import find_packages  # noqa: F401
 from distutils.core import setup
+
+from setuptools import find_packages  # noqa: F401
 
 # Use the readme as the long description.
 with open("README.md", "r") as fh:
@@ -9,7 +10,8 @@ with open("README.md", "r") as fh:
 extras_require = {
     'test': [
                 'pytest', 'pytest-asyncio', 'pytest-cov', 'flake8',
-                'coverage', 'twine', 'wheel', 'astunparse'
+                'coverage', 'twine', 'wheel', 'astunparse', 'black',
+                'isort'
             ]
                  }
 extras_require['complete'] = sorted(set(sum(extras_require.values(), [])))

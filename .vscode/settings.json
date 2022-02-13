@@ -52,6 +52,7 @@
         ".vscode",
         "tests/**"
     ],
+    "editor.formatOnSave": true,
     "pyright.openFilesOnly": false,
     "python.analysis.openFilesOnly": false,
     "python.pythonPath": ".venv\\Scripts\\python.exe",
@@ -60,5 +61,10 @@
     "python.testing.pytestArgs": [
         "--no-cov"
     ],
-    "restructuredtext.languageServer.disabled": true
+    "restructuredtext.languageServer.disabled": true,
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        }
+    }
 }

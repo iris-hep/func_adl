@@ -1,7 +1,19 @@
 from __future__ import annotations
 import ast
-from typing import (Any, Awaitable, Callable, Dict, Generic, Iterable, List, Optional, Type,
-                    TypeVar, Union, cast)
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from make_it_sync import make_sync
 
@@ -10,19 +22,20 @@ from func_adl.util_types import unwrap_iterable
 from .util_ast import as_ast, function_call, parse_as_ast
 
 # Attribute that will be used to store the executor reference
-executor_attr_name = '_func_adl_executor'
+executor_attr_name = "_func_adl_executor"
 
-T = TypeVar('T')
-S = TypeVar('S')
+T = TypeVar("T")
+S = TypeVar("S")
 
 
 class ReturnedDataPlaceHolder:
-    '''Type returned for awkward, etc.,'''
+    """Type returned for awkward, etc.,"""
+
     pass
 
 
 class ObjectStream(Generic[T]):
-    r'''
+    r"""
     The objects can be events, jets, electrons, or just floats, or arrays of floats.
 
     `ObjectStream` holds onto the AST that will produce this stream of objects. The chain
@@ -37,7 +50,8 @@ class ObjectStream(Generic[T]):
 
     `TypeVar` T is the item type (so this represents, if one were to think of this as loop-a-ble,
     `Iterable[T]`).
-    '''
+    """
+
     def __init__(self, the_ast: ast.AST, item_type: Type = Any):
         r"""
         Initialize the stream with the ast that will produce this stream of objects.
@@ -48,20 +62,21 @@ class ObjectStream(Generic[T]):
 
     @property
     def item_type(self) -> Type:
-        'Returns the type of the item this is a stream of. None if not known.'
+        "Returns the type of the item this is a stream of. None if not known."
         return self._item_type
 
     @property
     def query_ast(self) -> ast.AST:
-        '''Return the query `ast` that this `ObjectStream` represents
+        """Return the query `ast` that this `ObjectStream` represents
 
         Returns:
             ast.AST: The python `ast` that is represented by this query
-        '''
+        """
         return self._q_ast
 
-    def SelectMany(self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]) \
-            -> ObjectStream[S]:
+    def SelectMany(
+        self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]
+    ) -> ObjectStream[S]:
         r"""
         Given the current stream's object type is an array or other iterable, return
         the items in this objects type, one-by-one. This has the effect of flattening a
@@ -80,10 +95,12 @@ class ObjectStream(Generic[T]):
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
         from func_adl.type_based_replacement import remap_from_lambda
+
         n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(func))
-        return ObjectStream[S](function_call("SelectMany",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
-                               unwrap_iterable(rtn_type))
+        return ObjectStream[S](
+            function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
+            unwrap_iterable(rtn_type),
+        )
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
         r"""
@@ -103,13 +120,14 @@ class ObjectStream(Generic[T]):
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
         """
         from func_adl.type_based_replacement import remap_from_lambda
+
         n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(f))
-        return ObjectStream[S](function_call("Select",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
-                               rtn_type)
+        return ObjectStream[S](
+            function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]), rtn_type
+        )
 
     def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
-        r'''
+        r"""
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
         Arguments:
@@ -123,24 +141,26 @@ class ObjectStream(Generic[T]):
         Notes:
             - The function can be a `lambda`, the name of a one-line function, a string that
               contains a lambda definition, or a python `ast` of type `ast.Lambda`.
-        '''
+        """
         from func_adl.type_based_replacement import remap_from_lambda
+
         n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(filter))
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
-        return ObjectStream[T](function_call("Where",
-                                             [n_stream.query_ast, cast(ast.AST, n_ast)]),
-                               self.item_type)
+        return ObjectStream[T](
+            function_call("Where", [n_stream.query_ast, cast(ast.AST, n_ast)]), self.item_type
+        )
 
     def MetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
-        '''Add metadata to the current object stream. The metadata is an arbitrary set of string
+        """Add metadata to the current object stream. The metadata is an arbitrary set of string
         key-value pairs. The backend must be able to properly interpret the metadata.
 
         Returns:
             ObjectStream: A new stream, of the same type and contents, but with metadata added.
-        '''
-        return ObjectStream[T](function_call("MetaData", [self._q_ast, as_ast(metadata)]),
-                               self.item_type)
+        """
+        return ObjectStream[T](
+            function_call("MetaData", [self._q_ast, as_ast(metadata)]), self.item_type
+        )
 
     def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
@@ -156,10 +176,10 @@ class ObjectStream(Generic[T]):
         """
         # To get Pandas use the ResultPandasDF function call.
         return ObjectStream[ReturnedDataPlaceHolder](
-            function_call("ResultPandasDF", [self._q_ast, as_ast(columns)]))
+            function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
+        )
 
-    def AsROOTTTree(self, filename, treename, columns=[]) \
-            -> ObjectStream[ReturnedDataPlaceHolder]:
+    def AsROOTTTree(self, filename, treename, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -185,13 +205,15 @@ class ObjectStream(Generic[T]):
             dataset.
         """
         return ObjectStream[ReturnedDataPlaceHolder](
-            function_call("ResultTTree",
-                          [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)])
+            function_call(
+                "ResultTTree", [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)]
             )
+        )
 
-    def AsParquetFiles(self, filename: str, columns: Union[str, List[str]] = []) \
-            -> ObjectStream[ReturnedDataPlaceHolder]:
-        '''Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
+    def AsParquetFiles(
+        self, filename: str, columns: Union[str, List[str]] = []
+    ) -> ObjectStream[ReturnedDataPlaceHolder]:
+        """Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
         entry in the file. The times must be of types that the infrastructure can work with:
 
             Float               A tree with a single float in each entry will be written.
@@ -215,13 +237,13 @@ class ObjectStream(Generic[T]):
             written by the backend - the data should be concatinated together to get a final
             result. The order of the files back is consistent for different queries on the same
             dataset.
-        '''
-        return ObjectStream[ReturnedDataPlaceHolder](function_call("ResultParquet",
-                                                     [self._q_ast, as_ast(columns),
-                                                      as_ast(filename)]))
+        """
+        return ObjectStream[ReturnedDataPlaceHolder](
+            function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)])
+        )
 
     def AsAwkwardArray(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
-        r'''
+        r"""
         Return a pandas stream that contains one item, an `awkward` array, or dictionary of
         `awkward` arrays. This `awkward` will contain all the data fed to it.
 
@@ -233,13 +255,15 @@ class ObjectStream(Generic[T]):
         Returns:
 
             An `ObjectStream` with the `awkward` array data as its one and only element.
-        '''
+        """
         return ObjectStream[ReturnedDataPlaceHolder](
-            function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)]))
+            function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)])
+        )
 
-    def _get_executor(self, executor: Callable[[ast.AST, Optional[str]], Awaitable[Any]] = None) \
-            -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:
-        r'''
+    def _get_executor(
+        self, executor: Callable[[ast.AST, Optional[str]], Awaitable[Any]] = None
+    ) -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:
+        r"""
         Returns an executor that can be used to run this.
         Logic seperated out as it is used from several different places.
 
@@ -248,7 +272,7 @@ class ObjectStream(Generic[T]):
 
         Returns:
             An executor that is either synchronous or a coroutine.
-        '''
+        """
         if executor is not None:
             return executor
 
@@ -262,9 +286,10 @@ class ObjectStream(Generic[T]):
         # Extract the executor from this reference.
         return getattr(node, executor_attr_name)
 
-    async def value_async(self, executor: Callable[[ast.AST, Optional[str]], Any] = None,
-                          title: Optional[str] = None) -> Any:
-        r'''
+    async def value_async(
+        self, executor: Callable[[ast.AST, Optional[str]], Any] = None, title: Optional[str] = None
+    ) -> Any:
+        r"""
         Evaluate the ObjectStream computation graph. Tracks back to the source dataset to
         understand how to evaluate the AST. It is possible to pass in an executor to override that
         behavior (used mostly for testing).
@@ -286,7 +311,7 @@ class ObjectStream(Generic[T]):
 
             This is the non-blocking version - it will return a future which can
             be `await`ed upon until the query is done.
-        '''
+        """
         # Fetch the executor
         exe = self._get_executor(executor)
 
