@@ -419,6 +419,7 @@ def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Cal
             n_old_args = len(orig_ast.args)
             for a in node.args[n_old_args:]:
                 orig_ast.args.append(a)
+            orig_ast.func = node.func
 
     fixer = arg_fixer(original_ast)
     fixer.visit(transformed_ast)
@@ -511,6 +512,7 @@ def remap_by_types(
                 scan_for_metadata(r.query_ast, add_md)
                 call_node = fixup_ast_from_modifications(r.query_ast, call_node)
                 return call_node, Iterable[r.item_type]  # type: ignore
+
             return call_node, type(r)
 
         def process_method_call_on_type(
@@ -671,7 +673,10 @@ def remap_by_types(
             r_stream, r_node, return_type = callback_info.callback(self.stream, t_node, parameters)
             self._stream = r_stream
 
-            self._found_types[t_node] = return_type
+            # Mark this ast with the fact we've updated it.
+            r_node._old_ast = node  # type: ignore
+
+            self._found_types[r_node] = return_type
             self._found_types[node] = return_type
 
             return r_node

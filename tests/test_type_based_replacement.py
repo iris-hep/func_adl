@@ -777,7 +777,7 @@ def test_index_callback_1arg():
 
 
 def test_index_callback_2arg():
-    "Indexed callback - make sure arg is passed correctly"
+    "Indexed callback - make sure 2 args are passed correctly"
 
     param_1_capture = None
 
@@ -800,6 +800,62 @@ def test_index_callback_2arg():
     remap_by_types(objs, "e", TEvent, s)
 
     assert param_1_capture == ("fork", 22)
+
+
+def test_index_callback_modify_ast():
+    "Indexed callback - make ast can be correctly modified"
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        new_a = copy.copy(a)
+        assert isinstance(a.func, ast.Attribute)
+        new_a.func = ast.Attribute(value=a.func.value, attr="dude", ctx=a.func.ctx)
+
+        return (s, new_a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork'](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    _, new_s, _ = remap_by_types(objs, "e", TEvent, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.dude(55)"))
+
+
+def test_index_callback_modify_ast_nested():
+    "Indexed callback - make ast can be correctly modified when nested in a Select"
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        new_a = copy.copy(a)
+        assert isinstance(a.func, ast.Attribute)
+        new_a.func = ast.Attribute(value=a.func.value, attr="dude", ctx=a.func.ctx)
+
+        return (s, new_a, float)
+
+    class MyJet:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    class TEvent:
+        def Jets(self) -> Iterable[MyJet]:
+            ...
+
+    s = ast_lambda("e.Jets().Select(lambda j: j.info['fork'](55))")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    _, new_s, _ = remap_by_types(objs, "e", TEvent, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets().Select(lambda j: j.dude(55))"))
 
 
 def test_index_callback_on_method():
