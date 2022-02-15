@@ -773,6 +773,33 @@ def test_index_callback_1arg():
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.info(55)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'k': 'stuff'})"))
     assert expr_type == float
+    assert param_1_capture == "fork"
+
+
+def test_index_callback_2arg():
+    "Indexed callback - make sure arg is passed correctly"
+
+    param_1_capture = None
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        nonlocal param_1_capture
+        param_1_capture = param_1
+        return (s.MetaData({"k": "stuff"}), a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork', 22](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    remap_by_types(objs, "e", TEvent, s)
+
+    assert param_1_capture == ("fork", 22)
 
 
 def test_index_callback_on_method():

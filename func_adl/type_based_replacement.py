@@ -658,10 +658,7 @@ def remap_by_types(
                 )
 
             # Get the parameters from the subscript
-            if isinstance(slice, ast.Constant):
-                parameters = slice.value
-            else:
-                raise ValueError("yikes")
+            parameters = ast.literal_eval(slice)
 
             # rebuild the expression, removing the slice operation and turning this into a
             # "normal" call.
