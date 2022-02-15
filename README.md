@@ -155,6 +155,8 @@ class Jet:
 
 Here, `param_1` will be called with set to `float`. Note that this means at the time when this is called the parameterized values must resolve to an actual value - they aren't converted to C++. In this case, the `my_callback` could inject `MetaData` to build a templated call to `getAttribute`. The tuple that `my_callback` returns is the same as for `add_md_for_type` above - except that the third parameter must return the return type of the call.
 
+If more than one argument is used (`j.getAttribute['float','int'])['moment0']`), then `param_1` is a tuple with two items.
+
 ### Function Definitions
 
 It is useful to have functions that can be called in the backend directly - or use a function call to artificially insert something into the `func_adl` query stream (like `MetaData`). For example, the C++ backend
