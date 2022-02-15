@@ -191,6 +191,22 @@ class CollectionClassInfo:
 _g_collection_classes: Dict[Type, CollectionClassInfo] = {}
 
 
+StreamItem = TypeVar("StreamItem")
+
+
+@dataclass
+class PropertyCallbackInfo(Generic[StreamItem]):
+    "Info for a property parameterized callback"
+
+    # Callback
+    callback: Callable[
+        [ObjectStream[StreamItem], ast.Call, Any], Tuple[ObjectStream[StreamItem], ast.Call, Type]
+    ]
+
+
+_g_parameterized_callbacks: Dict[property, PropertyCallbackInfo] = {}
+
+
 C_TYPE = TypeVar("C_TYPE")
 
 
@@ -205,9 +221,6 @@ def register_func_adl_os_collection(c: C_TYPE) -> C_TYPE:
     """
     _g_collection_classes[c] = CollectionClassInfo(c)
     return c
-
-
-StreamItem = TypeVar("StreamItem")
 
 
 @register_func_adl_os_collection
@@ -270,6 +283,47 @@ def func_adl_callback(
     def decorator(cls: C_TYPE) -> C_TYPE:
         cls._func_adl_type_info = callback  # type: ignore
         return cls
+
+    return decorator
+
+
+TProp = TypeVar("TProp")
+
+
+def func_adl_parameterized_call(
+    cb: Callable[
+        [ObjectStream[StreamItem], ast.Call, Any], Tuple[ObjectStream[StreamItem], ast.Call, Type]
+    ]
+) -> Callable[[TProp], TProp]:
+    """Mark a property access to be treated as a parameterized callback, with `cb` being called
+    when the callback is detected. The parameters from the slice operations are passed to the
+    callback, but removed from the AST.
+
+    ```python
+    jet.getAttribute[cpp_float]('my_attrib')
+    ```
+
+    Gets transformed to `jet.getAttribute('my_attrib')`, and then `cb` is called with the current
+    stream object (so `MetaData` can be added), the transformed ast (so it can be modified if
+    desired), and `cpp_float`.
+
+    The callback must return the updated stream, the updated (or not) ast, and the resulting type
+    from the call (like `float`).
+
+    Args:
+        cb (Callable[ [ObjectStream[StreamItem], ast.Call, Any],
+            Tuple[ObjectStream[StreamItem], ast.Call, Type] ]):
+            The callback to be invoked when this node is found in the ast.
+
+    Returns:
+        Callable[[TProp], TProp]: Decorator function to capture a property object.
+    """
+
+    def decorator(c: TProp) -> TProp:
+        if not isinstance(c, property):
+            raise ValueError(f"Parameterized methods must start with proper definition ({c})")
+        _g_parameterized_callbacks[c] = PropertyCallbackInfo(cb)
+        return c
 
     return decorator
 
@@ -585,6 +639,43 @@ def remap_by_types(
                     f"function {func_info.function.__name__} ({str(e)})"
                 ) from e
 
+        def process_paramaterized_function_call(
+            self,
+            node: ast.Call,
+            obj_type: Type,
+            attr_name: str,
+            slice: ast._SliceT,
+            func: ast.Attribute,
+        ) -> ast.Call:
+            "Process a obj.method[param, param, ...](args) style call"
+            # Fetch property, make sure it has info attached to it
+            prop = getattr(obj_type, attr_name)
+            callback_info = _g_parameterized_callbacks.get(prop, None)
+            if callback_info is None:
+                raise ValueError(
+                    f'Property "{obj_type}{attr_name}" was not decorated with '
+                    "func_adl_parameterize d_call. Malformed object or usage."
+                )
+
+            # Get the parameters from the subscript
+            if isinstance(slice, ast.Constant):
+                parameters = slice.value
+            else:
+                raise ValueError("yikes")
+
+            # rebuild the expression, removing the slice operation and turning this into a
+            # "normal" call.
+            t_node = ast.Call(func, node.args, node.keywords)
+
+            # Run the callback processing
+            r_stream, r_node, return_type = callback_info.callback(self.stream, t_node, parameters)
+            self._stream = r_stream
+
+            self._found_types[t_node] = return_type
+            self._found_types[node] = return_type
+
+            return r_node
+
         def visit_Call(self, node: ast.Call) -> ast.AST:
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Call)
@@ -596,6 +687,17 @@ def remap_by_types(
             elif isinstance(t_node.func, ast.Name):
                 if t_node.func.id in _global_functions:
                     t_node = self.process_function_call(t_node, _global_functions[t_node.func.id])
+            elif isinstance(t_node.func, ast.Subscript):
+                if isinstance(t_node.func.value, ast.Attribute):
+                    found_type = self.lookup_type(t_node.func.value.value)
+                    if found_type is not None:
+                        t_node = self.process_paramaterized_function_call(
+                            t_node,
+                            found_type,
+                            t_node.func.value.attr,
+                            t_node.func.slice,
+                            t_node.func.value,
+                        )
             return t_node
 
         def visit_Lambda(self, node: ast.Lambda) -> Any:
@@ -731,8 +833,9 @@ def reset_global_functions():
 
     Generally only used between tests.
     """
-    global _global_functions, _g_collection_classes
+    global _global_functions, _g_collection_classes, _g_parameterized_callbacks
     _global_functions = {}
     _load_default_global_functions()
     _g_collection_classes = {}
     _load_g_collection_classes()
+    _g_parameterized_callbacks = {}

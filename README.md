@@ -143,7 +143,7 @@ Note the `[float]` in the call to `getAttribute`. This can only happen if the pr
 
 ```python
 T = TypeVar('T')
-def my_callback(s: ObjectStream[T], a: ast.Call, param_1) -> Tuple[ObjectStream[T], ast.AST]:
+def my_callback(s: ObjectStream[T], a: ast.Call, param_1) -> Tuple[ObjectStream[T], ast.AST, Type]:
     ...
 
 class Jet:
@@ -153,7 +153,7 @@ class Jet:
         ...
 ```
 
-Here, `param_1` will be called with set to `float`. Note that this means at the time when this is called the parameterized values must resolve to an actual value - they aren't converted to C++. In this case, the `my_callback` could inject `MetaData` to build a templated call to `getAttribute`.
+Here, `param_1` will be called with set to `float`. Note that this means at the time when this is called the parameterized values must resolve to an actual value - they aren't converted to C++. In this case, the `my_callback` could inject `MetaData` to build a templated call to `getAttribute`. The tuple that `my_callback` returns is the same as for `add_md_for_type` above - except that the third parameter must return the return type of the call.
 
 ### Function Definitions
 
