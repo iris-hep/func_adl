@@ -674,6 +674,8 @@ def remap_by_types(
             self._stream = r_stream
 
             # Mark this ast with the fact we've updated it.
+            # TODO: Make sure this is done (and tested) for all aspects of the different
+            #       types of function calls (functions, regular methods, etc.)
             r_node._old_ast = node  # type: ignore
 
             self._found_types[r_node] = return_type
