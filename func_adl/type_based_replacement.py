@@ -639,7 +639,7 @@ def remap_by_types(
                     f"function {func_info.function.__name__} ({str(e)})"
                 ) from e
 
-        def process_paramaterized_function_call(
+        def process_paramaterized_method_call(
             self,
             node: ast.Call,
             obj_type: Type,
@@ -658,7 +658,10 @@ def remap_by_types(
                 )
 
             # Get the parameters from the subscript
-            parameters = ast.literal_eval(slice)
+            if isinstance(slice, ast.Index):
+                parameters = slice.value
+            else:
+                parameters = ast.literal_eval(slice)
 
             # rebuild the expression, removing the slice operation and turning this into a
             # "normal" call.
@@ -688,7 +691,7 @@ def remap_by_types(
                 if isinstance(t_node.func.value, ast.Attribute):
                     found_type = self.lookup_type(t_node.func.value.value)
                     if found_type is not None:
-                        t_node = self.process_paramaterized_function_call(
+                        t_node = self.process_paramaterized_method_call(
                             t_node,
                             found_type,
                             t_node.func.value.attr,
