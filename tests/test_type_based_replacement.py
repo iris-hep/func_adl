@@ -1,7 +1,7 @@
 import ast
 import copy
 import logging
-from typing import Any, Iterable, Tuple, Type, TypeVar, cast
+from typing import Any, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
 
@@ -299,6 +299,21 @@ def test_collection_with_default():
     assert expr_type == Iterable[Jet]
 
 
+def test_shortcut_nested_callback():
+    "When there is a simple return, like Where, make sure that lambdas inside the method are called"
+
+    s = ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)"))
+    assert ast.dump(new_objs.query_ast) == ast.dump(
+        ast_lambda("MetaData(e, {'t': 'track stuff'})")
+    )
+    assert expr_type == Iterable[TrackStuff]
+
+
 def test_collection_First(caplog):
     "A simple collection"
     caplog.set_level(logging.WARNING)
@@ -321,14 +336,14 @@ def test_collection_Custom_Method_int(caplog):
 
     @register_func_adl_os_collection
     class CustomCollection(ObjectStream[M]):
-        def __init__(self, a: ast.AST):
-            super().__init__(a)
+        def __init__(self, a: ast.AST, item_type: Optional[Type] = None):
+            super().__init__(a, item_type)
 
         def MyFirst(self) -> int:
             ...
 
     s = ast_lambda("e.Jets().MyFirst()")
-    objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()))
+    objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
     _, _, expr_type = remap_by_types(objs, "e", Event, s)
 
@@ -345,8 +360,8 @@ def test_collection_Custom_Method_multiple_args(caplog):
 
     @register_func_adl_os_collection
     class CustomCollection(ObjectStream[M]):
-        def __init__(self, a: ast.AST):
-            super().__init__(a)
+        def __init__(self, a: ast.AST, item_type=Any):
+            super().__init__(a, item_type)
 
         def MyFirst(self, arg1: int, arg2: int) -> int:
             ...
@@ -434,7 +449,7 @@ def test_collection_Where(caplog):
 
     new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
-    assert expr_type == ObjectStream[Jet]
+    assert expr_type == Iterable[Jet]
 
     assert len(caplog.text) == 0
 

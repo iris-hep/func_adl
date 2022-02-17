@@ -513,7 +513,7 @@ def remap_by_types(
                 call_node = fixup_ast_from_modifications(r.query_ast, call_node)
                 return call_node, Iterable[r.item_type]  # type: ignore
 
-            return call_node, type(r)
+            return call_node, r
 
         def process_method_call_on_type(
             self, m_name: str, node: ast.Call, obj_type: type
@@ -533,24 +533,33 @@ def remap_by_types(
             call_method_class, call_method = call_method_info
 
             # Fill in default arguments next. This might update the call site, and
-            # it will also get us any return annotation information.
+            # it will also get us any return annotation information. This annotation
+            # information may be a Generic, in which case the step after will resolve
+            # that generic (if possible).
             r_node, return_annotation_raw = _fill_in_default_arguments(call_method, node)
 
-            # Get back all the TypeVar's this guy has on it.
+            # Next, we need to figure out what the return type is. There are multiple
+            # ways, unfortunately, that we can get the return-type. We might be able to
+            # do simple type resolution, but we might also have to depend on call-backs to
+            # figure out what is going on.
+
             return_annotation = resolve_type_vars(
                 return_annotation_raw, obj_type, at_class=call_method_class
             )
 
-            # If we failed with simple type resolution here, then there is something
-            # more complex going on. For example, the return type depends on a lambda
-            # function (for example, the lambda function in the `Select` method).
-            if return_annotation is None and (get_origin(obj_type) in _g_collection_classes):
-                return self.process_method_call_on_stream_obj(
+            if get_origin(obj_type) in _g_collection_classes:
+                rtn_value = self.process_method_call_on_stream_obj(
                     _g_collection_classes[get_origin(obj_type)],
                     m_name,
-                    node,
+                    r_node,
                     get_args(obj_type)[0],
                 )
+                if rtn_value is not None:
+                    new_a, new_return_annotation = rtn_value
+                    r_node = new_a
+                    # TODO: Should this ever come back None or Any if rtn_value isn't None?
+                    if new_return_annotation is not None and new_return_annotation != Any:
+                        return_annotation = new_return_annotation
 
             # See if there is a call-back to process the call on the
             # object or the function
