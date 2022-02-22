@@ -300,7 +300,8 @@ def test_collection_with_default():
 
 
 def test_shortcut_nested_callback():
-    "When there is a simple return, like Where, make sure that lambdas inside the method are called"
+    """When there is a simple return, like Where, make sure that lambdas
+    inside the method are called"""
 
     s = ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
