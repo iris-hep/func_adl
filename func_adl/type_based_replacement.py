@@ -586,7 +586,7 @@ def remap_by_types(
 
                 r_result = self.process_method_call_on_type(r_node.func.attr, r_node, obj_type)
 
-                if r_result is None and is_iterable(obj_type):
+                if (r_result is None or r_result[1] is None) and is_iterable(obj_type):
                     # This could be a method call against one of the ObjectStream like
                     # classes. All these are wrapers around an item. So `obj_type` should
                     # be a sequence of some sort - of an item type.

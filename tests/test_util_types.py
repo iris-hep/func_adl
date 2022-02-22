@@ -1,6 +1,7 @@
 from typing import Any, Generic, Iterable, TypeVar
 
 import pytest
+
 from func_adl.util_types import (
     _resolve_type,
     build_type_dict_from_type,
@@ -27,6 +28,16 @@ def test_is_iter_inherited():
             return 5
 
     assert is_iterable(bogus)
+
+
+def test_is_iter_inherited_generic():
+    R = TypeVar("R")
+
+    class bogus(Iterable[R]):
+        def other_stuff(self):
+            return 5
+
+    assert is_iterable(bogus[int])
 
 
 def test_Any():

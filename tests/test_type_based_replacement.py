@@ -315,6 +315,29 @@ def test_shortcut_nested_callback():
     assert expr_type == Iterable[TrackStuff]
 
 
+def test_shortcut_2nested_callback():
+    """When there is a simple return, like Where, make sure that lambdas
+    inside the method are called, but double inside"""
+
+    s = ast_lambda(
+        "ds.Select(lambda e: e.TrackStuffs()).Select(lambda ts: ts.Where(lambda t: t.pt() > 10))"
+    )
+    objs = ObjectStream[Iterable[Event]](ast.Name(id="ds", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[Event], s)
+
+    assert ast.dump(new_s) == ast.dump(
+        ast_lambda(
+            "ds.Select(lambda e: e.TrackStuffs())"
+            ".Select(lambda ts: ts.Where(lambda t: t.pt() > 10))"
+        )
+    )
+    assert ast.dump(new_objs.query_ast) == ast.dump(
+        ast_lambda("MetaData(ds, {'t': 'track stuff'})")
+    )
+    assert expr_type == Iterable[Iterable[TrackStuff]]
+
+
 def test_collection_First(caplog):
     "A simple collection"
     caplog.set_level(logging.WARNING)

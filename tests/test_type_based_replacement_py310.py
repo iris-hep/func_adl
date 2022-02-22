@@ -3,9 +3,10 @@ from __future__ import annotations
 import ast
 import copy
 import logging
-from typing import Any, Iterable, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, Iterable, Tuple, Type, TypeVar, cast
 
 import pytest
+
 from func_adl import ObjectStream
 from func_adl.type_based_replacement import (
     func_adl_callable,
@@ -19,6 +20,20 @@ from func_adl.type_based_replacement import (
 # When 3.11 is the lowest version this file can be deleted.
 # THis makes sure that delayed type-hint resolution will work properly!
 #
+
+
+def add_track_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
+    s_update = s.MetaData({"t": "track stuff"})
+    return s_update, a
+
+
+@func_adl_callback(add_track_extra_info)
+class TrackStuff:
+    def pt(self) -> float:
+        ...
+
+    def eta(self) -> float:
+        ...
 
 
 class Track:
@@ -114,6 +129,9 @@ class Event:
         ...
 
     def Tracks(self) -> Iterable[Track]:
+        ...
+
+    def TrackStuffs(self) -> Iterable[TrackStuff]:
         ...
 
     def EventNumber(self) -> int:
@@ -266,6 +284,69 @@ def test_collection_with_default():
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
     assert expr_type == Iterable[Jet]
+
+
+def test_shortcut_2nested_callback():
+    """When there is a simple return, like Where, make sure that lambdas
+    inside the method are called, but double inside"""
+
+    s = ast_lambda(
+        "ds.Select(lambda e: e.TrackStuffs()).Select(lambda ts: ts.Where(lambda t: t.pt() > 10))"
+    )
+    objs = ObjectStream[Iterable[Event]](ast.Name(id="ds", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[Event], s)
+
+    assert ast.dump(new_s) == ast.dump(
+        ast_lambda(
+            "ds.Select(lambda e: e.TrackStuffs())"
+            ".Select(lambda ts: ts.Where(lambda t: t.pt() > 10))"
+        )
+    )
+    assert ast.dump(new_objs.query_ast) == ast.dump(
+        ast_lambda("MetaData(ds, {'t': 'track stuff'})")
+    )
+    assert expr_type == Iterable[Iterable[TrackStuff]]
+
+
+R = TypeVar("R")
+Result = TypeVar("Result")
+
+
+class _itsb_FADLStream(Iterable[R]):
+    def Select(self, x: Callable[[R], Result]) -> _itsb_FADLStream[Result]:
+        ...
+
+
+class _itsb_MyTrack:
+    def pt(self) -> float:
+        ...
+
+
+def test_shortcut_nested_with_iterable_subclass():
+    """When there is a simple return, like Where, make sure that lambdas
+    inside the method are called"""
+
+    class MyEvent:
+        def MyTracks(self) -> _itsb_FADLStream[_itsb_MyTrack]:
+            ...
+
+    s = ast_lambda(
+        "ds.Select(lambda e: e.MyTracks()).Select(lambda ts: ts.Select(lambda t: t.pt()))"
+    )
+    objs = ObjectStream[Iterable[MyEvent]](ast.Name(id="ds", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[MyEvent], s)
+
+    assert ast.dump(new_s) == ast.dump(
+        ast_lambda(
+            "ds.Select(lambda e: e.MyTracks()).Select(lambda ts: ts.Select(lambda t: t.pt()))"
+        )
+    )
+    # assert ast.dump(new_objs.query_ast) == ast.dump(
+    #     ast_lambda("MetaData(e, {'t': 'track stuff'})")
+    # )
+    assert expr_type == Iterable[Iterable[float]]
 
 
 def test_method_on_collection():
