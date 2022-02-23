@@ -10,6 +10,7 @@
         "backends",
         "bdist",
         "codecov",
+        "consts",
         "databanks",
         "dataframes",
         "Dlib",
