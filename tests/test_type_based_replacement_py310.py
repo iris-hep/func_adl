@@ -251,6 +251,12 @@ def test_subscript_any():
     return_type_test("e[0]", Any, Any)
 
 
+def test_unknown_name(caplog):
+    return_type_test("e+cpp_any", Any, Any)
+
+    assert "cpp_any" in caplog.text
+
+
 def test_collection():
     "A simple collection"
     s = ast_lambda("e.Jets('default')")
