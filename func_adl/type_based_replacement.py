@@ -191,6 +191,22 @@ class CollectionClassInfo:
 _g_collection_classes: Dict[Type, CollectionClassInfo] = {}
 
 
+StreamItem = TypeVar("StreamItem")
+
+
+@dataclass
+class PropertyCallbackInfo(Generic[StreamItem]):
+    "Info for a property parameterized callback"
+
+    # Callback
+    callback: Callable[
+        [ObjectStream[StreamItem], ast.Call, Any], Tuple[ObjectStream[StreamItem], ast.Call, Type]
+    ]
+
+
+_g_parameterized_callbacks: Dict[property, PropertyCallbackInfo] = {}
+
+
 C_TYPE = TypeVar("C_TYPE")
 
 
@@ -205,9 +221,6 @@ def register_func_adl_os_collection(c: C_TYPE) -> C_TYPE:
     """
     _g_collection_classes[c] = CollectionClassInfo(c)
     return c
-
-
-StreamItem = TypeVar("StreamItem")
 
 
 @register_func_adl_os_collection
@@ -270,6 +283,47 @@ def func_adl_callback(
     def decorator(cls: C_TYPE) -> C_TYPE:
         cls._func_adl_type_info = callback  # type: ignore
         return cls
+
+    return decorator
+
+
+TProp = TypeVar("TProp")
+
+
+def func_adl_parameterized_call(
+    cb: Callable[
+        [ObjectStream[StreamItem], ast.Call, Any], Tuple[ObjectStream[StreamItem], ast.Call, Type]
+    ]
+) -> Callable[[TProp], TProp]:
+    """Mark a property access to be treated as a parameterized callback, with `cb` being called
+    when the callback is detected. The parameters from the slice operations are passed to the
+    callback, but removed from the AST.
+
+    ```python
+    jet.getAttribute[cpp_float]('my_attrib')
+    ```
+
+    Gets transformed to `jet.getAttribute('my_attrib')`, and then `cb` is called with the current
+    stream object (so `MetaData` can be added), the transformed ast (so it can be modified if
+    desired), and `cpp_float`.
+
+    The callback must return the updated stream, the updated (or not) ast, and the resulting type
+    from the call (like `float`).
+
+    Args:
+        cb (Callable[ [ObjectStream[StreamItem], ast.Call, Any],
+            Tuple[ObjectStream[StreamItem], ast.Call, Type] ]):
+            The callback to be invoked when this node is found in the ast.
+
+    Returns:
+        Callable[[TProp], TProp]: Decorator function to capture a property object.
+    """
+
+    def decorator(c: TProp) -> TProp:
+        if not isinstance(c, property):
+            raise ValueError(f"Parameterized methods must start with proper definition ({c})")
+        _g_parameterized_callbacks[c] = PropertyCallbackInfo(cb)
+        return c
 
     return decorator
 
@@ -365,6 +419,7 @@ def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Cal
             n_old_args = len(orig_ast.args)
             for a in node.args[n_old_args:]:
                 orig_ast.args.append(a)
+            orig_ast.func = node.func
 
     fixer = arg_fixer(original_ast)
     fixer.visit(transformed_ast)
@@ -457,7 +512,8 @@ def remap_by_types(
                 scan_for_metadata(r.query_ast, add_md)
                 call_node = fixup_ast_from_modifications(r.query_ast, call_node)
                 return call_node, Iterable[r.item_type]  # type: ignore
-            return call_node, type(r)
+
+            return call_node, r
 
         def process_method_call_on_type(
             self, m_name: str, node: ast.Call, obj_type: type
@@ -477,24 +533,33 @@ def remap_by_types(
             call_method_class, call_method = call_method_info
 
             # Fill in default arguments next. This might update the call site, and
-            # it will also get us any return annotation information.
+            # it will also get us any return annotation information. This annotation
+            # information may be a Generic, in which case the step after will resolve
+            # that generic (if possible).
             r_node, return_annotation_raw = _fill_in_default_arguments(call_method, node)
 
-            # Get back all the TypeVar's this guy has on it.
+            # Next, we need to figure out what the return type is. There are multiple
+            # ways, unfortunately, that we can get the return-type. We might be able to
+            # do simple type resolution, but we might also have to depend on call-backs to
+            # figure out what is going on.
+
             return_annotation = resolve_type_vars(
                 return_annotation_raw, obj_type, at_class=call_method_class
             )
 
-            # If we failed with simple type resolution here, then there is something
-            # more complex going on. For example, the return type depends on a lambda
-            # function (for example, the lambda function in the `Select` method).
-            if return_annotation is None and (get_origin(obj_type) in _g_collection_classes):
-                return self.process_method_call_on_stream_obj(
+            if get_origin(obj_type) in _g_collection_classes:
+                rtn_value = self.process_method_call_on_stream_obj(
                     _g_collection_classes[get_origin(obj_type)],
                     m_name,
-                    node,
+                    r_node,
                     get_args(obj_type)[0],
                 )
+                if rtn_value is not None:
+                    new_a, new_return_annotation = rtn_value
+                    r_node = new_a
+                    # TODO: Should this ever come back None or Any if rtn_value isn't None?
+                    if new_return_annotation is not None and new_return_annotation != Any:
+                        return_annotation = new_return_annotation
 
             # See if there is a call-back to process the call on the
             # object or the function
@@ -521,7 +586,7 @@ def remap_by_types(
 
                 r_result = self.process_method_call_on_type(r_node.func.attr, r_node, obj_type)
 
-                if r_result is None and is_iterable(obj_type):
+                if (r_result is None or r_result[1] is None) and is_iterable(obj_type):
                     # This could be a method call against one of the ObjectStream like
                     # classes. All these are wrapers around an item. So `obj_type` should
                     # be a sequence of some sort - of an item type.
@@ -585,6 +650,48 @@ def remap_by_types(
                     f"function {func_info.function.__name__} ({str(e)})"
                 ) from e
 
+        def process_paramaterized_method_call(
+            self,
+            node: ast.Call,
+            obj_type: Type,
+            attr_name: str,
+            slice: ast._SliceT,
+            func: ast.Attribute,
+        ) -> ast.Call:
+            "Process a obj.method[param, param, ...](args) style call"
+            # Fetch property, make sure it has info attached to it
+            prop = getattr(obj_type, attr_name)
+            callback_info = _g_parameterized_callbacks.get(prop, None)
+            if callback_info is None:
+                raise ValueError(
+                    f'Property "{obj_type}{attr_name}" was not decorated with '
+                    "func_adl_parameterize d_call. Malformed object or usage."
+                )
+
+            # Get the parameters from the subscript
+            if isinstance(slice, ast.Index):
+                parameters = ast.literal_eval(slice.value)  # type: ignore
+            else:
+                parameters = ast.literal_eval(slice)
+
+            # rebuild the expression, removing the slice operation and turning this into a
+            # "normal" call.
+            t_node = ast.Call(func, node.args, node.keywords)
+
+            # Run the callback processing
+            r_stream, r_node, return_type = callback_info.callback(self.stream, t_node, parameters)
+            self._stream = r_stream
+
+            # Mark this ast with the fact we've updated it.
+            # TODO: Make sure this is done (and tested) for all aspects of the different
+            #       types of function calls (functions, regular methods, etc.)
+            r_node._old_ast = node  # type: ignore
+
+            self._found_types[r_node] = return_type
+            self._found_types[node] = return_type
+
+            return r_node
+
         def visit_Call(self, node: ast.Call) -> ast.AST:
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Call)
@@ -596,6 +703,17 @@ def remap_by_types(
             elif isinstance(t_node.func, ast.Name):
                 if t_node.func.id in _global_functions:
                     t_node = self.process_function_call(t_node, _global_functions[t_node.func.id])
+            elif isinstance(t_node.func, ast.Subscript):
+                if isinstance(t_node.func.value, ast.Attribute):
+                    found_type = self.lookup_type(t_node.func.value.value)
+                    if found_type is not None:
+                        t_node = self.process_paramaterized_method_call(
+                            t_node,
+                            found_type,
+                            t_node.func.value.attr,
+                            t_node.func.slice,
+                            t_node.func.value,
+                        )
             return t_node
 
         def visit_Lambda(self, node: ast.Lambda) -> Any:
@@ -731,8 +849,9 @@ def reset_global_functions():
 
     Generally only used between tests.
     """
-    global _global_functions, _g_collection_classes
+    global _global_functions, _g_collection_classes, _g_parameterized_callbacks
     _global_functions = {}
     _load_default_global_functions()
     _g_collection_classes = {}
     _load_g_collection_classes()
+    _g_parameterized_callbacks = {}

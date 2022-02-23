@@ -271,6 +271,22 @@ def test_parse_lambda_capture():
     assert ast.dump(r) == ast.dump(r_true)
 
 
+g_cut_value = 30
+
+
+def test_parse_lambda_capture_nested_global():
+    r = parse_as_ast(lambda x: (lambda y: y > g_cut_value)(x))
+    r_true = parse_as_ast(lambda x: (lambda y: y > 30)(x))
+    assert ast.dump(r) == ast.dump(r_true)
+
+
+def test_parse_lambda_capture_nested_local():
+    cut_value = 30
+    r = parse_as_ast(lambda x: (lambda y: y > cut_value)(x))
+    r_true = parse_as_ast(lambda x: (lambda y: y > 30)(x))
+    assert ast.dump(r) == ast.dump(r_true)
+
+
 def test_parse_simple_func():
     "A oneline function defined at local scope"
 

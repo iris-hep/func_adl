@@ -259,6 +259,26 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         return node
 
 
+def global_getclosurevars(f: Callable) -> inspect.ClosureVars:
+    """Grab the closure over all passed function. Add all known global
+    variables in as well.
+
+    Args:
+        f (Callable): The function pointer
+
+    Returns:
+        inspect.ClosureVars: Standard thing returned from `inspect.getclosurevars`,
+            with the global variables added into it.
+    """
+    cv = inspect.getclosurevars(f)
+
+    # Now, add all the globals that we might know about in case they are also
+    # referenced inside this a nested lambda.
+    cv.globals.update(f.__globals__)  # type: ignore
+
+    return cv
+
+
 def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     r"""Return an AST for a lambda function from several sources.
 
@@ -328,7 +348,7 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
                 raise ValueError(f"Unable to recover source for function {ast_source}.")
 
         # Since this is a function in python, we can look for lambda capture.
-        call_args = inspect.getclosurevars(ast_source)
+        call_args = global_getclosurevars(ast_source)
 
         return _rewrite_captured_vars(call_args).visit(lda)
 

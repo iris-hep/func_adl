@@ -1,13 +1,15 @@
 import ast
 import copy
 import logging
-from typing import Any, Iterable, Tuple, Type, TypeVar, cast
+from typing import Any, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
+
 from func_adl import ObjectStream
 from func_adl.type_based_replacement import (
     func_adl_callable,
     func_adl_callback,
+    func_adl_parameterized_call,
     register_func_adl_os_collection,
     remap_by_types,
     remap_from_lambda,
@@ -297,6 +299,45 @@ def test_collection_with_default():
     assert expr_type == Iterable[Jet]
 
 
+def test_shortcut_nested_callback():
+    """When there is a simple return, like Where, make sure that lambdas
+    inside the method are called"""
+
+    s = ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)"))
+    assert ast.dump(new_objs.query_ast) == ast.dump(
+        ast_lambda("MetaData(e, {'t': 'track stuff'})")
+    )
+    assert expr_type == Iterable[TrackStuff]
+
+
+def test_shortcut_2nested_callback():
+    """When there is a simple return, like Where, make sure that lambdas
+    inside the method are called, but double inside"""
+
+    s = ast_lambda(
+        "ds.Select(lambda e: e.TrackStuffs()).Select(lambda ts: ts.Where(lambda t: t.pt() > 10))"
+    )
+    objs = ObjectStream[Iterable[Event]](ast.Name(id="ds", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[Event], s)
+
+    assert ast.dump(new_s) == ast.dump(
+        ast_lambda(
+            "ds.Select(lambda e: e.TrackStuffs())"
+            ".Select(lambda ts: ts.Where(lambda t: t.pt() > 10))"
+        )
+    )
+    assert ast.dump(new_objs.query_ast) == ast.dump(
+        ast_lambda("MetaData(ds, {'t': 'track stuff'})")
+    )
+    assert expr_type == Iterable[Iterable[TrackStuff]]
+
+
 def test_collection_First(caplog):
     "A simple collection"
     caplog.set_level(logging.WARNING)
@@ -319,14 +360,14 @@ def test_collection_Custom_Method_int(caplog):
 
     @register_func_adl_os_collection
     class CustomCollection(ObjectStream[M]):
-        def __init__(self, a: ast.AST):
-            super().__init__(a)
+        def __init__(self, a: ast.AST, item_type: Optional[Type] = None):
+            super().__init__(a, item_type)
 
         def MyFirst(self) -> int:
             ...
 
     s = ast_lambda("e.Jets().MyFirst()")
-    objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()))
+    objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
     _, _, expr_type = remap_by_types(objs, "e", Event, s)
 
@@ -343,8 +384,8 @@ def test_collection_Custom_Method_multiple_args(caplog):
 
     @register_func_adl_os_collection
     class CustomCollection(ObjectStream[M]):
-        def __init__(self, a: ast.AST):
-            super().__init__(a)
+        def __init__(self, a: ast.AST, item_type=Any):
+            super().__init__(a, item_type)
 
         def MyFirst(self, arg1: int, arg2: int) -> int:
             ...
@@ -432,7 +473,7 @@ def test_collection_Where(caplog):
 
     new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
-    assert expr_type == ObjectStream[Jet]
+    assert expr_type == Iterable[Jet]
 
     assert len(caplog.text) == 0
 
@@ -743,3 +784,198 @@ def test_remap_lambda_subclass():
     assert ast.dump(new_s) == ast.dump(ast_lambda("lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
     assert rtn_type == Iterable[Jet]
+
+
+def test_index_callback_1arg():
+    "Indexed callback - make sure arg is passed correctly"
+
+    param_1_capture = None
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        nonlocal param_1_capture
+        param_1_capture = param_1
+        return (s.MetaData({"k": "stuff"}), a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork'](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", TEvent, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.info(55)"))
+    assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'k': 'stuff'})"))
+    assert expr_type == float
+    assert param_1_capture == "fork"
+
+
+def test_index_callback_2arg():
+    "Indexed callback - make sure 2 args are passed correctly"
+
+    param_1_capture = None
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        nonlocal param_1_capture
+        param_1_capture = param_1
+        return (s.MetaData({"k": "stuff"}), a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork', 22](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    remap_by_types(objs, "e", TEvent, s)
+
+    assert param_1_capture == ("fork", 22)
+
+
+def test_index_callback_modify_ast():
+    "Indexed callback - make ast can be correctly modified"
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        new_a = copy.copy(a)
+        assert isinstance(a.func, ast.Attribute)
+        new_a.func = ast.Attribute(value=a.func.value, attr="dude", ctx=a.func.ctx)
+
+        return (s, new_a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork'](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    _, new_s, _ = remap_by_types(objs, "e", TEvent, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.dude(55)"))
+
+
+def test_index_callback_modify_ast_nested():
+    "Indexed callback - make ast can be correctly modified when nested in a Select"
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        new_a = copy.copy(a)
+        assert isinstance(a.func, ast.Attribute)
+        new_a.func = ast.Attribute(value=a.func.value, attr="dude", ctx=a.func.ctx)
+
+        return (s, new_a, float)
+
+    class MyJet:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    class TEvent:
+        def Jets(self) -> Iterable[MyJet]:
+            ...
+
+    s = ast_lambda("e.Jets().Select(lambda j: j.info['fork'](55))")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    _, new_s, _ = remap_by_types(objs, "e", TEvent, s)
+
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets().Select(lambda j: j.dude(55))"))
+
+
+def test_index_callback_on_method():
+    "Add the decorator to the wrong type of thing."
+
+    param_1_capture = None
+
+    with pytest.raises(ValueError) as e:
+
+        def my_callback(
+            s: ObjectStream[T], a: ast.Call, param_1: str
+        ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+            nonlocal param_1_capture
+            param_1_capture = param_1
+            return (s.MetaData({"k": "stuff"}), a, float)
+
+        class TEvent:
+            @func_adl_parameterized_call(my_callback)
+            def info(self):
+                ...
+
+    assert "info" in str(e)
+
+
+def test_index_callback_bad_prop():
+    "Indexed callback - make sure arg is passed correctly"
+
+    param_1_capture = None
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        nonlocal param_1_capture
+        param_1_capture = param_1
+        return (s.MetaData({"k": "stuff"}), a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.infoo['fork'](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+    with pytest.raises(AttributeError) as e:
+        remap_by_types(objs, "e", TEvent, s)
+
+    assert "infoo" in str(e)
+    assert "TEvent" in str(e)
+
+
+def test_index_callback_prop_not_dec():
+    "Indexed callback - make sure arg is passed correctly"
+
+    class TEvent:
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork'](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+    with pytest.raises(ValueError) as e:
+        remap_by_types(objs, "e", TEvent, s)
+
+    assert "info" in str(e)
+    assert "TEvent" in str(e)
+
+
+def test_index_callback_prop_index_bad():
+    "Indexed callback - make sure arg is passed correctly"
+
+    class TEvent:
+        @property
+        def info(self):
+            ...
+
+    s = ast_lambda("e.info['fork':'dork'](55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+    with pytest.raises(ValueError) as e:
+        remap_by_types(objs, "e", TEvent, s)
+
+    assert "info" in str(e)
+    assert "TEvent" in str(e)
+    assert "index" in str(e)
