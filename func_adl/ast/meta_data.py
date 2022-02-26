@@ -39,7 +39,6 @@ class _extract_metadata(FuncADLNodeTransformer):
             self._metadata.append(ast.literal_eval(node.args[1]))
             return self.visit(node.args[0])
         return super().visit_Call(node)
-        return super().visit_Call(node)
 
 
 def extract_metadata(a: ast.AST) -> Tuple[ast.AST, List[Dict[str, str]]]:
