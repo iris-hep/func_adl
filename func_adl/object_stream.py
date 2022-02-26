@@ -214,7 +214,9 @@ class ObjectStream(Generic[T]):
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
         )
 
-    def AsROOTTTree(self, filename, treename, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
+    def AsROOTTTree(
+        self, filename: str, treename: str, columns: Union[str, List[str]] = []
+    ) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -296,7 +298,7 @@ class ObjectStream(Generic[T]):
         )
 
     def _get_executor(
-        self, executor: Callable[[ast.AST, Optional[str]], Awaitable[Any]] = None
+        self, executor: Optional[Callable[[ast.AST, Optional[str]], Awaitable[Any]]] = None
     ) -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:
         r"""
         Returns an executor that can be used to run this.
@@ -322,7 +324,9 @@ class ObjectStream(Generic[T]):
         return getattr(node, executor_attr_name)
 
     async def value_async(
-        self, executor: Callable[[ast.AST, Optional[str]], Any] = None, title: Optional[str] = None
+        self,
+        executor: Optional[Callable[[ast.AST, Optional[str]], Any]] = None,
+        title: Optional[str] = None,
     ) -> Any:
         r"""
         Evaluate the ObjectStream computation graph. Tracks back to the source dataset to
