@@ -142,10 +142,64 @@ def test_metadata():
         .MetaData({"one": "two", "two": "three"})
         .SelectMany("lambda e: e.jets()")
         .Select("lambda j: j.pT()")
+        .value()
+    )
+    assert isinstance(r, ast.AST)
+
+
+def test_query_metadata():
+    r = (
+        my_event()
+        .QMetaData({"one": "two", "two": "three"})
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .value()
+    )
+    assert isinstance(r, ast.AST)
+
+
+def test_query_metadata_dup(caplog):
+    r = (
+        my_event()
+        .QMetaData({"one": "two", "two": "three"})
+        .QMetaData({"one": "two", "two": "three"})
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .value()
+    )
+    assert isinstance(r, ast.AST)
+    assert len(caplog.text) == 0
+
+
+def test_query_metadata_dup_update(caplog):
+    r = (
+        my_event()
+        .QMetaData({"one": "two", "two": "three"})
+        .QMetaData({"one": "twoo", "two": "three"})
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
         .AsROOTTTree("junk.root", "analysis", "jetPT")
         .value()
     )
     assert isinstance(r, ast.AST)
+    assert "one" in caplog.text
+    assert "twoo" in caplog.text
+    assert "two" in caplog.text
+
+
+def test_query_metadata_composable(caplog):
+    r_base = my_event().QMetaData({"one": "1"})
+
+    # Each of these is a different base and should not interfear.
+    r1 = r_base.QMetaData({"two": "2"})
+    r2 = r_base.QMetaData({"two": "2+"})
+
+    from func_adl.ast.meta_data import lookup_query_metadata
+
+    assert lookup_query_metadata(r1, "two") == "2"
+    assert lookup_query_metadata(r2, "two") == "2+"
+
+    assert len(caplog.text) == 0
 
 
 def test_nested_query_rendered_correctly():

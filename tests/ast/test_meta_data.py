@@ -1,6 +1,8 @@
 import ast
-from func_adl.ast.meta_data import extract_metadata
-from typing import Dict, List
+from typing import Dict, List, Optional
+
+from func_adl import EventDataset
+from func_adl.ast.meta_data import extract_metadata, lookup_query_metadata
 
 
 def compare_metadata(with_metadata: str, without_metadata: str) -> List[Dict[str, str]]:
@@ -41,3 +43,42 @@ def test_two_metadata():
     assert len(meta) == 2
     assert meta[0] == {"hi": "there"}
     assert meta[1] == {"fork": "dude"}
+
+
+class my_event(EventDataset):
+    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+        raise NotImplementedError()
+
+
+def test_query_metadata_found():
+    r = (
+        my_event()
+        .QMetaData({"one": "two", "two": "three"})
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+    )
+
+    assert lookup_query_metadata(r, "one") == "two"
+
+
+def test_query_metadata_not_found():
+    r = (
+        my_event()
+        .QMetaData({"one": "two", "two": "three"})
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+    )
+
+    assert lookup_query_metadata(r, "three") is None
+
+
+def test_query_metadata_burried():
+    r = (
+        my_event()
+        .QMetaData({"three": "forks"})
+        .SelectMany("lambda e: e.jets()")
+        .QMetaData({"one": "two", "two": "three"})
+        .Select("lambda j: j.pT()")
+    )
+
+    assert lookup_query_metadata(r, "three") == "forks"

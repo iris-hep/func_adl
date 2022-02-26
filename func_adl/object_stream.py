@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import ast
+import logging
 from typing import (
     Any,
     Awaitable,
@@ -161,6 +163,39 @@ class ObjectStream(Generic[T]):
         return ObjectStream[T](
             function_call("MetaData", [self._q_ast, as_ast(metadata)]), self.item_type
         )
+
+    def QMetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
+        """Add query metadata to the current object stream.
+
+        - Metadata is never transmitted to any back end
+        - Metadata is per-query, not per sample.
+
+        Warnings are issued if metadata is overwriting metadata.
+
+        Args:
+            metadata (Dict[str, Any]): Metadata to be used later
+
+        Returns:
+            ObjectStream[T]: The object stream, with metadata attached
+        """
+        from .ast.meta_data import lookup_query_metadata
+
+        first = True
+        base_ast = self.query_ast
+        for k, v in metadata.items():
+            found_md = lookup_query_metadata(self, k)
+            if found_md is None:
+                if first:
+                    first = False
+                    base_ast = self.MetaData({}).query_ast
+                    base_ast._q_metadata = {}  # type: ignore
+                base_ast._q_metadata[k] = v  # type: ignore
+            elif found_md != v:
+                logging.getLogger(__name__).warning(
+                    f'Overwriting metadata "{k}" from its old value of "{found_md}" to "{v}"'
+                )
+
+        return ObjectStream[T](base_ast, self.item_type)
 
     def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
