@@ -1,6 +1,8 @@
 import ast
+from typing import Any, Dict, List, Optional, Tuple
+
 from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer
-from typing import Dict, List, Tuple
+from func_adl.object_stream import ObjectStream
 
 
 class _extract_metadata(FuncADLNodeTransformer):
@@ -37,7 +39,6 @@ class _extract_metadata(FuncADLNodeTransformer):
             self._metadata.append(ast.literal_eval(node.args[1]))
             return self.visit(node.args[0])
         return super().visit_Call(node)
-        return super().visit_Call(node)
 
 
 def extract_metadata(a: ast.AST) -> Tuple[ast.AST, List[Dict[str, str]]]:
@@ -54,3 +55,60 @@ def extract_metadata(a: ast.AST) -> Tuple[ast.AST, List[Dict[str, str]]]:
     e = _extract_metadata()
     a_new = e.visit(a)
     return a_new, e.metadata
+
+
+def remove_empty_metadata(a: ast.AST) -> ast.AST:
+    """Returns a new ast with any empty `MetaData` clauses removed.
+
+    Args:
+        a (ast.AST): The AST of the query to clean up.
+
+    Returns:
+        ast.AST: The cleaned up AST.
+    """
+
+    class _cleaner(ast.NodeTransformer):
+        def visit_Call(self, node: ast.Call):
+            n = self.generic_visit(node)
+            assert isinstance(n, ast.Call)
+            if isinstance(n.func, ast.Name) and n.func.id == "MetaData":
+                if len(n.args) == 2:
+                    d = ast.literal_eval(n.args[1])
+                    if isinstance(d, dict) and len(d) == 0:
+                        return self.visit(n.args[0])
+            return n
+
+    return _cleaner().visit(a)
+
+
+def lookup_query_metadata(q: ObjectStream, metadata_name: str) -> Optional[Any]:
+    """Walk back up the query tree to find metadata_name. Return `None` if not found.
+
+    Args:
+        q (ObjectStream): Object stream to walk back up.
+        metadata_name (str): Name of the metadata item we are looking for
+
+    Returns:
+        Optional[Any]: Either the metadata value or `None`.
+    """
+
+    class _finder(ast.NodeVisitor):
+        def __init__(self):
+            self.ds: Optional[ast.Call] = None
+            self._found = None
+
+        @property
+        def found(self) -> Optional[Any]:
+            return self._found
+
+        def generic_visit(self, node: ast.AST):
+            q_metadata = getattr(node, "_q_metadata", None)
+            if q_metadata is not None:
+                if metadata_name in q_metadata:
+                    self._found = q_metadata[metadata_name]
+            return super().generic_visit(node)
+
+    ds_f = _finder()
+    ds_f.visit(q.query_ast)
+
+    return ds_f.found

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import ast
+import logging
 from typing import (
     Any,
     Awaitable,
@@ -162,6 +164,39 @@ class ObjectStream(Generic[T]):
             function_call("MetaData", [self._q_ast, as_ast(metadata)]), self.item_type
         )
 
+    def QMetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
+        """Add query metadata to the current object stream.
+
+        - Metadata is never transmitted to any back end
+        - Metadata is per-query, not per sample.
+
+        Warnings are issued if metadata is overwriting metadata.
+
+        Args:
+            metadata (Dict[str, Any]): Metadata to be used later
+
+        Returns:
+            ObjectStream[T]: The object stream, with metadata attached
+        """
+        from .ast.meta_data import lookup_query_metadata
+
+        first = True
+        base_ast = self.query_ast
+        for k, v in metadata.items():
+            found_md = lookup_query_metadata(self, k)
+            if found_md is None:
+                if first:
+                    first = False
+                    base_ast = self.MetaData({}).query_ast
+                    base_ast._q_metadata = {}  # type: ignore
+                base_ast._q_metadata[k] = v  # type: ignore
+            elif found_md != v:
+                logging.getLogger(__name__).warning(
+                    f'Overwriting metadata "{k}" from its old value of "{found_md}" to "{v}"'
+                )
+
+        return ObjectStream[T](base_ast, self.item_type)
+
     def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
@@ -179,7 +214,9 @@ class ObjectStream(Generic[T]):
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
         )
 
-    def AsROOTTTree(self, filename, treename, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
+    def AsROOTTTree(
+        self, filename: str, treename: str, columns: Union[str, List[str]] = []
+    ) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return the sequence of items as a ROOT TTree. Each item in the ObjectStream
         will get one entry in the file. The items must be of types that the infrastructure
@@ -261,7 +298,7 @@ class ObjectStream(Generic[T]):
         )
 
     def _get_executor(
-        self, executor: Callable[[ast.AST, Optional[str]], Awaitable[Any]] = None
+        self, executor: Optional[Callable[[ast.AST, Optional[str]], Awaitable[Any]]] = None
     ) -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:
         r"""
         Returns an executor that can be used to run this.
@@ -287,7 +324,9 @@ class ObjectStream(Generic[T]):
         return getattr(node, executor_attr_name)
 
     async def value_async(
-        self, executor: Callable[[ast.AST, Optional[str]], Any] = None, title: Optional[str] = None
+        self,
+        executor: Optional[Callable[[ast.AST, Optional[str]], Any]] = None,
+        title: Optional[str] = None,
     ) -> Any:
         r"""
         Evaluate the ObjectStream computation graph. Tracks back to the source dataset to
@@ -316,6 +355,8 @@ class ObjectStream(Generic[T]):
         exe = self._get_executor(executor)
 
         # Run it
-        return await exe(self._q_ast, title)
+        from func_adl.ast.meta_data import remove_empty_metadata
+
+        return await exe(remove_empty_metadata(self._q_ast), title)
 
     value = make_sync(value_async)
