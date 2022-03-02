@@ -2,7 +2,11 @@ import ast
 from typing import Dict, List, Optional
 
 from func_adl import EventDataset
-from func_adl.ast.meta_data import extract_metadata, lookup_query_metadata
+from func_adl.ast.meta_data import (
+    extract_metadata,
+    lookup_query_metadata,
+    remove_empty_metadata,
+)
 
 
 def compare_metadata(with_metadata: str, without_metadata: str) -> List[Dict[str, str]]:
@@ -47,7 +51,7 @@ def test_two_metadata():
 
 class my_event(EventDataset):
     async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
-        raise NotImplementedError()
+        return a
 
 
 def test_query_metadata_found():
@@ -82,3 +86,13 @@ def test_query_metadata_burried():
     )
 
     assert lookup_query_metadata(r, "three") == "forks"
+
+
+def test_remove_empty_metadata_empty():
+    r = remove_empty_metadata(my_event().MetaData({}).value())
+    assert "MetaData" not in ast.dump(r)
+
+
+def test_remove_empty_metadata_not_empty():
+    r = remove_empty_metadata(my_event().MetaData({"hi": "there"}).value())
+    assert "MetaData" in ast.dump(r)

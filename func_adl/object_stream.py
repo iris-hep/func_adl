@@ -355,6 +355,8 @@ class ObjectStream(Generic[T]):
         exe = self._get_executor(executor)
 
         # Run it
-        return await exe(self._q_ast, title)
+        from func_adl.ast.meta_data import remove_empty_metadata
+
+        return await exe(remove_empty_metadata(self._q_ast), title)
 
     value = make_sync(value_async)

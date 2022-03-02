@@ -156,6 +156,7 @@ def test_query_metadata():
         .value()
     )
     assert isinstance(r, ast.AST)
+    assert "MetaData" not in ast.dump(r)
 
 
 def test_query_metadata_dup(caplog):
