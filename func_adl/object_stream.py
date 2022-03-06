@@ -193,7 +193,7 @@ class ObjectStream(Generic[T]):
         Returns:
             ObjectStream[T]: The object stream, with metadata attached
         """
-        from .ast.meta_data import lookup_query_metadata
+        from .meta_data import lookup_query_metadata
 
         first = True
         base_ast = self.query_ast
@@ -374,7 +374,7 @@ class ObjectStream(Generic[T]):
         exe = self._get_executor(executor)
 
         # Run it
-        from func_adl.ast.meta_data import remove_empty_metadata
+        from func_adl.meta_data import remove_empty_metadata
 
         return await exe(remove_empty_metadata(self._q_ast), title)
 
