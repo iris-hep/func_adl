@@ -34,7 +34,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
         ) -> ast.AST:
             """Translate a list comprehension or a generator to Select statements.
 
-            `[j.pt() for j in jets] -> Select(jets, lambda j: j.pt())`
+            `[j.pt() for j in jets] -> jets.Select(lambda j: j.pt())`
 
             Args:
                 lambda_body (ast.AST): The target of the lambda expression
@@ -60,15 +60,15 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 for a_if in c.ifs:
                     where_function = lambda_build(target.id, a_if)
                     source_collection = ast.Call(
-                        func=ast.Name(id="Where", ctx=ast.Load()),
-                        args=[source_collection, where_function],
+                        func=ast.Attribute(attr="Where", value=source_collection, ctx=ast.Load()),
+                        args=[where_function],
                         keywords=[],
                     )
 
                 lambda_function = lambda_build(target.id, lambda_body)
                 a = ast.Call(
-                    func=ast.Name("Select", ctx=ast.Load()),
-                    args=[source_collection, lambda_function],
+                    func=ast.Attribute(attr="Select", value=source_collection, ctx=ast.Load()),
+                    args=[lambda_function],
                     keywords=[],
                 )
 

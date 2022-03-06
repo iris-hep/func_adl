@@ -16,14 +16,14 @@ def test_resolve_listcomp():
     a = ast.parse("[j.pt() for j in jets]")
     a_new = resolve_syntatic_sugar(a)
 
-    assert ast.dump(ast.parse("Select(jets, lambda j: j.pt())")) == ast.dump(a_new)
+    assert ast.dump(ast.parse("jets.Select(lambda j: j.pt())")) == ast.dump(a_new)
 
 
 def test_resolve_generator():
     a = ast.parse("(j.pt() for j in jets)")
     a_new = resolve_syntatic_sugar(a)
 
-    assert ast.dump(ast.parse("Select(jets, lambda j: j.pt())")) == ast.dump(a_new)
+    assert ast.dump(ast.parse("jets.Select(lambda j: j.pt())")) == ast.dump(a_new)
 
 
 def test_resolve_listcomp_if():
@@ -31,7 +31,7 @@ def test_resolve_listcomp_if():
     a_new = resolve_syntatic_sugar(a)
 
     assert ast.dump(
-        ast.parse("Select(Where(jets, lambda j: j.pt() > 100), lambda j: j.pt())")
+        ast.parse("jets.Where(lambda j: j.pt() > 100).Select(lambda j: j.pt())")
     ) == ast.dump(a_new)
 
 
@@ -41,8 +41,8 @@ def test_resolve_listcomp_2ifs():
 
     assert ast.dump(
         ast.parse(
-            "Select(Where(Where(jets, lambda j: j.pt() > 100), lambda j: abs(j.eta()) < 2.4),"
-            "lambda j: j.pt())"
+            "jets.Where(lambda j: j.pt() > 100).Where(lambda j: abs(j.eta()) < 2.4)"
+            ".Select(lambda j: j.pt())"
         )
     ) == ast.dump(a_new)
 
@@ -52,7 +52,7 @@ def test_resolve_2generator():
     a_new = resolve_syntatic_sugar(a)
 
     assert ast.dump(
-        ast.parse("Select(jets, lambda j: Select(electrons, lambda e: j.pt()+e.pt()))")
+        ast.parse("jets.Select(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
     ) == ast.dump(a_new)
 
 
