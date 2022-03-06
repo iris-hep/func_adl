@@ -1,7 +1,7 @@
 import ast
 
 from astunparse import unparse
-from func_adl.ast.function_simplifier import FuncADLIndexError, simplify_chained_calls
+from func_adl.function_simplifier import FuncADLIndexError, simplify_chained_calls
 from tests.util_debug_ast import normalize_ast
 
 from .utils import reset_ast_counters, util_run_parse  # NOQA
