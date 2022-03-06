@@ -195,7 +195,7 @@ def test_query_metadata_composable(caplog):
     r1 = r_base.QMetaData({"two": "2"})
     r2 = r_base.QMetaData({"two": "2+"})
 
-    from func_adl.meta_data import lookup_query_metadata
+    from func_adl.ast.meta_data import lookup_query_metadata
 
     assert lookup_query_metadata(r1, "two") == "2"
     assert lookup_query_metadata(r2, "two") == "2+"

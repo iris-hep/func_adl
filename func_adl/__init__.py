@@ -1,11 +1,11 @@
 # flake8: noqa
 
 # Dataset accessors
+from .ast.meta_data import extract_metadata  # NOQA
 from .event_dataset import EventDataset, find_EventDataset
 
 # Extra LINQ-like functions
 from .functions import Range
-from .meta_data import extract_metadata  # NOQA
 
 # Main streaming object
 from .object_stream import ObjectStream

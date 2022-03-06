@@ -40,7 +40,7 @@ def _local_simplification(a: ast.Lambda) -> ast.Lambda:
     """Simplify the AST by removing unnecessary statements and
     syntatic sugar
     """
-    from func_adl.syntatic_sugar import resolve_syntatic_sugar
+    from func_adl.ast.syntatic_sugar import resolve_syntatic_sugar
 
     r = resolve_syntatic_sugar(a)
     assert isinstance(r, ast.Lambda), "resolve_syntatic_sugar must return a lambda"
@@ -193,7 +193,7 @@ class ObjectStream(Generic[T]):
         Returns:
             ObjectStream[T]: The object stream, with metadata attached
         """
-        from .meta_data import lookup_query_metadata
+        from .ast.meta_data import lookup_query_metadata
 
         first = True
         base_ast = self.query_ast
@@ -374,7 +374,7 @@ class ObjectStream(Generic[T]):
         exe = self._get_executor(executor)
 
         # Run it
-        from func_adl.meta_data import remove_empty_metadata
+        from func_adl.ast.meta_data import remove_empty_metadata
 
         return await exe(remove_empty_metadata(self._q_ast), title)
 

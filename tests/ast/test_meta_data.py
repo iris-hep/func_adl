@@ -2,7 +2,7 @@ import ast
 from typing import Dict, List, Optional
 
 from func_adl import EventDataset
-from func_adl.meta_data import (
+from func_adl.ast.meta_data import (
     extract_metadata,
     lookup_query_metadata,
     remove_empty_metadata,
