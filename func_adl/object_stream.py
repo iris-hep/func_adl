@@ -212,7 +212,9 @@ class ObjectStream(Generic[T]):
 
         return ObjectStream[T](base_ast, self.item_type)
 
-    def AsPandasDF(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
+    def AsPandasDF(
+        self, columns: Union[str, List[str]] = []
+    ) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return a pandas stream that contains one item, an pandas `DataFrame`.
         This `DataFrame` will contain all the data fed to it. Only non-array datatypes are
@@ -294,7 +296,9 @@ class ObjectStream(Generic[T]):
             function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)])
         )
 
-    def AsAwkwardArray(self, columns=[]) -> ObjectStream[ReturnedDataPlaceHolder]:
+    def AsAwkwardArray(
+        self, columns: Union[str, List[str]] = []
+    ) -> ObjectStream[ReturnedDataPlaceHolder]:
         r"""
         Return a pandas stream that contains one item, an `awkward` array, or dictionary of
         `awkward` arrays. This `awkward` will contain all the data fed to it.
