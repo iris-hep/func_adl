@@ -144,7 +144,7 @@ if sys.version_info >= (3, 9):
 
         return call_lambda
 
-elif sys.version_info == (3, 8):
+elif sys.version_info >= (3, 8):
 
     def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
         """
@@ -162,6 +162,7 @@ elif sys.version_info == (3, 8):
             args = [args]
 
         ast_args = ast.arguments(
+            posonlyargs=[],
             vararg=None,
             args=[ast.arg(arg=x, annotation=None, type_comment=None) for x in args],
             kwonlyargs=[],
