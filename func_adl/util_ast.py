@@ -121,7 +121,8 @@ if sys.version_info >= (3, 8):
         Given a named argument(s), and an expression, build a `Lambda` AST node.
 
         Args:
-            args:       the string names of the arguments to the lambda. May be a list or a single name
+            args:       the string names of the arguments to the lambda. May be a list or a
+                        single name
             l_expr:     An AST node that is the body of the lambda.
 
         Returns:
@@ -148,7 +149,8 @@ else:
         Given a named argument(s), and an expression, build a `Lambda` AST node.
 
         Args:
-            args:       the string names of the arguments to the lambda. May be a list or a single name
+            args:       the string names of the arguments to the lambda. May be a list or a
+                        single name
             l_expr:     An AST node that is the body of the lambda.
 
         Returns:
