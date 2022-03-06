@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import inspect
 import sys
@@ -114,24 +116,92 @@ def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module])
     return ast.Call(lambda_unwrap(lam), named_args, [])
 
 
-def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
-    """
-    Given a named argument(s), and an expression, build a `Lambda` AST node.
+if sys.version_info >= (3, 9):
 
-    Args:
-        args:       the string names of the arguments to the lambda. May be a list or a single name
-        l_expr:     An AST node that is the body of the lambda.
+    def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
+        """
+        Given a named argument(s), and an expression, build a `Lambda` AST node.
 
-    Returns:
-        The `Lambda` AST node.
-    """
-    if type(args) is str:
-        args = [args]
+        Args:
+            args:       the string names of the arguments to the lambda. May be a list or a
+                        single name
+            l_expr:     An AST node that is the body of the lambda.
 
-    ast_args = ast.arguments(args=[ast.arg(arg=x) for x in args])
-    call_lambda = ast.Lambda(args=ast_args, body=l_expr)
+        Returns:
+            The `Lambda` AST node.
+        """
+        if type(args) is str:
+            args = [args]
 
-    return call_lambda
+        ast_args = ast.arguments(
+            posonlyargs=[],
+            args=[ast.arg(arg=x) for x in args],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[],
+        )
+        call_lambda = ast.Lambda(args=ast_args, body=l_expr)
+
+        return call_lambda
+
+elif sys.version_info >= (3, 8):  # pragma: no cover
+
+    def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
+        """
+        Given a named argument(s), and an expression, build a `Lambda` AST node.
+
+        Args:
+            args:       the string names of the arguments to the lambda. May be a list or a
+                        single name
+            l_expr:     An AST node that is the body of the lambda.
+
+        Returns:
+            The `Lambda` AST node.
+        """
+        if type(args) is str:
+            args = [args]
+
+        ast_args = ast.arguments(
+            posonlyargs=[],
+            vararg=None,
+            args=[ast.arg(arg=x, annotation=None, type_comment=None) for x in args],
+            kwonlyargs=[],
+            kw_defaults=[],
+            kwarg=None,
+            defaults=[],
+        )
+        call_lambda = ast.Lambda(args=ast_args, body=l_expr)
+
+        return call_lambda
+
+else:  # pragma: no cover
+
+    def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
+        """
+        Given a named argument(s), and an expression, build a `Lambda` AST node.
+
+        Args:
+            args:       the string names of the arguments to the lambda. May be a list or a
+                        single name
+            l_expr:     An AST node that is the body of the lambda.
+
+        Returns:
+            The `Lambda` AST node.
+        """
+        if type(args) is str:
+            args = [args]
+
+        ast_args = ast.arguments(
+            vararg=None,
+            args=[ast.arg(arg=x, annotation=None) for x in args],
+            kwonlyargs=[],
+            kw_defaults=[],
+            kwarg=None,
+            defaults=[],
+        )
+        call_lambda = ast.Lambda(args=ast_args, body=l_expr)
+
+        return call_lambda
 
 
 def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:

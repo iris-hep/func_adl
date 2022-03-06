@@ -4,7 +4,11 @@ import copy
 from typing import List, Optional, Tuple, Union, cast
 
 from func_adl.ast.call_stack import argument_stack, stack_frame
-from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer, is_call_of, unpack_Call
+from func_adl.ast.func_adl_ast_utils import (
+    FuncADLNodeTransformer,
+    is_call_of,
+    unpack_Call,
+)
 from func_adl.util_ast import (
     function_call,
     lambda_body,
@@ -15,7 +19,6 @@ from func_adl.util_ast import (
     lambda_is_true,
     lambda_unwrap,
 )
-
 
 argument_var_counter = 0
 
@@ -389,8 +392,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         method_name = node.func.attr
         method_args = node.args
         method_keywords = (
-            node.keywords if hasattr(node, "keywords") else node.kwargs
-        )  # type: ignore - Working around python 3.7vs3.8
+            node.keywords if hasattr(node, "keywords") else node.kwargs  # type: ignore
+        )
 
         assert isinstance(node.func.value, ast.Call)
         seq = node.func.value.args[0]
@@ -551,7 +554,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         not get reused'
         """
         if is_call_of(node.value, "First"):
-            return self.visit_Attribute_Of_First(node.value.args[0], node.attr)
+            return self.visit_Attribute_Of_First(node.value.args[0], node.attr)  # type: ignore
 
         visited_value = self.visit(node.value)
         if isinstance(visited_value, ast.Dict):
