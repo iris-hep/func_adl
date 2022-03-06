@@ -144,7 +144,7 @@ if sys.version_info >= (3, 9):
 
         return call_lambda
 
-elif sys.version_info >= (3, 8):
+elif sys.version_info >= (3, 8):  # pragma: no cover
 
     def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
         """
@@ -174,7 +174,7 @@ elif sys.version_info >= (3, 8):
 
         return call_lambda
 
-else:
+else:  # pragma: no cover
 
     def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
         """

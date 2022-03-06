@@ -38,7 +38,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 target = c.target
                 if not isinstance(target, ast.Name):
                     raise ValueError(
-                        f"Comprehension variable must be a name, but found {c}"
+                        f"Comprehension variable must be a name, but found {target}"
                         f" - {ast.unparse(node)}."
                     )
                 if c.is_async:
