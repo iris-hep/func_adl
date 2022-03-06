@@ -128,7 +128,13 @@ def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
     if type(args) is str:
         args = [args]
 
-    ast_args = ast.arguments(args=[ast.arg(arg=x) for x in args])
+    ast_args = ast.arguments(
+        posonlyargs=[],
+        args=[ast.arg(arg=x) for x in args],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[],
+    )
     call_lambda = ast.Lambda(args=ast_args, body=l_expr)
 
     return call_lambda
