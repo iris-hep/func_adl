@@ -33,6 +33,18 @@ good_met = good_met_expr.value()
 
 The cut will be applied at 40, because that was the value of `met_cut` when the `Where` function was called. This will also work for variables captured inside functions.
 
+## Syntatic Sugar
+
+There are several python expressions and idioms that are translated behind your back to `func_adl`. Note that these must occur inside one of the `ObjectStream` method's `lambda` functions like `Select`, `SelectMany`, or `Where`.
+
+|Name | Python Expression | `func_adl` Translation |
+--- | --- | --- |
+|List Comprehension | `[j.pt() for j in jets]` | `jets.Select(lambda j: j.pt())` |
+|List Comprehension | `[j.pt() for j in jets if abs(j.eta()) < 2.4]` | `jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt())` |
+|List Comprehension | `[j.pt()+e.pt() for j in jets for e in electrons]` | `jets.Select(lambda j: electrons.Select(lambda e: j.pt()+e.pt())` |
+
+Note: Everything that goes for a list comprehension also goes for a generator expression.
+
 ## Extensibility
 
 There are two several extensibility points:
