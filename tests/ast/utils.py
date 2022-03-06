@@ -2,12 +2,12 @@ import ast
 from typing import Tuple, cast
 
 import pytest
-from func_adl.function_simplifier import make_args_unique
+from func_adl.ast.function_simplifier import make_args_unique
 
 
 @pytest.fixture(autouse=True)
 def reset_ast_counters():
-    import func_adl.function_simplifier as fs
+    import func_adl.ast.function_simplifier as fs
 
     fs.argument_var_counter = 0
     yield

@@ -40,7 +40,7 @@ def _local_simplification(a: ast.Lambda) -> ast.Lambda:
     """Simplify the AST by removing unnecessary statements and
     syntatic sugar
     """
-    from func_adl.ast.syntatic_sugar import resolve_syntatic_sugar
+    from func_adl.syntatic_sugar import resolve_syntatic_sugar
 
     r = resolve_syntatic_sugar(a)
     assert isinstance(r, ast.Lambda), "resolve_syntatic_sugar must return a lambda"

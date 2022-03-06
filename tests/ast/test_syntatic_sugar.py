@@ -2,7 +2,7 @@ import ast
 
 import pytest
 
-from func_adl.ast.syntatic_sugar import resolve_syntatic_sugar
+from func_adl.syntatic_sugar import resolve_syntatic_sugar
 
 
 def test_resolve_normal_expression():
