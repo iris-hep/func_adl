@@ -142,6 +142,13 @@ def test_lambda_build_list_arg():
     assert isinstance(ln, ast.Lambda)
 
 
+def test_lambda_build_proper():
+    "Make sure we are building the ast right for the version of python we are in"
+    expr = ast.parse("x+1").body[0].value  # type: ignore
+    ln = lambda_build("x", expr)
+    assert ast.dump(ast.parse("lambda x: x+1").body[0].value) == ast.dump(ln)  # type: ignore
+
+
 def test_call_wrap_list_arg():
     ln = ast.parse("lambda x: x+1")
     c = lambda_call(["x"], ln)

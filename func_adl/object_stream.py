@@ -36,6 +36,17 @@ class ReturnedDataPlaceHolder:
     pass
 
 
+def _local_simplification(a: ast.Lambda) -> ast.Lambda:
+    """Simplify the AST by removing unnecessary statements and
+    syntatic sugar
+    """
+    from func_adl.ast.syntatic_sugar import resolve_syntatic_sugar
+
+    r = resolve_syntatic_sugar(a)
+    assert isinstance(r, ast.Lambda), "resolve_syntatic_sugar must return a lambda"
+    return r
+
+
 class ObjectStream(Generic[T]):
     r"""
     The objects can be events, jets, electrons, or just floats, or arrays of floats.
@@ -98,7 +109,9 @@ class ObjectStream(Generic[T]):
         """
         from func_adl.type_based_replacement import remap_from_lambda
 
-        n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(func))
+        n_stream, n_ast, rtn_type = remap_from_lambda(
+            self, _local_simplification(parse_as_ast(func))
+        )
         return ObjectStream[S](
             function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
             unwrap_iterable(rtn_type),
@@ -123,7 +136,7 @@ class ObjectStream(Generic[T]):
         """
         from func_adl.type_based_replacement import remap_from_lambda
 
-        n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(f))
+        n_stream, n_ast, rtn_type = remap_from_lambda(self, _local_simplification(parse_as_ast(f)))
         return ObjectStream[S](
             function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]), rtn_type
         )
@@ -146,7 +159,9 @@ class ObjectStream(Generic[T]):
         """
         from func_adl.type_based_replacement import remap_from_lambda
 
-        n_stream, n_ast, rtn_type = remap_from_lambda(self, parse_as_ast(filter))
+        n_stream, n_ast, rtn_type = remap_from_lambda(
+            self, _local_simplification(parse_as_ast(filter))
+        )
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
         return ObjectStream[T](

@@ -215,6 +215,18 @@ def test_nested_query_rendered_correctly():
     assert "Select(source" not in ast.dump(r)
 
 
+def test_query_with_comprehensions():
+    r = (
+        my_event()
+        .Where("lambda e: [j.pT()>10 for j in e.jets].Count() > 0")
+        .SelectMany("lambda e: e.jets()")
+        .AsROOTTTree("junk.root", "analysis", "jetPT")
+        .value()
+    )
+    assert isinstance(r, ast.AST)
+    assert "ListComp" not in ast.dump(r)
+
+
 def test_bad_where():
     with pytest.raises(ValueError):
         my_event().Where("lambda e: 10").SelectMany("lambda e: e.jets()").AsROOTTTree(
