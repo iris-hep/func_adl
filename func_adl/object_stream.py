@@ -199,16 +199,20 @@ class ObjectStream(Generic[T]):
         base_ast = self.query_ast
         for k, v in metadata.items():
             found_md = lookup_query_metadata(self, k)
+            add_md = False
             if found_md is None:
+                add_md = True
+            elif found_md != v:
+                logging.getLogger(__name__).info(
+                    f'Overwriting metadata "{k}" from its old value of "{found_md}" to "{v}"'
+                )
+                add_md = True
+            if add_md:
                 if first:
                     first = False
                     base_ast = self.MetaData({}).query_ast
                     base_ast._q_metadata = {}  # type: ignore
                 base_ast._q_metadata[k] = v  # type: ignore
-            elif found_md != v:
-                logging.getLogger(__name__).warning(
-                    f'Overwriting metadata "{k}" from its old value of "{found_md}" to "{v}"'
-                )
 
         return ObjectStream[T](base_ast, self.item_type)
 

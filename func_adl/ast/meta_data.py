@@ -59,6 +59,7 @@ def extract_metadata(a: ast.AST) -> Tuple[ast.AST, List[Dict[str, str]]]:
 
 def remove_empty_metadata(a: ast.AST) -> ast.AST:
     """Returns a new ast with any empty `MetaData` clauses removed.
+    The old ast is not modified.
 
     Args:
         a (ast.AST): The AST of the query to clean up.
@@ -75,7 +76,7 @@ def remove_empty_metadata(a: ast.AST) -> ast.AST:
                 if len(n.args) == 2:
                     d = ast.literal_eval(n.args[1])
                     if isinstance(d, dict) and len(d) == 0:
-                        return self.visit(n.args[0])
+                        return n.args[0]
             return n
 
     return _cleaner().visit(a)
@@ -103,10 +104,14 @@ def lookup_query_metadata(q: ObjectStream, metadata_name: str) -> Optional[Any]:
 
         def generic_visit(self, node: ast.AST):
             q_metadata = getattr(node, "_q_metadata", None)
+            found = False
             if q_metadata is not None:
                 if metadata_name in q_metadata:
+                    found = True
                     self._found = q_metadata[metadata_name]
-            return super().generic_visit(node)
+
+            if not found:
+                super().generic_visit(node)
 
     ds_f = _finder()
     ds_f.visit(q.query_ast)

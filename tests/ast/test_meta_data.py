@@ -88,6 +88,17 @@ def test_query_metadata_burried():
     assert lookup_query_metadata(r, "three") == "forks"
 
 
+def test_query_metadata_updated():
+    'This is testing code in QMetaData, but we need lookup_query_metadata which we are testing in this file'
+    r = (
+        my_event()
+        .QMetaData({"one": "two"})
+        .QMetaData({"one": "three"})
+    )
+
+    assert lookup_query_metadata(r, "one") == "three"
+
+
 def test_remove_empty_metadata_empty():
     r = remove_empty_metadata(my_event().MetaData({}).value())
     assert "MetaData" not in ast.dump(r)
@@ -96,3 +107,19 @@ def test_remove_empty_metadata_empty():
 def test_remove_empty_metadata_not_empty():
     r = remove_empty_metadata(my_event().MetaData({"hi": "there"}).value())
     assert "MetaData" in ast.dump(r)
+
+
+def test_remove_metadata_no_change():
+    "Removing metadata should not alter original query"
+    orig = my_event().MetaData({})
+    remove_empty_metadata(orig.query_ast)
+
+    assert "MetaData" in ast.dump(orig.query_ast)
+
+
+def test_remove_metadata_no_change_2_levels():
+    "Removing metadata should not alter original query"
+    orig = my_event().MetaData({}).MetaData({})
+    remove_empty_metadata(orig.query_ast)
+
+    assert "MetaData" in ast.dump(orig.query_ast)
