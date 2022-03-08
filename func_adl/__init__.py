@@ -1,7 +1,6 @@
 # flake8: noqa
 
 # Dataset accessors
-from .ast.meta_data import extract_metadata  # NOQA
 from .event_dataset import EventDataset, find_EventDataset
 
 # Extra LINQ-like functions
