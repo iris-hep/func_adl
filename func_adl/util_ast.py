@@ -323,6 +323,16 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         self._lookup_dict: Dict[str, Any] = dict(cv.nonlocals)
         self._lookup_dict.update(cv.globals)
 
+    def visit_Call(self, node: ast.Call) -> Any:
+        # Functions themselves should not be translated.
+        old_func = node.func
+        r = self.generic_visit(node)
+        assert isinstance(r, ast.Call)
+        if isinstance(old_func, ast.Name):
+            r.func = old_func
+
+        return r
+
     def visit_Name(self, node: ast.Name) -> Any:
         if node.id in self._lookup_dict:
             return as_literal(self._lookup_dict[node.id])
