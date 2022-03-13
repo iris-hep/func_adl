@@ -113,6 +113,9 @@ class MyIterable(Iterable[T]):
         "Return the last element in the sequence"
         ...
 
+    def Where(self, test: Callable[[T], bool]) -> Iterable[T]:
+        ...
+
 
 @func_adl_callback(add_collection)
 class Event:
@@ -465,6 +468,20 @@ def test_collection_CustomIterable(caplog):
     new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
     assert expr_type == Jet
+
+    assert len(caplog.text) == 0
+
+
+def test_collection_CustomIterable_fallback(caplog):
+    "A simple collection from an iterable with its own defined terminals"
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.JetsIterSub().Where(lambda j: j.pt() > 10)")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[Jet]
 
     assert len(caplog.text) == 0
 

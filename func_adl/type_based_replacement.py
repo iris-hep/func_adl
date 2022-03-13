@@ -26,7 +26,6 @@ from .object_stream import ObjectStream
 from .util_ast import as_literal, scan_for_metadata
 from .util_types import (
     get_args,
-    get_class_name,
     get_method_and_class,
     get_origin,
     is_iterable,
@@ -426,6 +425,39 @@ def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Cal
     return fixer.redone_ast
 
 
+@dataclass
+class _MethodObjectCandidate:
+    """Candidate object for a particular call"""
+
+    # The object type the method is actually getting called on
+    obj_type: type
+
+    # The object the method is defined on
+    # In case of inheritance this is different than above
+    method_class: type
+
+    # The method itself
+    method: Callable
+
+
+@dataclass
+class _MethodTypeReturnInfo:
+    """For a particular method call, the return info"""
+
+    # Update version of the ast
+    node: ast.Call
+
+    # Return type
+    return_type: Type
+
+    # If full type resolution was done (e.g. lambda following), or
+    # if there were no lambda arguments to follow.
+    full_type_resolution: bool
+
+    # The object we actually did the call against
+    obj_info: Optional[_MethodObjectCandidate]
+
+
 T = TypeVar("T")
 
 
@@ -515,124 +547,177 @@ def remap_by_types(
 
             return call_node, r
 
-        def process_method_call_on_type(
-            self, m_name: str, node: ast.Call, obj_type: type
-        ) -> Optional[Tuple[ast.AST, Any]]:
-            """Process the method call against the type `obj_type`. We do method lookup
-            and first try simple type following. If that fails, we move onto ObjectStream
-            methods (which are a hack!).
+        def type_follow_in_callbacks(
+            self, m_name: str, call_site_info: _MethodObjectCandidate, r_node: ast.Call
+        ) -> Optional[_MethodTypeReturnInfo]:
+            """If this method has any callbacks, follow them to update the stream
+            and ast.
+
+            Args:
+                m_name (str): The name of hte method
+                call_site_info (_MethodObjectCandidate): Method information (obj, etc.)
+                r_node (ast.Call): The call site in the ast
 
             Returns:
-                - None if we can't figure out the method call
-                - Tuple of the class site and the return type information if we can.
+                Optional[_MethodTypeReturnInfo]: If we can do type following, the results
             """
-            # Get method and its attached class
-            call_method_info = get_method_and_class(obj_type, m_name)
-            if call_method_info is None:
-                return None
-            call_method_class, call_method = call_method_info
-
-            # Fill in default arguments next. This might update the call site, and
-            # it will also get us any return annotation information. This annotation
-            # information may be a Generic, in which case the step after will resolve
-            # that generic (if possible).
-            r_node, return_annotation_raw = _fill_in_default_arguments(call_method, node)
-
             # Next, we need to figure out what the return type is. There are multiple
             # ways, unfortunately, that we can get the return-type. We might be able to
             # do simple type resolution, but we might also have to depend on call-backs to
-            # figure out what is going on.
+            # figure out what is going on (think of the Select call where the lambda return
+            # type tells us the type of return of Select)
 
-            return_annotation = resolve_type_vars(
-                return_annotation_raw, obj_type, at_class=call_method_class
-            )
-
-            used_lambda_following = False
-            if get_origin(obj_type) in _g_collection_classes:
+            # If this is a known collection class, we can use call-backs to follow it.
+            if get_origin(call_site_info.obj_type) in _g_collection_classes:
                 rtn_value = self.process_method_call_on_stream_obj(
-                    _g_collection_classes[get_origin(obj_type)],
+                    _g_collection_classes[get_origin(call_site_info.obj_type)],
                     m_name,
                     r_node,
-                    get_args(obj_type)[0],
+                    get_args(call_site_info.obj_type)[0],
                 )
                 if rtn_value is not None:
                     new_a, new_return_annotation = rtn_value
-                    r_node = new_a
-                    # TODO: Should this ever come back None or Any if rtn_value isn't None?
-                    if new_return_annotation is not None and new_return_annotation != Any:
-                        used_lambda_following = True
-                        return_annotation = new_return_annotation
+                    assert isinstance(new_a, ast.Call)
+                    return _MethodTypeReturnInfo(
+                        node=new_a,
+                        return_type=new_return_annotation,
+                        full_type_resolution=True,
+                        obj_info=call_site_info,
+                    )
 
-            # If we didn't use lambda following, and one of the arguments is a lambda,
-            # then issue a warning.
-            if not used_lambda_following:
+            return None
+
+        def process_method_callbacks(self, obj_type: type, node: ast.AST, call_method) -> ast.Call:
+            """Call any callbacks that the object has registered. This might change
+            the ast.
+
+            Args:
+                obj_type (type): The type of the object
+                node (ast.AST): The ast node of the call site
+                call_method (_type_): The method. This is the method that was called
+
+            Returns:
+                ast.AST: The updated (or not) ast.
+            """
+            for base_obj in [obj_type, call_method]:
+                attr = getattr(base_obj, "_func_adl_type_info", None)
+                if attr is not None:
+                    r_stream, node = attr(self.stream, node)
+                    assert isinstance(node, ast.AST)
+                    self._stream = r_stream
+
+            assert isinstance(node, ast.Call)
+            return node
+
+        def process_method_call(self, node: ast.Call, obj_type: type) -> ast.AST:
+            """Manage a call against a typed object.
+
+            1. Fill in default arguments based on the signature from the object type.
+            1. Insert metadata into the stream if there are call backs based on the object type.
+            1. Type follow the call site to get the return type, and to make sure anything inside
+               lambda's etc., get correctly type followed as well.
+
+            Args:
+                node (ast.Call): The ast node
+                obj_type (type): The object type this method call is occuring against
+
+            Returns:
+                ast.AST: An updated ast that is the new method call (with default args, etc.)
+            """
+            # Make reference copies that we'll populate as we go
+            r_node = node
+
+            # Find all objects that this method exists on.
+            base_obj_list_all = [obj_type]
+            if is_iterable(obj_type):
+                item_type = unwrap_iterable(obj_type)
+                base_obj_list_all += [c[item_type] for c in _g_collection_classes]
+
+            assert isinstance(r_node.func, ast.Attribute)
+            m_name = r_node.func.attr
+
+            base_obj_list: List[_MethodObjectCandidate] = []
+            for bo in base_obj_list_all:
+                call_method_info = get_method_and_class(bo, m_name)
+                if call_method_info is not None:
+                    call_method_class, call_method = call_method_info
+                    base_obj_list.append(
+                        _MethodObjectCandidate(
+                            obj_type=bo, method_class=call_method_class, method=call_method
+                        )
+                    )
+
+            # For each definition try to get typing results out of it.
+            # Take the base possible one.
+            return_results: List[_MethodTypeReturnInfo] = []
+            for base_obj in base_obj_list:
+                # Do basic static analysis without doing any call backs.
+                default_args_node, return_annotation_raw = _fill_in_default_arguments(
+                    base_obj.method, r_node
+                )
+                return_annotation = resolve_type_vars(
+                    return_annotation_raw, base_obj.obj_type, at_class=base_obj.method_class
+                )
+
+                # if the static type check worked, we might be able to use this answer.
+                if return_annotation is not None:
+                    has_lambda_arg = any(isinstance(a, ast.Lambda) for a in default_args_node.args)
+                    return_results.append(
+                        _MethodTypeReturnInfo(
+                            node=default_args_node,
+                            return_type=return_annotation,
+                            full_type_resolution=not has_lambda_arg,
+                            obj_info=base_obj,
+                        )
+                    )
+
+                # If we need to do full type following, then we should do that now.
+                if len(return_results) == 0 or not return_results[-1].full_type_resolution:
+                    r_result = self.type_follow_in_callbacks(m_name, base_obj, default_args_node)
+                    if r_result is not None:
+                        return_results.append(r_result)
+
+                # If we have a good answer, we can skip all this next stuff.
+                if len(return_results) > 0 and return_results[-1].full_type_resolution:
+                    break
+
+            # If we got nothing, then we really do not know what is going on.
+            if len(return_results) == 0:
+                if obj_type != Any:
+                    self._found_types[node] = Any
+                    logging.getLogger(__name__).warning(
+                        f"Method {r_node.func.attr} not " f"found on object {obj_type}"
+                    )
+                return_results.append(
+                    _MethodTypeReturnInfo(
+                        node=r_node, return_type=Any, full_type_resolution=True, obj_info=None
+                    )
+                )
+
+            # See if we fully processed the call. If not, and there is a lambda, then
+            # we need a warning here.
+            if not any(r.full_type_resolution for r in return_results):
                 if any(isinstance(a, ast.Lambda) for a in r_node.args):  # type: ignore
                     logging.getLogger(__name__).warning(
                         f"Lambda argument in {m_name} was not type followed. Class"
                         f" containing {m_name} should be corrected."
                     )
 
-            # See if there is a call-back to process the call on the
-            # object or the function
-            for base_obj in [obj_type, call_method]:
-                attr = getattr(base_obj, "_func_adl_type_info", None)
-                if attr is not None:
-                    r_stream, r_node = attr(self.stream, r_node)
-                    assert isinstance(r_node, ast.AST)
-                    self._stream = r_stream
+            # Next, we'll do type resolution here
+            best_result = return_results[-1]
+            if best_result.obj_info is not None:
+                best_result.node = self.process_method_callbacks(
+                    best_result.obj_info.obj_type, best_result.node, best_result.obj_info.method
+                )
 
-            return (r_node, return_annotation)
+            # We'll pick off the first one in this case.
+            r_node, return_annotation = best_result.node, best_result.return_type
 
-        def process_method_call(self, node: ast.Call, obj_type: type) -> ast.AST:
-            # Make reference copies that we'll populate as we go
-            r_node = node
+            # And if we have a return annotation, then we should record it!
+            self._found_types[r_node] = return_annotation
+            self._found_types[node] = return_annotation
 
-            # Deal with default arguments and the method signature
-            #  - Could be a method on the object we are looking at
-            #  - If it is a collection, could be First, Select, etc.
-            try:
-                assert isinstance(
-                    r_node.func, ast.Attribute
-                ), f"Only method named calls are supported {ast.dump(r_node.func)}"
-
-                r_result = self.process_method_call_on_type(r_node.func.attr, r_node, obj_type)
-
-                if (r_result is None or r_result[1] is None) and is_iterable(obj_type):
-                    # This could be a method call against one of the ObjectStream like
-                    # classes. All these are wrapers around an item. So `obj_type` should
-                    # be a sequence of some sort - of an item type.
-                    item_type = unwrap_iterable(obj_type)
-
-                    # Loop over all the possible object stream like objects we know
-                    # about
-                    for c in _g_collection_classes:
-                        r_result = self.process_method_call_on_type(
-                            r_node.func.attr, r_node, c[item_type]
-                        )
-                        if r_result is not None:
-                            break
-
-                if r_result is None:
-                    self._found_types[node] = Any
-                    if obj_type != Any:
-                        logging.getLogger(__name__).warning(
-                            f"Function {r_node.func.attr} not " f"found on object {obj_type}"
-                        )
-                    return r_node
-
-                r_node, return_annotation = r_result
-
-                # And if we have a return annotation, then we should record it!
-                self._found_types[r_node] = return_annotation
-                self._found_types[node] = return_annotation
-
-                return r_node
-            except Exception as e:
-                f_name = node.func.attr  # type: ignore
-                raise ValueError(
-                    f"Error processing method call {f_name} on "
-                    f"class {get_class_name(obj_type)} ({str(e)})."
-                ) from e
+            return r_node
 
         def process_function_call(self, node: ast.Call, func_info: _FuncAdlFunction) -> ast.AST:
             # Make reference copies that we'll populate as we go
