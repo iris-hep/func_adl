@@ -436,7 +436,7 @@ def remap_by_types(
     to follow the objects types through the expression.
 
     Note:
-      * Complex expressions are not supported, like addition, etc.
+      * Complex expressions are supported, like addition, etc.
       * Method calls are well followed
       * This isn't a complete type follower, unfortunately.
 
@@ -547,6 +547,7 @@ def remap_by_types(
                 return_annotation_raw, obj_type, at_class=call_method_class
             )
 
+            used_lambda_following = False
             if get_origin(obj_type) in _g_collection_classes:
                 rtn_value = self.process_method_call_on_stream_obj(
                     _g_collection_classes[get_origin(obj_type)],
@@ -559,7 +560,17 @@ def remap_by_types(
                     r_node = new_a
                     # TODO: Should this ever come back None or Any if rtn_value isn't None?
                     if new_return_annotation is not None and new_return_annotation != Any:
+                        used_lambda_following = True
                         return_annotation = new_return_annotation
+
+            # If we didn't use lambda following, and one of the arguments is a lambda,
+            # then issue a warning.
+            if not used_lambda_following:
+                if any(isinstance(a, ast.Lambda) for a in r_node.args):  # type: ignore
+                    logging.getLogger(__name__).warning(
+                        f"Lambda argument in {m_name} was not type followed. Class"
+                        f" containing {m_name} should be corrected."
+                    )
 
             # See if there is a call-back to process the call on the
             # object or the function

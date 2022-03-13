@@ -1,7 +1,7 @@
 import ast
 import copy
 import logging
-from typing import Any, Iterable, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
 
@@ -138,6 +138,9 @@ class Event:
         ...
 
     def EventNumber(self) -> int:
+        ...
+
+    def MyLambdaCallback(self, cb: Callable) -> int:
         ...
 
 
@@ -303,12 +306,14 @@ def test_shortcut_nested_callback():
     """When there is a simple return, like Where, make sure that lambdas
     inside the method are called"""
 
-    s = ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)")
+    s = ast_lambda("e.TrackStuffs().Where(lambda t: abs(t.pt()) > 10)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
-    assert ast.dump(new_s) == ast.dump(ast_lambda("e.TrackStuffs().Where(lambda t: t.pt() > 10)"))
+    assert ast.dump(new_s) == ast.dump(
+        ast_lambda("e.TrackStuffs().Where(lambda t: abs(t.pt()) > 10)")
+    )
     assert ast.dump(new_objs.query_ast) == ast.dump(
         ast_lambda("MetaData(e, {'t': 'track stuff'})")
     )
@@ -462,6 +467,21 @@ def test_collection_CustomIterable(caplog):
     assert expr_type == Jet
 
     assert len(caplog.text) == 0
+
+
+def test_collection_lambda_not_followed(caplog):
+    "Warn if a lambda is not tracked"
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.MyLambdaCallback(lambda f: True)")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == int
+
+    assert "lambda" in caplog.text.lower()
+    assert "MyLambdaCallback" in caplog.text
 
 
 def test_collection_Where(caplog):
