@@ -666,7 +666,7 @@ def remap_by_types(
             node: ast.Call,
             obj_type: Type,
             attr_name: str,
-            slice: ast._SliceT,
+            slice: ast._SliceT,  # type: ignore
             func: ast.Attribute,
         ) -> ast.Call:
             "Process a obj.method[param, param, ...](args) style call"
