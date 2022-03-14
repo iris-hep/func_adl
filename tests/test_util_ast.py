@@ -5,6 +5,7 @@ from typing import Callable, cast
 import pytest
 
 from func_adl.util_ast import (
+    _realign_indent,
     as_ast,
     function_call,
     lambda_args,
@@ -366,28 +367,92 @@ def test_known_global_function():
     assert "Name(id='global_doit_non_func'" in ast.dump(f)
 
 
-# TODO: This test is not compatible with the black formatter - it puts
-#       the doit call on the line twice.
-# def test_parse_continues():
-#     "Emulate the syntax you often find when you have a multistep query"
-#     found = []
+def test_parse_continues():
+    "Emulate the syntax you often find when you have a multistep query"
+    found = []
 
-#     class my_obj:
-#         def do_it(self, x: Callable):
-#             found.append(parse_as_ast(x))
-#             return self
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
 
-#     (my_obj().do_it(lambda x: x + 1).do_it(lambda y: y * 2))
+    (my_obj().do_it(lambda x: x + 1).do_it(lambda y: y * 2))
 
-#     assert len(found) == 2
-#     l1, l2 = found
-#     assert isinstance(l1, ast.Lambda)
-#     assert isinstance(l1.body, ast.BinOp)
-#     assert isinstance(l1.body.op, ast.Add)
+    assert len(found) == 2
+    l1, l2 = found
+    assert isinstance(l1, ast.Lambda)
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
 
-#     assert isinstance(l2, ast.Lambda)
-#     assert isinstance(l2.body, ast.BinOp)
-#     assert isinstance(l2.body.op, ast.Mult)
+    assert isinstance(l2, ast.Lambda)
+    assert isinstance(l2.body, ast.BinOp)
+    assert isinstance(l2.body.op, ast.Mult)
+
+
+def test_decorator_parse():
+    "More general case"
+
+    seen_lambdas = []
+
+    def dec_func(x: Callable):
+        def make_it(y: Callable):
+            return y
+
+        seen_lambdas.append(parse_as_ast(x))
+        return make_it
+
+    @dec_func(lambda y: y + 2)
+    def doit(x):
+        return x + 1
+
+    assert len(seen_lambdas) == 1
+    l1 = seen_lambdas[0]
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+
+def test_indent_parse():
+    "More general case"
+
+    seen_funcs = []
+
+    class h:
+        @staticmethod
+        def dec_func(x: Callable):
+            def make_it(y: Callable):
+                return y
+
+            seen_funcs.append(x)
+            return make_it
+
+    class yo_baby:
+        @h.dec_func(lambda y: y + 2)
+        def doit(self, x: int):
+            ...
+
+    assert len(seen_funcs) == 1
+    l1 = parse_as_ast(seen_funcs[0], "dec_func")
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+
+def test_two_deep_parse():
+    "More general case"
+
+    seen_lambdas = []
+
+    def func_bottom(x: Callable):
+        seen_lambdas.append(parse_as_ast(x))
+
+    def func_top(x: Callable):
+        func_bottom(x)
+
+    func_top(lambda x: x + 1)
+
+    assert len(seen_lambdas) == 1
+    l1 = seen_lambdas[0]
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
 
 
 def test_parse_continues_one_line():
@@ -400,7 +465,7 @@ def test_parse_continues_one_line():
             return self
 
     with pytest.raises(Exception) as e:
-        my_obj().do_it(lambda x: x + 1).do_it(lambda y: y * 2)
+        my_obj().do_it(lambda x: x + 1).do_it(lambda x: x * 2)
 
     assert "two" in str(e.value)
 
@@ -416,3 +481,23 @@ def test_parse_metadata_there():
 
     assert recoreded is not None
     assert 22 == ast.literal_eval(recoreded)
+
+
+def test_realign_no_indent():
+    assert _realign_indent("test") == "test"
+
+
+def test_realign_indent_sp():
+    assert _realign_indent("    test") == "test"
+
+
+def test_realign_indent_tab():
+    assert _realign_indent("\ttest") == "test"
+
+
+def test_realign_indent_2lines():
+    assert _realign_indent("    test()\n    dude()") == "test()\ndude()"
+
+
+def test_realign_indent_2lines_uneven():
+    assert _realign_indent("    test()\n        dude()") == "test()\n    dude()"
