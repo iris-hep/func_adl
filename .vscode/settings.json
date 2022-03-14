@@ -71,5 +71,6 @@
         "editor.codeActionsOnSave": {
             "source.organizeImports": true
         }
-    }
+    },
+    "python.formatting.provider": "black"
 }

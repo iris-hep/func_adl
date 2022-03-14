@@ -325,7 +325,9 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
     def visit_Name(self, node: ast.Name) -> Any:
         if node.id in self._lookup_dict:
-            return as_literal(self._lookup_dict[node.id])
+            v = self._lookup_dict[node.id]
+            if not callable(v):
+                return as_literal(self._lookup_dict[node.id])
         return node
 
 

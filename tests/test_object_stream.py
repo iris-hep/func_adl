@@ -1,6 +1,7 @@
 # Test the object stream
 import ast
 import asyncio
+import logging
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 import pytest
@@ -173,6 +174,7 @@ def test_query_metadata_dup(caplog):
 
 
 def test_query_metadata_dup_update(caplog):
+    caplog.set_level(logging.INFO)
     r = (
         my_event()
         .QMetaData({"one": "two", "two": "three"})
@@ -189,6 +191,7 @@ def test_query_metadata_dup_update(caplog):
 
 
 def test_query_metadata_composable(caplog):
+    caplog.set_level(logging.INFO)
     r_base = my_event().QMetaData({"one": "1"})
 
     # Each of these is a different base and should not interfear.

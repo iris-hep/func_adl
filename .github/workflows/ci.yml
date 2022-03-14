@@ -5,31 +5,30 @@ on:
   pull_request:
   # Run daily at 0:01 UTC
   schedule:
-  - cron:  '1 0 * * *'
+    - cron: "1 0 * * *"
 
 jobs:
   flake8:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install --no-cache-dir -e .[complete]
-        pip list
-    - name: Lint with Flake8
-      run: |
-        flake8
-    - name: Build the pypi package
-      env:
-        func_adl_version: 1.0b10
-      run: |
-        python setup_func_adl.py sdist bdist_wheel
-        python setup_func_adl_ast.py sdist bdist_wheel
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install --no-cache-dir -e .[complete]
+          pip list
+      - name: Lint with Flake8
+        run: |
+          flake8
+      - name: Build the pypi package
+        env:
+          func_adl_version: 1.0b10
+        run: |
+          python setup.py sdist bdist_wheel
 
   test:
     runs-on: ${{ matrix.os }}
@@ -41,23 +40,23 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install --no-cache-dir -e .[complete]
-        pip list
-    - name: Test with pytest
-      run: |
-        python -m pytest -r sx
-    - name: Report coverage with Codecov
-      if: github.event_name == 'push' && matrix.python-version == 3.9 && matrix.os == 'ubuntu-latest'
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unittests
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install --no-cache-dir -e .[complete]
+          pip list
+      - name: Test with pytest
+        run: |
+          python -m pytest -r sx
+      - name: Report coverage with Codecov
+        if: github.event_name == 'push' && matrix.python-version == 3.9 && matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests

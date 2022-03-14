@@ -339,6 +339,33 @@ def test_parse_global_capture():
     assert ast.dump(f) == ast.dump(f_true)
 
 
+def test_unknown_function():
+    "function that isn't declared"
+    f = parse_as_ast(lambda a: unknown(a))  # type: ignore # NOQA
+    assert "Name(id='unknown'" in ast.dump(f)
+
+
+def test_known_local_function():
+    "function that is declared locally"
+
+    def doit(x):
+        ...
+
+    f = parse_as_ast(lambda a: doit(a))  # type: ignore # NOQA
+    assert "Name(id='doit'" in ast.dump(f)
+
+
+def global_doit_non_func(x):
+    ...
+
+
+def test_known_global_function():
+    "function that is declared locally"
+
+    f = parse_as_ast(lambda a: global_doit_non_func(a))  # type: ignore # NOQA
+    assert "Name(id='global_doit_non_func'" in ast.dump(f)
+
+
 # TODO: This test is not compatible with the black formatter - it puts
 #       the doit call on the line twice.
 # def test_parse_continues():
