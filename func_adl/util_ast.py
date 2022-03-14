@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import inspect
 import sys
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 # Some functions to enable backwards compatibility.
 # Capability may be degraded in older versions - particularly 3.6.
@@ -370,12 +370,16 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
     if callable(ast_source):
         source = inspect.getsource(ast_source).strip()
 
-        # Look for the name of the calling function (e.g. 'Select' or 'Where')
-        caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
-        caller_idx = source.find(caller_name)
-        # If found, parse the string between the parentheses of the function call
-        if caller_idx > -1:
-            source = source[caller_idx + len(caller_name) :]
+        def find_next_lambda(method_name: str, source: str) -> Tuple[Optional[str], str]:
+            "Find the lambda starting at the name"
+            caller_idx = source.find(method_name)
+
+            # If we couldn't find it, then we need to parse the whole thing.
+            if caller_idx == -1:
+                return None, source
+
+            source = source[caller_idx + len(method_name) :]
+
             i = 0
             open_count = 0
             while True:
@@ -387,42 +391,78 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
                 if open_count == 0:
                     break
                 i += 1
-            stem = source[i + 1 :]
-            new_line = stem.find("\n")
-            next_caller = stem.find(caller_name)
-            if next_caller > -1 and (new_line < 0 or new_line > next_caller):
-                raise ValueError(
-                    f"Found two calls to {caller_name} on same line - " "split accross lines"
-                )
-            source = source[: i + 1]
 
-        def parse(src: str) -> Optional[ast.Module]:
-            try:
-                return ast.parse(src)
-            except SyntaxError:
-                return None
+            lambda_source = source[: i + 1]
+            remaining_source = source[i + 1 :]
 
-        # Special case ending with a close parenthesis at the end of a line.
-        src_ast = parse(source)
-        if not src_ast and source.endswith(")"):
-            src_ast = parse(source[:-1])
+            return lambda_source, remaining_source
+
+        # Look for the name of the calling function (e.g. 'Select' or 'Where', etc.) and
+        # find all the instances on this line.
+        caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
+
+        found_lambdas: List[str] = []
+        while True:
+            lambda_source, remaining_source = find_next_lambda(caller_name, source)
+            if lambda_source is None:
+                break
+            source = remaining_source
+            found_lambdas.append(lambda_source)
+
+        if len(found_lambdas) == 0:
+            found_lambdas.append(source)
+
+        # Parse them as a lambda function
+        def parse(src: str) -> Optional[ast.Lambda]:
+            while True:
+                try:
+                    a_module = ast.parse(src)
+                    # If this is a function, not a lambda, then we can morph and return that.
+                    if len(a_module.body) == 1 and isinstance(a_module.body[0], ast.FunctionDef):
+                        lda = rewrite_func_as_lambda(a_module.body[0])  # type: ignore
+                    else:
+                        lda = next(
+                            (node for node in ast.walk(a_module) if isinstance(node, ast.Lambda)),
+                            None,
+                        )
+
+                    if lda is None:
+                        raise ValueError(f"Unable to recover source for function {ast_source}.")
+                    return lda
+                except SyntaxError:
+                    pass
+                if src.endswith("0"):
+                    src = src[:-1]
+                else:
+                    return None
+
+        parsed_lambdas = [parse(src) for src in found_lambdas]
+
+        # If we have more than one lambda, there are some tricks we can try - like argument names,
+        # to see if they are different.
+        src_ast: Optional[ast.Lambda] = None
+        if len(found_lambdas) > 1:
+            caller_arg_list = inspect.getfullargspec(ast_source).args
+            for idx, p_lambda in enumerate(parsed_lambdas):
+                lambda_args = [a.arg for a in p_lambda.args.args]  # type: ignore
+                if lambda_args == caller_arg_list:
+                    if src_ast is not None:
+                        raise ValueError(
+                            f"Found two calls to {caller_name} on same line - "
+                            "split accross lines or change lambda argument names so they "
+                            "are different."
+                        )
+                    src_ast = p_lambda
+        else:
+            assert len(found_lambdas) == 1
+            src_ast = parsed_lambdas[0]
 
         if not src_ast:
             raise ValueError(f"Unable to recover source for function {ast_source}.")
 
-        # If this is a function, not a lambda, then we can morph and return that.
-        if len(src_ast.body) == 1 and isinstance(src_ast.body[0], ast.FunctionDef):
-            lda = rewrite_func_as_lambda(src_ast.body[0])  # type: ignore
-        else:
-            lda = next((node for node in ast.walk(src_ast) if isinstance(node, ast.Lambda)), None)
-
-            if lda is None:
-                raise ValueError(f"Unable to recover source for function {ast_source}.")
-
         # Since this is a function in python, we can look for lambda capture.
         call_args = global_getclosurevars(ast_source)
-
-        return _rewrite_captured_vars(call_args).visit(lda)
+        return _rewrite_captured_vars(call_args).visit(src_ast)
 
     elif isinstance(ast_source, str):
         a = ast.parse(ast_source.strip())  # type: ignore

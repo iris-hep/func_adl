@@ -366,28 +366,26 @@ def test_known_global_function():
     assert "Name(id='global_doit_non_func'" in ast.dump(f)
 
 
-# TODO: This test is not compatible with the black formatter - it puts
-#       the doit call on the line twice.
-# def test_parse_continues():
-#     "Emulate the syntax you often find when you have a multistep query"
-#     found = []
+def test_parse_continues():
+    "Emulate the syntax you often find when you have a multistep query"
+    found = []
 
-#     class my_obj:
-#         def do_it(self, x: Callable):
-#             found.append(parse_as_ast(x))
-#             return self
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
 
-#     (my_obj().do_it(lambda x: x + 1).do_it(lambda y: y * 2))
+    (my_obj().do_it(lambda x: x + 1).do_it(lambda y: y * 2))
 
-#     assert len(found) == 2
-#     l1, l2 = found
-#     assert isinstance(l1, ast.Lambda)
-#     assert isinstance(l1.body, ast.BinOp)
-#     assert isinstance(l1.body.op, ast.Add)
+    assert len(found) == 2
+    l1, l2 = found
+    assert isinstance(l1, ast.Lambda)
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
 
-#     assert isinstance(l2, ast.Lambda)
-#     assert isinstance(l2.body, ast.BinOp)
-#     assert isinstance(l2.body.op, ast.Mult)
+    assert isinstance(l2, ast.Lambda)
+    assert isinstance(l2.body, ast.BinOp)
+    assert isinstance(l2.body.op, ast.Mult)
 
 
 def test_parse_continues_one_line():
@@ -400,7 +398,7 @@ def test_parse_continues_one_line():
             return self
 
     with pytest.raises(Exception) as e:
-        my_obj().do_it(lambda x: x + 1).do_it(lambda y: y * 2)
+        my_obj().do_it(lambda x: x + 1).do_it(lambda x: x * 2)
 
     assert "two" in str(e.value)
 
