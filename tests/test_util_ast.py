@@ -388,6 +388,28 @@ def test_parse_continues():
     assert isinstance(l2.body.op, ast.Mult)
 
 
+def test_decorator_parse():
+    "More general case"
+
+    seen_lambdas = []
+
+    def dec_func(x: Callable):
+        def make_it(y: Callable):
+            return y
+
+        seen_lambdas.append(parse_as_ast(x))
+        return make_it
+
+    @dec_func(lambda y: y + 2)
+    def doit(x):
+        return x + 1
+
+    assert len(seen_lambdas) == 1
+    l1 = seen_lambdas[0]
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+
 def test_parse_continues_one_line():
     "Make sure we do not let our confusion confuse the user - bomb correctly here"
     found = []
