@@ -5,6 +5,7 @@ from typing import Callable, cast
 import pytest
 
 from func_adl.util_ast import (
+    _realign_indent,
     as_ast,
     function_call,
     lambda_args,
@@ -410,6 +411,50 @@ def test_decorator_parse():
     assert isinstance(l1.body.op, ast.Add)
 
 
+def test_indent_parse():
+    "More general case"
+
+    seen_funcs = []
+
+    class h:
+        @staticmethod
+        def dec_func(x: Callable):
+            def make_it(y: Callable):
+                return y
+
+            seen_funcs.append(x)
+            return make_it
+
+    class yo_baby:
+        @h.dec_func(lambda y: y + 2)
+        def doit(self, x: int):
+            ...
+
+    assert len(seen_funcs) == 1
+    l1 = parse_as_ast(seen_funcs[0], "dec_func")
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+
+def test_two_deep_parse():
+    "More general case"
+
+    seen_lambdas = []
+
+    def func_bottom(x: Callable):
+        seen_lambdas.append(parse_as_ast(x))
+
+    def func_top(x: Callable):
+        func_bottom(x)
+
+    func_top(lambda x: x + 1)
+
+    assert len(seen_lambdas) == 1
+    l1 = seen_lambdas[0]
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+
 def test_parse_continues_one_line():
     "Make sure we do not let our confusion confuse the user - bomb correctly here"
     found = []
@@ -436,3 +481,23 @@ def test_parse_metadata_there():
 
     assert recoreded is not None
     assert 22 == ast.literal_eval(recoreded)
+
+
+def test_realign_no_indent():
+    assert _realign_indent("test") == "test"
+
+
+def test_realign_indent_sp():
+    assert _realign_indent("    test") == "test"
+
+
+def test_realign_indent_tab():
+    assert _realign_indent("\ttest") == "test"
+
+
+def test_realign_indent_2lines():
+    assert _realign_indent("    test()\n    dude()") == "test()\ndude()"
+
+
+def test_realign_indent_2lines_uneven():
+    assert _realign_indent("    test()\n        dude()") == "test()\n    dude()"

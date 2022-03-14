@@ -351,7 +351,25 @@ def global_getclosurevars(f: Callable) -> inspect.ClosureVars:
     return cv
 
 
-def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
+def _realign_indent(s: str) -> str:
+    """Move the first line to be at zero indent, and then apply same for everything
+    below.
+
+    Args:
+        s (str): The string with indents
+
+    Returns:
+        str: Unindent string
+    """
+    lines = s.split("\n")
+    spaces = len(lines[0]) - len(lines[0].lstrip())
+    stripped_lines = [ln[spaces:] for ln in lines]
+    return "\n".join(stripped_lines)
+
+
+def parse_as_ast(
+    ast_source: Union[str, ast.AST, Callable], caller_name: Optional[str] = None
+) -> ast.Lambda:
     r"""Return an AST for a lambda function from several sources.
 
     We are handed one of several things:
@@ -363,12 +381,14 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
 
     Args:
         ast_source:     An AST or text string that represnets the lambda.
+        caller_name:    The name of the function that the lambda is an arg to. If it
+            is none, then it will attempt to scan the stack frame above to figure it out.
 
     Returns:
         An ast starting from the Lambda AST node.
     """
     if callable(ast_source):
-        source = inspect.getsource(ast_source).strip()
+        source = _realign_indent(inspect.getsource(ast_source))
 
         def find_next_lambda(method_name: str, source: str) -> Tuple[Optional[str], str]:
             "Find the lambda starting at the name"
@@ -399,7 +419,8 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
 
         # Look for the name of the calling function (e.g. 'Select' or 'Where', etc.) and
         # find all the instances on this line.
-        caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
+        if caller_name is None:
+            caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
 
         found_lambdas: List[str] = []
         while True:
@@ -427,11 +448,13 @@ def parse_as_ast(ast_source: Union[str, ast.AST, Callable]) -> ast.Lambda:
                         )
 
                     if lda is None:
-                        raise ValueError(f"Unable to recover source for function {ast_source}.")
+                        raise ValueError(
+                            f"Unable to recover source for function {ast_source} - '{src}'."
+                        )
                     return lda
                 except SyntaxError:
                     pass
-                if src.endswith("0"):
+                if src.endswith(")"):
                     src = src[:-1]
                 else:
                     return None
