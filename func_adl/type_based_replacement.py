@@ -866,7 +866,7 @@ def remap_by_types(
             final_type = Any
             if t_true == t_false:
                 final_type = t_true
-            elif t_true in [int, float] and t_false in [int, float]:
+            elif t_true in [int, float, Any] and t_false in [int, float, Any]:
                 final_type = float
             else:
                 raise ValueError(
