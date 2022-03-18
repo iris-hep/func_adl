@@ -398,6 +398,11 @@ def parse_as_ast(
             if caller_idx == -1:
                 return None, source
 
+            # If there is a newline, then we know this isn't the lambda
+            # we want - it must start on the line we are given in the source.
+            if "\n" in source[:caller_idx]:
+                return None, ""
+
             source = source[caller_idx + len(method_name) :]
 
             i = 0

@@ -389,6 +389,31 @@ def test_parse_continues():
     assert isinstance(l2.body.op, ast.Mult)
 
 
+def test_parse_continues_accross_lines():
+    "Use a line continuation and make sure we can tell the difference"
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    (my_obj().do_it(lambda x: x + 1) \
+        .do_it(lambda x: x * 2))
+    # fmt: on
+
+    assert len(found) == 2
+    l1, l2 = found
+    assert isinstance(l1, ast.Lambda)
+    assert isinstance(l1.body, ast.BinOp)
+    assert isinstance(l1.body.op, ast.Add)
+
+    assert isinstance(l2, ast.Lambda)
+    assert isinstance(l2.body, ast.BinOp)
+    assert isinstance(l2.body.op, ast.Mult)
+
+
 def test_decorator_parse():
     "More general case"
 
