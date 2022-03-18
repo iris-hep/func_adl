@@ -399,8 +399,8 @@ def test_parse_continues_accross_lines():
             return self
 
     # fmt: off
-    (my_obj().do_it(lambda x: x + 1) \
-        .do_it(lambda x: x * 2))
+    my_obj().do_it(lambda x: x + 1) \
+        .do_it(lambda x: x * 2)
     # fmt: on
 
     assert len(found) == 2
