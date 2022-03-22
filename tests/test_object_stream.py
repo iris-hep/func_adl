@@ -75,6 +75,25 @@ def test_simple_query():
     assert isinstance(r, ast.AST)
 
 
+def test_two_simple_query():
+    r1 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsROOTTTree("junk.root", "analysis", "jetPT")
+        .value()
+    )
+    r2 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsROOTTTree("junk.root", "analysis", ["jetPT"])
+        .value()
+    )
+
+    assert ast.dump(r1) == ast.dump(r2)
+
+
 def test_with_types():
     r1 = my_event_with_type().SelectMany(lambda e: e.Jets("jets"))
     r = r1.Select(lambda j: j.eta()).value()
@@ -115,6 +134,25 @@ def test_simple_query_parquet():
     assert isinstance(r, ast.AST)
 
 
+def test_two_simple_query_parquet():
+    r1 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsParquetFiles("junk.root", "jetPT")
+        .value()
+    )
+    r2 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsParquetFiles("junk.root", ["jetPT"])
+        .value()
+    )
+
+    assert ast.dump(r1) == ast.dump(r2)
+
+
 def test_simple_query_panda():
     r = (
         my_event()
@@ -126,6 +164,24 @@ def test_simple_query_panda():
     assert isinstance(r, ast.AST)
 
 
+def test_two_imple_query_panda():
+    r1 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsPandasDF(["analysis"])
+        .value()
+    )
+    r2 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsPandasDF(["analysis"])
+        .value()
+    )
+    assert ast.dump(r1) == ast.dump(r2)
+
+
 def test_simple_query_awkward():
     r = (
         my_event()
@@ -135,6 +191,25 @@ def test_simple_query_awkward():
         .value()
     )
     assert isinstance(r, ast.AST)
+
+
+def test_two_similar_query_awkward():
+    r1 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsAwkwardArray(["analysis"])
+        .value()
+    )
+    r2 = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .AsAwkwardArray("analysis")
+        .value()
+    )
+
+    assert ast.dump(r1) == ast.dump(r2)
 
 
 def test_metadata():

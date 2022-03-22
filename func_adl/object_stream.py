@@ -231,6 +231,9 @@ class ObjectStream(Generic[T]):
 
         """
         # To get Pandas use the ResultPandasDF function call.
+        if isinstance(columns, str):
+            columns = [columns]
+
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
         )
@@ -262,6 +265,9 @@ class ObjectStream(Generic[T]):
             dataset.  The order of the files back is consistent for different queries on the same
             dataset.
         """
+        if isinstance(columns, str):
+            columns = [columns]
+
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call(
                 "ResultTTree", [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)]
@@ -296,6 +302,9 @@ class ObjectStream(Generic[T]):
             result. The order of the files back is consistent for different queries on the same
             dataset.
         """
+        if isinstance(columns, str):
+            columns = [columns]
+
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)])
         )
@@ -316,6 +325,9 @@ class ObjectStream(Generic[T]):
 
             An `ObjectStream` with the `awkward` array data as its one and only element.
         """
+        if isinstance(columns, str):
+            columns = [columns]
+
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)])
         )
