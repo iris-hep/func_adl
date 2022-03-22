@@ -279,7 +279,21 @@ def test_parse_lambda_capture():
     assert ast.dump(r) == ast.dump(r_true)
 
 
+def test_parse_lambda_capture_ignore_local():
+    x = 30  # NOQA type: ignore
+    r = parse_as_ast(lambda x: x > 20)
+    r_true = parse_as_ast(lambda y: y > 20)
+    assert ast.dump(r) == ast.dump(r_true).replace("'y'", "'x'")
+
+
 g_cut_value = 30
+
+
+def test_parse_lambda_capture_ignore_global():
+    x = 30  # NOQA type: ignore
+    r = parse_as_ast(lambda g_cut_value: g_cut_value > 20)
+    r_true = parse_as_ast(lambda y: y > 20)
+    assert ast.dump(r) == ast.dump(r_true).replace("'y'", "'g_cut_value'")
 
 
 def test_parse_lambda_capture_nested_global():

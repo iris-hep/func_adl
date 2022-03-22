@@ -322,13 +322,27 @@ class _rewrite_captured_vars(ast.NodeTransformer):
     def __init__(self, cv: inspect.ClosureVars):
         self._lookup_dict: Dict[str, Any] = dict(cv.nonlocals)
         self._lookup_dict.update(cv.globals)
+        self._ignore_stack = []
 
     def visit_Name(self, node: ast.Name) -> Any:
+        if self.is_arg(node.id):
+            return node
+
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
             if not callable(v):
                 return as_literal(self._lookup_dict[node.id])
         return node
+
+    def visit_Lambda(self, node: ast.Lambda) -> Any:
+        self._ignore_stack.append([a.arg for a in node.args.args])
+        v = super().generic_visit(node)
+        self._ignore_stack.pop()
+        return v
+
+    def is_arg(self, a_name: str) -> bool:
+        "If the arg is on the stack, then return true"
+        return any([a == a_name for frames in self._ignore_stack for a in frames])
 
 
 def global_getclosurevars(f: Callable) -> inspect.ClosureVars:
