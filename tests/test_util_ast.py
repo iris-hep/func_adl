@@ -509,6 +509,121 @@ def test_parse_continues_one_line():
     assert "two" in str(e.value)
 
 
+def test_parse_multiline_lambda_ok_with_one():
+    "Make sure we can properly parse a multi-line lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    my_obj().do_it(
+        lambda x: x
+        + 1
+        + 2
+        + 3
+        + 4
+        + 5
+        + 6
+        + 7
+        + 8
+        + 9
+        + 10
+        + 11
+        + 12
+        + 13
+        + 14
+        + 15
+        + 16
+        + 17
+        + 18
+        + 19
+        + 20
+    )
+
+    assert "20" in ast.dump(found[0])
+
+
+def test_parse_multiline_lambda_ok_with_one_and_paran():
+    "Make sure we can properly parse a multi-line lambda - using parens as delimiters"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    my_obj().do_it(
+        lambda x: (
+            x
+            + 1
+            + 2
+            + 3
+            + 4
+            + 5
+            + 6
+            + 7
+            + 8
+            + 9
+            + 10
+            + 11
+            + 12
+            + 13
+            + 14
+            + 15
+            + 16
+            + 17
+            + 18
+            + 19
+            + 20
+        )
+    )
+
+    assert "20" in ast.dump(found[0])
+
+
+def test_parse_multiline_lambda_ok_with_one_as_arg():
+    "Make sure we can properly parse a multi-line lambda - but now with argument"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable, counter: int):
+            found.append(parse_as_ast(x))
+            assert counter > 0
+            return self
+
+    my_obj().do_it(
+        lambda x: x
+        + 1
+        + 2
+        + 3
+        + 4
+        + 5
+        + 6
+        + 7
+        + 8
+        + 9
+        + 10
+        + 11
+        + 12
+        + 13
+        + 14
+        + 15
+        + 16
+        + 17
+        + 18
+        + 19
+        + 20,
+        50,
+    )
+
+    assert "20" in ast.dump(found[0])
+
+
 def test_parse_metadata_there():
     recoreded = None
 
