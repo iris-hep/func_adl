@@ -41,6 +41,7 @@
         "sdist",
         "servicex",
         "setuptools",
+        "sourcelines",
         "syntatic",
         "Topo",
         "unittests",

@@ -509,6 +509,25 @@ def test_parse_continues_one_line():
     assert "two" in str(e.value)
 
 
+def test_parse_multiline_bad_line_break():
+    "Make sure we correctly parse a funnily formatted lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(
+        lambda x: x +  # noqa: W504
+        123)
+    # fmt: on
+
+    assert "123" in ast.dump(found[0])
+
+
 def test_parse_multiline_lambda_ok_with_one():
     "Make sure we can properly parse a multi-line lambda"
 
@@ -519,29 +538,14 @@ def test_parse_multiline_lambda_ok_with_one():
             found.append(parse_as_ast(x))
             return self
 
+    # fmt: off
     my_obj().do_it(
         lambda x: x
-        + 1
-        + 2
-        + 3
-        + 4
-        + 5
-        + 6
-        + 7
-        + 8
-        + 9
-        + 10
-        + 11
-        + 12
-        + 13
-        + 14
-        + 15
-        + 16
-        + 17
-        + 18
-        + 19
-        + 20
+        + 1  # noqa: W503
+        + 2  # noqa: W503
+        + 20  # noqa: W503
     )
+    # fmt: on
 
     assert "20" in ast.dump(found[0])
 
@@ -556,31 +560,16 @@ def test_parse_multiline_lambda_ok_with_one_and_paran():
             found.append(parse_as_ast(x))
             return self
 
+    # fmt: off
     my_obj().do_it(
         lambda x: (
             x
-            + 1
-            + 2
-            + 3
-            + 4
-            + 5
-            + 6
-            + 7
-            + 8
-            + 9
-            + 10
-            + 11
-            + 12
-            + 13
-            + 14
-            + 15
-            + 16
-            + 17
-            + 18
-            + 19
-            + 20
+            + 1  # noqa: W503
+            + 2  # noqa: W503
+            + 20  # noqa: W503
         )
     )
+    # fmt: on
 
     assert "20" in ast.dump(found[0])
 
@@ -596,30 +585,15 @@ def test_parse_multiline_lambda_ok_with_one_as_arg():
             assert counter > 0
             return self
 
+    # fmt: off
     my_obj().do_it(
         lambda x: x
-        + 1
-        + 2
-        + 3
-        + 4
-        + 5
-        + 6
-        + 7
-        + 8
-        + 9
-        + 10
-        + 11
-        + 12
-        + 13
-        + 14
-        + 15
-        + 16
-        + 17
-        + 18
-        + 19
-        + 20,
+        + 1  # noqa: W503
+        + 2  # noqa: W503
+        + 20,  # noqa: W503
         50,
     )
+    # fmt: on
 
     assert "20" in ast.dump(found[0])
 

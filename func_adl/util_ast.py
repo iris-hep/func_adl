@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import re
 import sys
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
@@ -206,8 +207,8 @@ else:  # pragma: no cover
 
 def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
     """
-    Return a new lambda function that has new_expr as the body rather than the old one. Otherwise,
-    everything is the same.
+    Return a new lambda function that has new_expr as the body rather than the old one.
+    Otherwise, everything is the same.
 
     Args:
         lam:        A ast.Lambda or ast.Module that points to a lambda.
@@ -381,6 +382,98 @@ def _realign_indent(s: str) -> str:
     return "\n".join(stripped_lines)
 
 
+def _get_sourcelines(f: Callable) -> List[str]:
+    """Get the source lines for a function, including a lambda, and make sure
+    to return all the lines that might be important.
+
+    TODO: WHen we hit Python 3.11, the better error return info might mean that tokens
+    are better known and we can go back to the get source - and it will be a lot better.
+
+    Args:
+        f (Callable): The function
+
+    Returns:
+        List[str]: The source lines
+    """
+    lines, start_line = inspect.findsource(f)
+    return lines[start_line:]
+
+
+def _strip_comments(s: str) -> str:
+    """Strip comments from a string
+
+    Args:
+        s (str): The string
+
+    Returns:
+        str: The string with comments removed
+    """
+    return re.sub(re.compile("#.*?\n"), "", s)
+
+
+class _source_parser:
+    """Keep a marker where we are in a series of lines, and provide a way to
+    get the next line, and to peek at the next line.
+
+    The lines are assumed to be indented with spaces, and the indent is assumed
+    to be the same for all lines.
+
+    Strips the comments off all lines before returning them
+    """
+
+    def __init__(self, lines: List[str]):
+        self._lines = lines
+        self._line_no = 0
+        self._carrot = 0
+        self._lines[0] = _strip_comments(self._lines[0])
+
+    def get_state(self) -> Tuple[int, int]:
+        """Get the current state of the parser
+
+        Returns:
+            Tuple[int, int]: The line number, and the carrot position
+        """
+        return self._line_no, self._carrot
+
+    def set_state(self, state: Tuple[int, int]) -> None:
+        """Set the state of the parser
+
+        Args:
+            state (Tuple[int, int]): The line number, and the carrot position
+        """
+        self._line_no, self._carrot = state
+
+    def next_line(self) -> str:
+        "Get the next line, and move the marker"
+        self._line_no += 1
+        self._carrot = 0
+        self._lines[self._line_no] = _strip_comments(self._lines[self._line_no])
+        return self._lines[self._line_no - 1]
+
+    def advance_carrot(self, n: int) -> None:
+        "Move the carrot forward by n characters"
+        self._carrot += n
+
+    def peek(self) -> str:
+        "Get the next line, but don't move the marker"
+        return self._lines[self._line_no][self._carrot :]
+
+    def get_as_string(self, start: Tuple[int, int], end: Tuple[int, int]) -> str:
+        "Get the string between the start and end points"
+        start_line, start_carrot = start
+        end_line, end_carrot = end
+        if start_line == end_line:
+            return self._lines[start_line][start_carrot:end_carrot]
+        else:
+            return "\n".join(
+                [
+                    self._lines[start_line][start_carrot:],
+                    *self._lines[start_line + 1 : end_line],
+                    self._lines[end_line][:end_carrot],
+                ]
+            )
+
+
 def parse_as_ast(
     ast_source: Union[str, ast.AST, Callable], caller_name: Optional[str] = None
 ) -> ast.Lambda:
@@ -394,7 +487,7 @@ def parse_as_ast(
     In all cases, return a lambda function as an AST starting from the AST top node.
 
     Args:
-        ast_source:     An AST or text string that represnets the lambda.
+        ast_source:     An AST or text string that represents the lambda.
         caller_name:    The name of the function that the lambda is an arg to. If it
             is none, then it will attempt to scan the stack frame above to figure it out.
 
@@ -402,39 +495,77 @@ def parse_as_ast(
         An ast starting from the Lambda AST node.
     """
     if callable(ast_source):
-        source = _realign_indent(inspect.getsource(ast_source))
+        source = _source_parser(_get_sourcelines(ast_source))
 
-        def find_next_lambda(method_name: str, source: str) -> Tuple[Optional[str], str]:
-            "Find the lambda starting at the name"
-            caller_idx = source.find(method_name)
+        def find_next_lambda(method_name: str, source: _source_parser) -> str:
+            """Find the lambda that is inside this method called. Return the complete text
+            of the lambda (even if it spans multiple lines), and update the source parser's
+            location to the end of the lambda.
 
-            # If we couldn't find it, then we need to parse the whole thing.
-            if caller_idx == -1:
-                return None, source
+            Args:
+                method_name (str): Name of the method that has this lambda - help resolve ambiguities
+                                   with more than one lambda on a line.
+                source (_source_parser): The parser of the source, starting at the line that holds the
+                                         lambda.
 
-            # If there is a newline, then we know this isn't the lambda
-            # we want - it must start on the line we are given in the source.
-            if "\n" in source[:caller_idx]:
-                return None, ""
+            Returns:
+                str: The complete source that has been parsed.
+            """
 
-            source = source[caller_idx + len(method_name) :]
+            # See if we can find the lambda inside a named method call.
+            caller_idx = source.peek().find(method_name)
+            if caller_idx >= 0:
+                source.advance_carrot(caller_idx + len(method_name))
 
-            i = 0
-            open_count = 0
+            # Now we must be greedy and gobble up all the lines we can find that
+            # make sense and we can make fit.
+
+            source_start = source.get_state()
+
+            open_count = 0 if caller_idx >= 0 else 1
             while True:
-                c = source[i]
+                c = source.peek()[0]
                 if c == "(":
                     open_count += 1
                 elif c == ")":
                     open_count -= 1
                 if open_count == 0:
                     break
-                i += 1
+                source.advance_carrot(1)
 
-            lambda_source = source[: i + 1]
-            remaining_source = source[i + 1 :]
+            source_end = source.get_state()
+            lambda_source = source.get_as_string(source_start, source_end)
 
-            return lambda_source, remaining_source
+            return lambda_source
+
+            # # If we couldn't find it, then we need to parse the whole thing,
+            # # assuming that the method started on the line.
+            # if caller_idx == -1:
+            #     return None, source
+
+            # # If there is a newline, then we know this isn't the lambda
+            # # we want - it must start on the line we are given in the source.
+            # if "\n" in source[:caller_idx]:
+            #     return None, ""
+
+            # source = source[caller_idx + len(method_name) :]
+
+            # i = 0
+            # open_count = 0
+            # while True:
+            #     c = source[i]
+            #     if c == "(":
+            #         open_count += 1
+            #     elif c == ")":
+            #         open_count -= 1
+            #     if open_count == 0:
+            #         break
+            #     i += 1
+
+            # lambda_source = source[: i + 1]
+            # remaining_source = source[i + 1 :]
+
+            # return lambda_source, remaining_source
 
         # Look for the name of the calling function (e.g. 'Select' or 'Where', etc.) and
         # find all the instances on this line.
