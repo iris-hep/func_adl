@@ -537,7 +537,8 @@ def parse_as_ast(
     Args:
         ast_source:     An AST or text string that represents the lambda.
         caller_name:    The name of the function that the lambda is an arg to. If it
-            is none, then it will attempt to scan the stack frame above to figure it out.
+            is none, then it will attempt to scan the stack frame above to figure it
+            out.
 
     Returns:
         An ast starting from the Lambda AST node.
@@ -546,15 +547,16 @@ def parse_as_ast(
         source = _source_parser(*_get_sourcelines(ast_source))
 
         def find_next_lambda(method_name: str, source: _source_parser) -> Optional[str]:
-            """Find the lambda that is inside this method called. Return the complete text
-            of the lambda (even if it spans multiple lines), and update the source parser's
-            location to the end of the lambda.
+            """Find the lambda that is inside this method called. Return the complete
+            text of the lambda (even if it spans multiple lines), and update the source
+            parser's location to the end of the lambda.
 
             Args:
-                method_name (str): Name of the method that has this lambda - help resolve ambiguities
-                                   with more than one lambda on a line.
-                source (_source_parser): The parser of the source, starting at the line that holds the
-                                         lambda.
+                method_name (str): Name of the method that has this lambda - help
+                                   resolve ambiguities with more than one lambda on a
+                                   line.
+                source (_source_parser): The parser of the source, starting at the line
+                                   that holds the lambda.
 
             Returns:
                 str: The complete source that has been parsed.
@@ -577,9 +579,9 @@ def parse_as_ast(
                     end_on = ")"
                     open_count = 1
                 else:
-                    # We are going to have to assume the lambda or function is somewhere on
-                    # the line - so parse the line just like it was a normal python code
-                    # line, and pick it out.
+                    # We are going to have to assume the lambda or function is
+                    # somewhere on the line - so parse the line just like it was a
+                    # normal python code line, and pick it out.
                     end_on = "\n"
 
             # Now we must be greedy and gobble up all the lines we can find that
@@ -611,35 +613,6 @@ def parse_as_ast(
 
             return lambda_source
 
-            # # If we couldn't find it, then we need to parse the whole thing,
-            # # assuming that the method started on the line.
-            # if caller_idx == -1:
-            #     return None, source
-
-            # # If there is a newline, then we know this isn't the lambda
-            # # we want - it must start on the line we are given in the source.
-            # if "\n" in source[:caller_idx]:
-            #     return None, ""
-
-            # source = source[caller_idx + len(method_name) :]
-
-            # i = 0
-            # open_count = 0
-            # while True:
-            #     c = source[i]
-            #     if c == "(":
-            #         open_count += 1
-            #     elif c == ")":
-            #         open_count -= 1
-            #     if open_count == 0:
-            #         break
-            #     i += 1
-
-            # lambda_source = source[: i + 1]
-            # remaining_source = source[i + 1 :]
-
-            # return lambda_source, remaining_source
-
         # Look for the name of the calling function (e.g. 'Select' or 'Where', etc.) and
         # find all the instances on this line.
         if caller_name is None:
@@ -666,7 +639,8 @@ def parse_as_ast(
             while True:
                 try:
                     a_module = ast.parse(src)
-                    # If this is a function, not a lambda, then we can morph and return that.
+                    # If this is a function, not a lambda, then we can morph and return
+                    # that.
                     if len(a_module.body) == 1 and isinstance(a_module.body[0], ast.FunctionDef):
                         lda = rewrite_func_as_lambda(a_module.body[0])  # type: ignore
                     else:
@@ -685,8 +659,8 @@ def parse_as_ast(
 
         parsed_lambdas = [p for p in (parse(src) for src in found_lambdas) if p is not None]
 
-        # If we have more than one lambda, there are some tricks we can try - like argument names,
-        # to see if they are different.
+        # If we have more than one lambda, there are some tricks we can try - like
+        # argument names, to see if they are different.
         src_ast: Optional[ast.Lambda] = None
         if len(found_lambdas) > 1:
             caller_arg_list = inspect.getfullargspec(ast_source).args
@@ -695,9 +669,8 @@ def parse_as_ast(
                 if lambda_args == caller_arg_list:
                     if src_ast is not None:
                         raise ValueError(
-                            f"Found two calls to {caller_name} on same line - "
-                            "split across lines or change lambda argument names so they "
-                            "are different."
+                            f"Found two calls to {caller_name} on same line - split across "
+                            "lines or change lambda argument names so they are different."
                         )
                     src_ast = p_lambda
         else:

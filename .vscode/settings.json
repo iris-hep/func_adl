@@ -21,6 +21,7 @@
         "iscoroutine",
         "isfunction",
         "ismethod",
+        "isort",
         "Jupyter",
         "kwonlyargs",
         "LINQ",
@@ -66,7 +67,6 @@
     "python.testing.pytestArgs": [
         "--no-cov"
     ],
-    "restructuredtext.languageServer.disabled": true,
     "[python]": {
         "editor.codeActionsOnSave": {
             "source.organizeImports": true
