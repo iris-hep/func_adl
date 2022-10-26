@@ -435,6 +435,17 @@ class _source_parser:
         """
         return self._line_no, self._carrot
 
+    def is_same_line(self, state: Tuple[int, int]) -> bool:
+        """Check if we are on the same line as the given state
+
+        Args:
+            state (Tuple[int, int]): The state to check
+
+        Returns:
+            bool: True if on the same line, False otherwise
+        """
+        return state[0] == self.get_state()[0]
+
     def set_state(self, state: Tuple[int, int]) -> None:
         """Set the state of the parser
 
@@ -453,8 +464,10 @@ class _source_parser:
     def advance_carrot(self, n: int) -> None:
         "Move the carrot forward by n characters"
         self._carrot += n
+        if self._carrot >= len(self._lines[self._line_no]):
+            self.next_line()
 
-    def peek(self) -> str:
+    def peek_line(self) -> str:
         "Get the next line, but don't move the marker"
         return self._lines[self._line_no][self._carrot :]
 
@@ -513,7 +526,7 @@ def parse_as_ast(
             """
 
             # See if we can find the lambda inside a named method call.
-            caller_idx = source.peek().find(method_name)
+            caller_idx = source.peek_line().find(method_name)
             if caller_idx >= 0:
                 source.advance_carrot(caller_idx + len(method_name))
 
@@ -524,7 +537,7 @@ def parse_as_ast(
 
             open_count = 0 if caller_idx >= 0 else 1
             while True:
-                c = source.peek()[0]
+                c = source.peek_line()[0]
                 if c == "(":
                     open_count += 1
                 elif c == ")":
@@ -573,18 +586,19 @@ def parse_as_ast(
             caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
 
         found_lambdas: List[str] = []
-        while True:
-            lambda_source, remaining_source = find_next_lambda(caller_name, source)
+        start_line = source.get_state()
+        while source.is_same_line(start_line):
+            lambda_source = find_next_lambda(caller_name, source)
             if lambda_source is None:
                 break
-            source = remaining_source
             found_lambdas.append(lambda_source)
 
         if len(found_lambdas) == 0:
-            found_lambdas.append(source)
+            found_lambdas.append(source.peek_line())
 
         # Parse them as a lambda function
         def parse(src: str) -> Optional[ast.Lambda]:
+            src = _realign_indent(src).replace("\n", "\\\n")
             while True:
                 try:
                     a_module = ast.parse(src)
