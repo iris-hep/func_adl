@@ -379,7 +379,7 @@ def _realign_indent(s: str) -> str:
     lines = s.split("\n")
     spaces = len(lines[0]) - len(lines[0].lstrip())
     stripped_lines = [ln[spaces:] for ln in lines]
-    while stripped_lines[-1].strip() == "":
+    while len(stripped_lines) > 0 and stripped_lines[-1].strip() == "":
         stripped_lines.pop()
     return "\n".join(stripped_lines)
 
@@ -476,6 +476,11 @@ class _source_parser:
         if self._carrot >= len(self._lines[self._line_no]):
             self.next_line()
 
+    def move_to_next(self, s: str) -> None:
+        "Move the carrot to the next instance of s"
+        while self.peek_line()[0] != s:
+            self.advance_carrot(1)
+
     def peek_line(self) -> str:
         "Get the next line, but don't move the marker"
         return self._lines[self._line_no][self._carrot :]
@@ -537,10 +542,12 @@ def parse_as_ast(
             # See if we can find the lambda inside a named method call.
             caller_idx = source.peek_line().find(method_name)
             end_on = None
+            open_count = 0
             if caller_idx >= 0:
                 source.advance_carrot(caller_idx + len(method_name))
                 source.move_past_next("(")
                 end_on = ")"
+                open_count = 1
             else:
                 # We are going to have to assume the lambda or function is somewhere on
                 # the line - so parse the line just like it was a normal python code
@@ -552,19 +559,24 @@ def parse_as_ast(
 
             source_start = source.get_state()
 
-            open_count = 0
             while True:
                 c = source.peek_line()[0]
                 if c == "(":
                     open_count += 1
                 elif c == ")":
                     open_count -= 1
+                    if open_count < 0:
+                        source.advance_carrot(-1)
+                        break
                 if open_count == 0 and c == end_on:
                     break
                 source.advance_carrot(1)
 
             source_end = source.get_state()
             lambda_source = source.get_as_string(source_start, source_end)
+
+            # Eat the character we ended on.
+            source.advance_carrot(1)
 
             if len(lambda_source) == 0:
                 return None
@@ -647,7 +659,7 @@ def parse_as_ast(
                 else:
                     return None
 
-        parsed_lambdas = [parse(src) for src in found_lambdas]
+        parsed_lambdas = [p for p in (parse(src) for src in found_lambdas) if p is not None]
 
         # If we have more than one lambda, there are some tricks we can try - like argument names,
         # to see if they are different.
