@@ -567,6 +567,27 @@ def test_parse_multiline_lambda_ok_with_one():
     assert "20" in ast.dump(found[0])
 
 
+def test_parse_multiline_lambda_same_line():
+    "Make sure we can properly parse a multi-line lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(lambda x: x
+                   + 1  # noqa: W503
+                   + 2  # noqa: W503
+                   + 20  # noqa: W503
+                   )
+    # fmt: on
+
+    assert "20" in ast.dump(found[0])
+
+
 def test_parse_multiline_lambda_ok_with_one_and_paran():
     "Make sure we can properly parse a multi-line lambda - using parens as delimiters"
 
