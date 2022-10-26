@@ -510,7 +510,7 @@ def parse_as_ast(
     if callable(ast_source):
         source = _source_parser(_get_sourcelines(ast_source))
 
-        def find_next_lambda(method_name: str, source: _source_parser) -> str:
+        def find_next_lambda(method_name: str, source: _source_parser) -> Optional[str]:
             """Find the lambda that is inside this method called. Return the complete text
             of the lambda (even if it spans multiple lines), and update the source parser's
             location to the end of the lambda.
@@ -536,18 +536,26 @@ def parse_as_ast(
             source_start = source.get_state()
 
             open_count = 0 if caller_idx >= 0 else 1
+            reset_start = False
             while True:
                 c = source.peek_line()[0]
                 if c == "(":
+                    reset_start = open_count == 0
                     open_count += 1
                 elif c == ")":
                     open_count -= 1
                 if open_count == 0:
                     break
                 source.advance_carrot(1)
+                if reset_start:
+                    source_start = source.get_state()
+                    reset_start = False
 
             source_end = source.get_state()
             lambda_source = source.get_as_string(source_start, source_end)
+
+            if len(lambda_source) == 0:
+                return None
 
             return lambda_source
 
