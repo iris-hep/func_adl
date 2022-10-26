@@ -630,8 +630,7 @@ def parse_as_ast(
                     break
                 found_lambdas.append(lambda_source)
 
-        if len(found_lambdas) == 0:
-            found_lambdas.append(source.peek_line())
+        assert len(found_lambdas) > 0, "No lambdas found in source code - internal error"
 
         # Parse them as a lambda function
         def parse(src: str) -> Optional[ast.Lambda]:
@@ -678,6 +677,8 @@ def parse_as_ast(
             src_ast = parsed_lambdas[0]
 
         if not src_ast:
+            # This most often happens in a notebook when the lambda is defined in a funny place
+            # and can't be recovered.
             raise ValueError(f"Unable to recover source for function {ast_source}.")
 
         # Since this is a function in python, we can look for lambda capture.
