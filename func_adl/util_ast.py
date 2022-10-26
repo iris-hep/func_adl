@@ -379,6 +379,8 @@ def _realign_indent(s: str) -> str:
     lines = s.split("\n")
     spaces = len(lines[0]) - len(lines[0].lstrip())
     stripped_lines = [ln[spaces:] for ln in lines]
+    while stripped_lines[-1].strip() == "":
+        stripped_lines.pop()
     return "\n".join(stripped_lines)
 
 
@@ -408,7 +410,8 @@ def _strip_comments(s: str) -> str:
     Returns:
         str: The string with comments removed
     """
-    return re.sub(re.compile("#.*?\n"), "", s)
+    add_newline = "" if s[-1] != "\n" else "\n"
+    return re.sub(re.compile("#.*?\n"), "", s) + add_newline
 
 
 class _source_parser:
@@ -464,6 +467,12 @@ class _source_parser:
     def advance_carrot(self, n: int) -> None:
         "Move the carrot forward by n characters"
         self._carrot += n
+        if self._carrot >= len(self._lines[self._line_no]):
+            self.next_line()
+
+    def move_past_next(self, s: str) -> None:
+        "Move the carrot past the next instance of s"
+        self._carrot = self._lines[self._line_no].find(s, self._carrot) + len(s)
         if self._carrot >= len(self._lines[self._line_no]):
             self.next_line()
 
@@ -527,29 +536,32 @@ def parse_as_ast(
 
             # See if we can find the lambda inside a named method call.
             caller_idx = source.peek_line().find(method_name)
+            end_on = None
             if caller_idx >= 0:
                 source.advance_carrot(caller_idx + len(method_name))
+                source.move_past_next("(")
+                end_on = ")"
+            else:
+                # We are going to have to assume the lambda or function is somewhere on
+                # the line - so parse the line just like it was a normal python code
+                # line, and pick it out.
+                end_on = "\n"
 
             # Now we must be greedy and gobble up all the lines we can find that
             # make sense and we can make fit.
 
             source_start = source.get_state()
 
-            open_count = 0 if caller_idx >= 0 else 1
-            reset_start = False
+            open_count = 0
             while True:
                 c = source.peek_line()[0]
                 if c == "(":
-                    reset_start = open_count == 0
                     open_count += 1
                 elif c == ")":
                     open_count -= 1
-                if open_count == 0:
+                if open_count == 0 and c == end_on:
                     break
                 source.advance_carrot(1)
-                if reset_start:
-                    source_start = source.get_state()
-                    reset_start = False
 
             source_end = source.get_state()
             lambda_source = source.get_as_string(source_start, source_end)
@@ -594,12 +606,16 @@ def parse_as_ast(
             caller_name = inspect.currentframe().f_back.f_code.co_name  # type: ignore
 
         found_lambdas: List[str] = []
-        start_line = source.get_state()
-        while source.is_same_line(start_line):
-            lambda_source = find_next_lambda(caller_name, source)
-            if lambda_source is None:
-                break
-            found_lambdas.append(lambda_source)
+        if source.peek_line().strip()[:3] == "def":
+            # we have a function - in this case the `inspect` module works just fine.
+            found_lambdas.append(inspect.getsource(ast_source))
+        else:
+            start_line = source.get_state()
+            while source.is_same_line(start_line):
+                lambda_source = find_next_lambda(caller_name, source)
+                if lambda_source is None:
+                    break
+                found_lambdas.append(lambda_source)
 
         if len(found_lambdas) == 0:
             found_lambdas.append(source.peek_line())
@@ -644,7 +660,7 @@ def parse_as_ast(
                     if src_ast is not None:
                         raise ValueError(
                             f"Found two calls to {caller_name} on same line - "
-                            "split accross lines or change lambda argument names so they "
+                            "split across lines or change lambda argument names so they "
                             "are different."
                         )
                     src_ast = p_lambda
