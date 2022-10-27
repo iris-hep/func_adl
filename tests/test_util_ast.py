@@ -509,6 +509,133 @@ def test_parse_continues_one_line():
     assert "two" in str(e.value)
 
 
+def test_parse_space_after_method():
+    "Make sure we correctly parse a funnily formatted lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it   (lambda x: x + 123)  # noqa: E211
+    # fmt: on
+
+    assert "123" in ast.dump(found[0])
+
+
+def test_parse_multiline_bad_line_break():
+    "Make sure we correctly parse a funnily formatted lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(
+        lambda x: x +  # noqa: W504
+        123)
+    # fmt: on
+
+    assert "123" in ast.dump(found[0])
+
+
+def test_parse_multiline_lambda_ok_with_one():
+    "Make sure we can properly parse a multi-line lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(
+        lambda x: x
+        + 1  # noqa: W503
+        + 2  # noqa: W503
+        + 20  # noqa: W503
+    )
+    # fmt: on
+
+    assert "20" in ast.dump(found[0])
+
+
+def test_parse_multiline_lambda_same_line():
+    "Make sure we can properly parse a multi-line lambda"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(lambda x: x
+                   + 1  # noqa: W503
+                   + 2  # noqa: W503
+                   + 20  # noqa: W503
+                   )
+    # fmt: on
+
+    assert "20" in ast.dump(found[0])
+
+
+def test_parse_multiline_lambda_ok_with_one_and_paran():
+    "Make sure we can properly parse a multi-line lambda - using parens as delimiters"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(
+        lambda x: (
+            x
+            + 1  # noqa: W503
+            + 2  # noqa: W503
+            + 20  # noqa: W503
+        )
+    )
+    # fmt: on
+
+    assert "20" in ast.dump(found[0])
+
+
+def test_parse_multiline_lambda_ok_with_one_as_arg():
+    "Make sure we can properly parse a multi-line lambda - but now with argument"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable, counter: int):
+            found.append(parse_as_ast(x))
+            assert counter > 0
+            return self
+
+    # fmt: off
+    my_obj().do_it(
+        lambda x: x
+        + 1  # noqa: W503
+        + 2  # noqa: W503
+        + 20,  # noqa: W503
+        50,
+    )
+    # fmt: on
+
+    assert "20" in ast.dump(found[0])
+
+
 def test_parse_metadata_there():
     recoreded = None
 

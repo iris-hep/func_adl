@@ -21,6 +21,7 @@
         "iscoroutine",
         "isfunction",
         "ismethod",
+        "isort",
         "Jupyter",
         "kwonlyargs",
         "LINQ",
@@ -41,6 +42,7 @@
         "sdist",
         "servicex",
         "setuptools",
+        "sourcelines",
         "syntatic",
         "Topo",
         "unittests",
@@ -60,13 +62,11 @@
     "editor.formatOnSave": true,
     "pyright.openFilesOnly": false,
     "python.analysis.openFilesOnly": false,
-    "python.pythonPath": ".venv\\Scripts\\python.exe",
     "python.venvPath": ".venv",
     "python.analysis.typeCheckingMode": "basic",
     "python.testing.pytestArgs": [
         "--no-cov"
     ],
-    "restructuredtext.languageServer.disabled": true,
     "[python]": {
         "editor.codeActionsOnSave": {
             "source.organizeImports": true

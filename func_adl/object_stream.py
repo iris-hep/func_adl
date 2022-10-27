@@ -277,8 +277,9 @@ class ObjectStream(Generic[T]):
     def AsParquetFiles(
         self, filename: str, columns: Union[str, List[str]] = []
     ) -> ObjectStream[ReturnedDataPlaceHolder]:
-        """Returns the sequence of items as a `parquet` file. Each item in the ObjectStream gets a separate
-        entry in the file. The times must be of types that the infrastructure can work with:
+        """Returns the sequence of items as a `parquet` file. Each item in the ObjectStream
+        gets a separate entry in the file. The times must be of types that the infrastructure
+        can work with:
 
             Float               A tree with a single float in each entry will be written.
             vector<float>       A tree with a list of floats in each entry will be written.
