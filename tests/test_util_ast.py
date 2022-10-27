@@ -636,6 +636,25 @@ def test_parse_multiline_lambda_ok_with_one_as_arg():
     assert "20" in ast.dump(found[0])
 
 
+def test_parse_multiline_lambda_with_funny_split():
+    "This isn't on two lines but sort-of is - so we should parse it. See issue #84"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(lambda event: event + 1
+                   ).do_it(lambda event: event)
+    # fmt: on
+
+    assert "Add()" in ast.dump(found[0])
+    assert "Add()" not in ast.dump(found[1])
+
+
 def test_parse_metadata_there():
     recoreded = None
 
