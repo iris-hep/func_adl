@@ -238,6 +238,8 @@ class ObjectStream(Generic[T]):
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
         )
 
+    as_pandas = AsPandasDF
+
     def AsROOTTTree(
         self, filename: str, treename: str, columns: Union[str, List[str]] = []
     ) -> ObjectStream[ReturnedDataPlaceHolder]:
@@ -273,6 +275,8 @@ class ObjectStream(Generic[T]):
                 "ResultTTree", [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)]
             )
         )
+
+    as_ROOT_tree = AsROOTTTree
 
     def AsParquetFiles(
         self, filename: str, columns: Union[str, List[str]] = []
@@ -310,6 +314,8 @@ class ObjectStream(Generic[T]):
             function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)])
         )
 
+    as_parquet = AsParquetFiles
+
     def AsAwkwardArray(
         self, columns: Union[str, List[str]] = []
     ) -> ObjectStream[ReturnedDataPlaceHolder]:
@@ -332,6 +338,8 @@ class ObjectStream(Generic[T]):
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultAwkwardArray", [self._q_ast, as_ast(columns)])
         )
+
+    as_awkward = AsAwkwardArray
 
     def _get_executor(
         self, executor: Optional[Callable[[ast.AST, Optional[str]], Awaitable[Any]]] = None

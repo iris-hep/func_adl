@@ -193,6 +193,17 @@ def test_simple_query_awkward():
     assert isinstance(r, ast.AST)
 
 
+def test_simple_query_as_awkward():
+    r = (
+        my_event()
+        .SelectMany("lambda e: e.jets()")
+        .Select("lambda j: j.pT()")
+        .as_awkward(["analysis", "jetPT"])
+        .value()
+    )
+    assert isinstance(r, ast.AST)
+
+
 def test_two_similar_query_awkward():
     r1 = (
         my_event()
