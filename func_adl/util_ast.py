@@ -472,11 +472,24 @@ class _source_parser:
         self._clean_line_comments(self._line_no)
         return self._lines[self._line_no - 1]
 
+    def previous_line(self) -> str:
+        "Get the previous line, and move the marker"
+        self._line_no -= 1
+        self._carrot = 0
+        self._clean_line_comments(self._line_no)
+        return self._lines[self._line_no + 1]
+
     def advance_carrot(self, n: int) -> None:
-        "Move the carrot forward by n characters"
+        "Move the carrot forward or backward by n characters"
         self._carrot += n
         if self._carrot >= len(self._lines[self._line_no]):
+            delta = self._carrot - len(self._lines[self._line_no])
             self.next_line()
+            self.advance_carrot(delta)
+        if self._carrot < 0:
+            delta = -self._carrot
+            self.previous_line()
+            self.advance_carrot(delta)
 
     def move_past_next(self, s: str) -> None:
         "Move the carrot past the next instance of s"
@@ -521,6 +534,37 @@ class _source_parser:
             carrot = len(self._lines[line_no]) - 1
         return ""
 
+    def move_past_previous(self, s: str) -> None:
+        "Move the carrot past the previous instance of s in the buffer"
+        line_no = self._line_no
+        carrot = self._carrot
+        while line_no >= 0:
+            while carrot >= 0:
+                if carrot + len(s) < len(self._lines[line_no]):
+                    if self._lines[line_no][carrot : carrot + len(s)] == s:
+                        self._line_no = line_no
+                        self._carrot = carrot + len(s)
+                        self.advance_carrot(-len(s))
+                        return
+                carrot -= 1
+            line_no -= 1
+            self._clean_line_comments(line_no)
+            carrot = len(self._lines[line_no]) - 1
+
+    def previous_word(self) -> Optional[str]:
+        "Find the previous word (regex) from the carrot and return it"
+        line_no = self._line_no
+        carrot = self._carrot
+        while line_no >= 0:
+            while carrot >= 0:
+                m = re.match(r".*\W(\w+)\s*$", self._lines[line_no][:carrot])
+                if m:
+                    return m.group(1)
+            line_no -= 1
+            self._clean_line_comments(line_no)
+            carrot = len(self._lines[line_no]) - 1
+        return None
+
 
 def parse_as_ast(
     ast_source: Union[str, ast.AST, Callable], caller_name: Optional[str] = None
@@ -561,6 +605,15 @@ def parse_as_ast(
             Returns:
                 str: The complete source that has been parsed.
             """
+
+            # Is the previous argument the call, and this lambda is just starting
+            # this line? The `black` formatter will often split lines like this.
+            if source.find_previous_non_whitespace() == "(":
+                marker = source.get_state()
+                source.move_past_previous("(")
+                if source.previous_word() == method_name:
+                    method_name = "bogusBogus123-:33"
+                source.set_state(marker)
 
             # See if we can find the lambda inside a named method call.
             caller_idx = source.peek_line().find(method_name)

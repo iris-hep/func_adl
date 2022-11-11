@@ -676,6 +676,7 @@ def test_parse_black_split_lambda_funny():
     # fmt: on
 
     assert len(found) == 1
+    assert "AntiKt4EMTopoJets" in ast.dump(found[0])
 
 
 def test_parse_metadata_there():
