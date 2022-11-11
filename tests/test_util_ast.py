@@ -655,6 +655,29 @@ def test_parse_multiline_lambda_with_funny_split():
     assert "Add()" not in ast.dump(found[1])
 
 
+def test_parse_black_split_lambda_funny():
+    "Seen in wild - formatting really did a number here"
+
+    found = []
+
+    class my_obj:
+        def do_it(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+    # fmt: off
+    my_obj().do_it(
+        lambda e: e.Jets("AntiKt4EMTopoJets").do_it(
+            lambda j: j.Jets("AntiKt4EMTopoJets").do_it(
+                lambda j1: j1.pt() / 1000.0
+            )
+        )
+    )
+    # fmt: on
+
+    assert len(found) == 1
+
+
 def test_parse_metadata_there():
     recoreded = None
 
