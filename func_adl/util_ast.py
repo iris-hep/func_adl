@@ -714,7 +714,7 @@ def parse_as_ast(
         # If we have more than one lambda, there are some tricks we can try - like
         # argument names, to see if they are different.
         src_ast: Optional[ast.Lambda] = None
-        if len(found_lambdas) > 1:
+        if len(parsed_lambdas) > 1:
             caller_arg_list = inspect.getfullargspec(ast_source).args
             for idx, p_lambda in enumerate(parsed_lambdas):
                 lambda_args = [a.arg for a in p_lambda.args.args]  # type: ignore
@@ -726,7 +726,7 @@ def parse_as_ast(
                         )
                     src_ast = p_lambda
         else:
-            assert len(found_lambdas) == 1
+            assert len(parsed_lambdas) == 1, "Internal error - no lambdas found"
             src_ast = parsed_lambdas[0]
 
         if not src_ast:
