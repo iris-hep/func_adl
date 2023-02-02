@@ -644,6 +644,7 @@ def test_parse_multiline_lambda_blank_lines_no_infinite_loop():
         .value()
     )
     # fmt: on
+    assert jets_pflow is not None  # Just to keep flake8 happy without adding a noqa above.
     assert "uncalibrated_collection" in ast.dump(found[0])
 
 
