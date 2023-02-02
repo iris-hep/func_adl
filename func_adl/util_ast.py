@@ -64,7 +64,7 @@ def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
 
 
 def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
-    """Given an AST of a lambda node, return the lambda node. If it is burried in a module, then
+    """Given an AST of a lambda node, return the lambda node. If it is buried in a module, then
     unwrap it first Python, when it parses an module, returns the lambda wrapped in a `Module` AST
     node. This gets rid of it, but is also flexible.
 
@@ -557,7 +557,7 @@ class _source_parser:
         carrot = self._carrot
         while line_no >= 0:
             while carrot >= 0:
-                m = re.match(r".*\W(\w+)\s*$", self._lines[line_no][:carrot])
+                m = re.match(r".*\b(\w+)\b[\s|\W]*$", self._lines[line_no][:carrot])
                 if m:
                     return m.group(1)
             line_no -= 1
