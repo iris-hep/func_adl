@@ -64,7 +64,7 @@ def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
 
 
 def lambda_unwrap(lam: ast.AST) -> ast.Lambda:
-    """Given an AST of a lambda node, return the lambda node. If it is burried in a module, then
+    """Given an AST of a lambda node, return the lambda node. If it is buried in a module, then
     unwrap it first Python, when it parses an module, returns the lambda wrapped in a `Module` AST
     node. This gets rid of it, but is also flexible.
 
