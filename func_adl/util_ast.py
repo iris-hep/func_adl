@@ -557,7 +557,7 @@ class _source_parser:
         carrot = self._carrot
         while line_no >= 0:
             while carrot >= 0:
-                m = re.match(r".*\W(\w+)\s*$", self._lines[line_no][:carrot])
+                m = re.match(r".*\b(\w+)\b[\s|\W]*$", self._lines[line_no][:carrot])
                 if m:
                     return m.group(1)
             line_no -= 1

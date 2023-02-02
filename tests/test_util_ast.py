@@ -612,6 +612,41 @@ def test_parse_multiline_lambda_ok_with_one_and_paran():
     assert "20" in ast.dump(found[0])
 
 
+def test_parse_multiline_lambda_blank_lines_no_infinite_loop():
+    "Make sure we can properly parse a multi-line lambda - using parens as delimiters"
+
+    found = []
+
+    class my_obj:
+        def Where(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+        def Select(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+        def AsAwkwardArray(self, stuff: str):
+            return self
+
+        def value(self):
+            return self
+
+    jets_pflow_name = "hi"
+    ds_dijet = my_obj()
+
+    # fmt: off
+    jets_pflow = (
+        ds_dijet.Select(lambda e: e.Jets(uncalibrated_collection=jets_pflow_name))
+        .Select(lambda e: e.Where(lambda j: (j.pt() / 1000) > 30))
+        .Select(lambda e: e.Select(lambda j: (j.pt() / 1000)))
+        .AsAwkwardArray("JetPt")
+        .value()
+    )
+    # fmt: on
+    assert "uncalibrated_collection" in ast.dump(found[0])
+
+
 def test_parse_multiline_lambda_ok_with_one_as_arg():
     "Make sure we can properly parse a multi-line lambda - but now with argument"
 
