@@ -6,7 +6,6 @@ import pytest
 
 from func_adl.util_ast import (
     _realign_indent,
-    _source_parser,
     as_ast,
     function_call,
     lambda_args,
@@ -748,11 +747,12 @@ def test_parse_multiline_lambda_with_comment():
 
     source = my_obj()
     # fmt: off
+    # flake8: noqa
     r = source.Where(lambda e:
-        e.electron_pt.Where(lambda pT: pT > 25).Count() + e.muon_pt.Where(lambda pT: pT > 25).Count()== 1)\
+        e.electron_pt.Where(lambda pT: pT > 25).Count() + e.muon_pt.Where(lambda pT: pT > 25).Count()== 1) \
         .Where(lambda e:\
             e.jet_pt.Where(lambda pT: pT > 25).Count() >= 4
-        )
+        )     # noqa: E501
     # fmt: on
 
     assert "electron_pt" in ast.dump(found[0])
@@ -813,17 +813,3 @@ def test_realign_indent_2lines():
 
 def test_realign_indent_2lines_uneven():
     assert _realign_indent("    test()\n        dude()") == "test()\n    dude()"
-
-
-def test_sp_simple():
-    """Test the source parser for basic functionality"""
-    sp = _source_parser(
-        [
-            "source",
-        ],
-        0,
-    )
-
-    assert sp.peek_line() == "source"
-    sp.advance_carrot(1)
-    assert sp.peek_line() == "ource"
