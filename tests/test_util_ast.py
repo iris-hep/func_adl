@@ -6,6 +6,8 @@ import pytest
 
 from func_adl.util_ast import (
     _realign_indent,
+    _source_parser,
+    _strip_comments,
     as_ast,
     function_call,
     lambda_args,
@@ -691,6 +693,38 @@ def test_parse_multiline_lambda_with_funny_split():
     assert "Add()" not in ast.dump(found[1])
 
 
+def test_parse_multiline_lambda_with_comment():
+    "Comment in the middle of things"
+
+    found = []
+
+    class my_obj:
+        def Where(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+        def Select(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+        def AsAwkwardArray(self, stuff: str):
+            return self
+
+        def value(self):
+            return self
+
+    source = my_obj()
+    # fmt: off
+    r = source.Where(lambda e:
+        e.electron_pt.Where(lambda pT: pT > 25).Count() + e.muon_pt.Where(lambda pT: pT > 25).Count()== 1)\
+        .Where(lambda e:\
+            e.jet_pt.Where(lambda pT: pT > 25).Count() >= 4
+        )
+    # fmt: on
+
+    assert "electron_pt" in ast.dump(found[0])
+
+
 def test_parse_black_split_lambda_funny():
     "Seen in wild - formatting really did a number here"
 
@@ -746,3 +780,75 @@ def test_realign_indent_2lines():
 
 def test_realign_indent_2lines_uneven():
     assert _realign_indent("    test()\n        dude()") == "test()\n    dude()"
+
+
+def test_sp_simple():
+    """Test the source parser for basic functionality"""
+    sp = _source_parser(
+        [
+            "source",
+        ],
+        0,
+    )
+
+    assert sp.peek_line() == "source"
+    sp.advance_carrot(1)
+    assert sp.peek_line() == "ource"
+
+
+def test_sp_remove_EOL_comments_on_first_line():
+    """Make sure comments at EOL are removed"""
+    sp = _source_parser(
+        [
+            "source # fork it over\n",
+        ],
+        0,
+    )
+
+    assert sp.peek_line() == "source\n"
+
+
+def test_sp_remove_EOL_comments_on_new_line():
+    """Make sure comments on next line are removed"""
+    sp = _source_parser(
+        [
+            "lineone\n",
+            "source # fork it over\n",
+        ],
+        0,
+    )
+
+    sp.next_line()
+    assert sp.peek_line() == "source\n"
+
+
+def test_strip_comments_none():
+    assert _strip_comments("test") == "test"
+
+
+def test_strip_comments_no_new_line():
+    assert _strip_comments("test # comment") == "test "
+
+
+def test_strip_comments_new_line():
+    assert _strip_comments("test # comment\n") == "test \n"
+
+
+def test_strip_comments_one_line():
+    assert _strip_comments("   # Fork it over\n") == "   \n"
+    assert _strip_comments("   # Fork it over") == "   "
+
+
+def test_strip_comments_comment_eol():
+    assert _strip_comments("source   #\n") == "source   \n"
+    assert _strip_comments("source   #") == "source   "
+
+
+def test_strip_comments_string_good():
+    assert _strip_comments("do_it('this # is a test')") == "do_it('this # is a test')"
+    assert _strip_comments('do_it("this # is a test")') == 'do_it("this # is a test")'
+
+
+def test_strip_comments_string_in_comment():
+    assert _strip_comments("source # do it if 'we' are happy") == "source "
+    assert _strip_comments('source # do it if "we" are happy') == "source "
