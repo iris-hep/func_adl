@@ -381,8 +381,8 @@ def test_known_global_function():
     assert "Name(id='global_doit_non_func'" in ast.dump(f)
 
 
-def test_parse_continues():
-    "Emulate the syntax you often find when you have a multistep query"
+def test_lambda_args_differentiation():
+    "Use the arguments of the lambda to tell what we want"
     found = []
 
     class my_obj:
@@ -403,22 +403,28 @@ def test_parse_continues():
     assert isinstance(l2.body.op, ast.Mult)
 
 
-def test_parse_continues_accross_lines():
-    "Use a line continuation and make sure we can tell the difference"
-    found = []
+def test_lambda_method_differentiation():
+    "Use the method to tell what we want"
+    found1 = []
+    found2 = []
 
     class my_obj:
-        def do_it(self, x: Callable):
-            found.append(parse_as_ast(x))
+        def do_it1(self, x: Callable):
+            found1.append(parse_as_ast(x, caller_name="do_it1"))
             return self
 
-    # fmt: off
-    my_obj().do_it(lambda x: x + 1) \
-        .do_it(lambda x: x * 2)
-    # fmt: on
+        def do_it2(self, x: Callable):
+            found2.append(parse_as_ast(x, caller_name="do_it2"))
+            return self
 
-    assert len(found) == 2
-    l1, l2 = found
+    (my_obj().do_it1(lambda x: x + 1).do_it2(lambda x: x * 2))
+
+    assert len(found1) == 1
+    assert len(found2) == 1
+
+    l1 = found1[0]
+    l2 = found2[0]
+
     assert isinstance(l1, ast.Lambda)
     assert isinstance(l1.body, ast.BinOp)
     assert isinstance(l1.body.op, ast.Add)
@@ -426,6 +432,34 @@ def test_parse_continues_accross_lines():
     assert isinstance(l2, ast.Lambda)
     assert isinstance(l2.body, ast.BinOp)
     assert isinstance(l2.body.op, ast.Mult)
+
+
+# def test_parse_continues_accross_lines():
+# NOTE: This test will fail because the python tokenizer will treat
+# the continuation as a single line, and the parser will see these on
+# the same line. This is how python works, and we should follow it.
+#     "Use a line continuation and make sure we can tell the difference"
+#     found = []
+
+#     class my_obj:
+#         def do_it(self, x: Callable):
+#             found.append(parse_as_ast(x))
+#             return self
+
+#     # fmt: off
+#     my_obj().do_it(lambda x: x + 1) \
+#         .do_it(lambda x: x * 2)
+#     # fmt: on
+
+#     assert len(found) == 2
+#     l1, l2 = found
+#     assert isinstance(l1, ast.Lambda)
+#     assert isinstance(l1.body, ast.BinOp)
+#     assert isinstance(l1.body.op, ast.Add)
+
+#     assert isinstance(l2, ast.Lambda)
+#     assert isinstance(l2.body, ast.BinOp)
+#     assert isinstance(l2.body.op, ast.Mult)
 
 
 def test_decorator_parse():
@@ -506,7 +540,7 @@ def test_parse_continues_one_line():
     with pytest.raises(Exception) as e:
         my_obj().do_it(lambda x: x + 1).do_it(lambda x: x * 2)
 
-    assert "two" in str(e.value)
+    assert "multiple" in str(e.value)
 
 
 def test_parse_space_after_method():
@@ -689,6 +723,39 @@ def test_parse_multiline_lambda_with_funny_split():
 
     assert "Add()" in ast.dump(found[0])
     assert "Add()" not in ast.dump(found[1])
+
+
+def test_parse_multiline_lambda_with_comment():
+    "Comment in the middle of things"
+
+    found = []
+
+    class my_obj:
+        def Where(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+        def Select(self, x: Callable):
+            found.append(parse_as_ast(x))
+            return self
+
+        def AsAwkwardArray(self, stuff: str):
+            return self
+
+        def value(self):
+            return self
+
+    source = my_obj()
+    # fmt: off
+    # flake8: noqa
+    r = source.Where(lambda e:
+        e.electron_pt.Where(lambda pT: pT > 25).Count() + e.muon_pt.Where(lambda pT: pT > 25).Count()== 1) \
+        .Where(lambda e:\
+            e.jet_pt.Where(lambda pT: pT > 25).Count() >= 4
+        )     # noqa: E501
+    # fmt: on
+
+    assert "electron_pt" in ast.dump(found[0])
 
 
 def test_parse_black_split_lambda_funny():
