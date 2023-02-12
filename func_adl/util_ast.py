@@ -6,6 +6,7 @@ import io
 import re
 import sys
 import tokenize
+from collections import defaultdict
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 # Some functions to enable backwards compatibility.
@@ -695,13 +696,14 @@ class _token_runner:
         )
 
     def find_identifier(
-        self, identifier: List[str]
+        self, identifier: List[str], can_encounter_newline=True
     ) -> Tuple[Optional[tokenize.TokenInfo], Optional[tokenize.TokenInfo]]:
         """Find the next instance of the identifier. Return the token
         before it, and the identifier token.
 
         Args:
             identifier (str): The identifier to find
+            can_encounter_newline (bool, optional): Can we encounter a newline. Defaults to True.
 
         Returns:
             Tuple[Optional[tokenize.TokenInfo], Optional[tokenize.TokenInfo]]: The tokens before
@@ -712,6 +714,9 @@ class _token_runner:
             if t.type == tokenize.NAME:
                 if t.string in identifier:
                     return last_identifier, t
+                last_identifier = t
+            if t.type == tokenize.NEWLINE and not can_encounter_newline:
+                break
         return None, None
 
     def tokens_till(self, stop_condition: Dict[int, List[str]]) -> Generator[tokenize.Token]:
@@ -721,6 +726,10 @@ class _token_runner:
 
         Args:
             stop_condition (Dict[int, List[str]]): The token and string when we stop.
+            can_encounter_newline (bool, optional): Can we encounter a newline. Defaults to True.
+
+        Returns:
+            Generator[tokenize.Token]: The tokens
         """
         # Keep track of the number of open parens, etc.
         parens = 0
@@ -759,6 +768,40 @@ class _token_runner:
             yield t
 
 
+def _get_lambda_in_stream(
+    t_stream, start_token: tokenize.TokenInfo
+) -> Tuple[Optional[ast.Lambda], bool]:
+    """Finish of looking for a lambda in a token stream. Return the compiled
+    (into an ast) lambda, and whether or not we saw a newline as we were parsing.
+
+    Args:
+        t_stream (generator): Tokenizer stream
+        start_token (tokenize.TokenInfo): The starting lambda token
+
+    Returns:
+        Tuple[Optional[ast.Lambda], bool]: The compiled into an ast lambda, and whether or
+        not we saw a newline
+    """
+
+    # Now, move forward until we find the end of the lambda expression.
+    # We are expecting this lambda as part of a argument, so we are going to look
+    # for a comma or a closing paren.
+    accumulated_tokens = [start_token]
+    saw_new_line = False
+    for t in t_stream.tokens_till({tokenize.OP: [",", ")"]}):
+        accumulated_tokens.append(t)
+        if t.type == tokenize.NEWLINE or t.string == "\n":
+            saw_new_line = True
+
+    function_source = "(" + tokenize.untokenize(accumulated_tokens).lstrip() + ")"
+    a_module = ast.parse(function_source)
+    lda = next(
+        (node for node in ast.walk(a_module) if isinstance(node, ast.Lambda)),
+        None,
+    )
+    return lda, saw_new_line
+
+
 def _parse_source_for_lambda(
     ast_source: Callable, caller_name: Optional[str] = None
 ) -> Optional[ast.Lambda]:
@@ -772,38 +815,89 @@ def _parse_source_for_lambda(
     Returns:
         Optional[ast.Lambda]: The ast if a lambda is found.
     """
-    # Setup the tokenizer
+    # Find the start of the lambda or the separate 1-line function. We need to find the
+    # enclosing function for the lambda - as funny things can be done with indents
+    # and function arguments, and the tokenizer does not take kindly to surprising
+    # "un-indents".
+    func_name = None
+    start_token = None
     source, lambda_line = _get_sourcelines(ast_source)
-    t_stream = _token_runner(source, lambda_line)
+    t_stream = None
+    while func_name is None:
+        # Setup the tokenizer
+        t_stream = _token_runner(source, lambda_line)
 
-    # Find the start of the lambda or the separate 1-line function.
-    _, start_token = t_stream.find_identifier(["def", "lambda"])
-    if start_token is None:
-        return None
+        func_name, start_token = t_stream.find_identifier(["def", "lambda"])
+
+        if start_token is None:
+            return None
+        if start_token.string == "def":
+            break
+        if func_name is None:
+            lambda_line -= 1
+
+    assert start_token is not None
+    assert t_stream is not None
 
     # If this is a function, then things are going to be very easy.
     if start_token.string == "def":
         function_source = _realign_indent(inspect.getsource(ast_source))
-    else:
-        # Now, move forward until we find the end of the lambda expression.
-        # We are expecting this lambda as part of a argument, so we are going to look
-        # for a comma or a closing paren.
-        accumulated_tokens = [start_token]
-        for t in t_stream.tokens_till({tokenize.OP: [",", ")"]}):
-            accumulated_tokens.append(t)
-        function_source = tokenize.untokenize(accumulated_tokens).lstrip()
-
-    # Now turn it into a full blown AST.
-    a_module = ast.parse(function_source)
-    # If this is a function, not a lambda, then we can morph and return
-    # that.
-    if len(a_module.body) == 1 and isinstance(a_module.body[0], ast.FunctionDef):
+        a_module = ast.parse(function_source)
         lda = rewrite_func_as_lambda(a_module.body[0])  # type: ignore
     else:
-        lda = next(
-            (node for node in ast.walk(a_module) if isinstance(node, ast.Lambda)),
-            None,
+        # Grab all the lambdas on a single line
+        lambdas_on_a_line = defaultdict(list)
+        saw_new_line = False
+        while not saw_new_line:
+            lda, saw_new_line = _get_lambda_in_stream(t_stream, start_token)
+            lambdas_on_a_line[func_name.string if func_name is not None else None].append(lda)
+
+            if saw_new_line:
+                break
+
+            func_name, start_token = t_stream.find_identifier(
+                ["lambda"], can_encounter_newline=False
+            )
+            if start_token is None:
+                break
+
+        # Now lets make sure we pick up the right lambda. Do this by matching the caller
+        # name (if we have it), and then by matching the arguments.
+
+        lambdas_to_search = (
+            lambdas_on_a_line[caller_name]
+            if caller_name is not None
+            else [ls for lambda_list in lambdas_on_a_line.values() for ls in lambda_list]
         )
+        if len(lambdas_to_search) == 0:
+            if caller_name is None:
+                raise ValueError("Internal Error - Found no lambda!")
+            else:
+                raise ValueError(
+                    f"Internal Error - Found no lambda in arguments to {caller_name}!"
+                )
+
+        def lambda_arg_list(lda: ast.Lambda) -> List[str]:
+            return [a.arg for a in lda.args.args]
+
+        caller_arg_list = inspect.getfullargspec(ast_source).args
+        good_lambdas = [
+            lda for lda in lambdas_to_search if lambda_arg_list(lda) == caller_arg_list
+        ]
+        if len(good_lambdas) == 0:
+            raise ValueError(
+                f"Internal Error - Found no lambda in source with the arguments {caller_arg_list}"
+            )
+
+        if len(good_lambdas) > 1:
+            raise ValueError(
+                "Found multiple calls to on same line"
+                + ("" if caller_name is None else f" for {caller_name}")
+                + " - split the calls across "
+                "lines or change lambda argument names so they are different."
+            )
+
+        lda = good_lambdas[0]
 
     return lda
 
