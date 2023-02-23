@@ -110,7 +110,7 @@ class ObjectStream(Generic[T]):
         from func_adl.type_based_replacement import remap_from_lambda
 
         n_stream, n_ast, rtn_type = remap_from_lambda(
-            self, _local_simplification(parse_as_ast(func))
+            self, _local_simplification(parse_as_ast(func, "SelectMany"))
         )
         return ObjectStream[S](
             function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
@@ -136,7 +136,9 @@ class ObjectStream(Generic[T]):
         """
         from func_adl.type_based_replacement import remap_from_lambda
 
-        n_stream, n_ast, rtn_type = remap_from_lambda(self, _local_simplification(parse_as_ast(f)))
+        n_stream, n_ast, rtn_type = remap_from_lambda(
+            self, _local_simplification(parse_as_ast(f, "Select"))
+        )
         return ObjectStream[S](
             function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]), rtn_type
         )
@@ -160,7 +162,7 @@ class ObjectStream(Generic[T]):
         from func_adl.type_based_replacement import remap_from_lambda
 
         n_stream, n_ast, rtn_type = remap_from_lambda(
-            self, _local_simplification(parse_as_ast(filter))
+            self, _local_simplification(parse_as_ast(filter, "Where"))
         )
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
