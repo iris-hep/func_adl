@@ -647,10 +647,11 @@ def _parse_source_for_lambda(
 
         if len(good_lambdas) > 1:
             raise ValueError(
-                "Found multiple calls to on same line"
+                "Found multiple calls on same line"
                 + ("" if caller_name is None else f" for {caller_name}")
                 + " - split the calls across "
-                "lines or change lambda argument names so they are different."
+                "lines or change lambda argument names so they are different enough "
+                "for the python parsing code to tell."
             )
 
         lda = good_lambdas[0]
