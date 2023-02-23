@@ -75,6 +75,12 @@ def test_simple_query():
     assert isinstance(r, ast.AST)
 
 
+def test_simple_query_one_line():
+    """Make sure we parse 2 functions on one line correctly"""
+    r = my_event().Select(lambda e: e.met).Where(lambda e: e > 10).value()
+    assert isinstance(r, ast.AST)
+
+
 def test_two_simple_query():
     r1 = (
         my_event()

@@ -682,6 +682,38 @@ def test_parse_multiline_lambda_blank_lines_no_infinite_loop():
     assert "uncalibrated_collection" in ast.dump(found[0])
 
 
+def test_parse_select_where():
+    "Common lambas with different parent functions on one line - found in wild"
+
+    found = []
+
+    class my_obj:
+        def Where(self, x: Callable):
+            found.append(parse_as_ast(x, "Where"))
+            return self
+
+        def Select(self, x: Callable):
+            found.append(parse_as_ast(x, "Select"))
+            return self
+
+        def AsAwkwardArray(self, stuff: str):
+            return self
+
+        def value(self):
+            return self
+
+    jets_pflow_name = "hi"
+    ds_dijet = my_obj()
+
+    # fmt: off
+    jets_pflow = (
+        ds_dijet.Select(lambda e: e.met).Where(lambda e: e > 100)
+    )
+    # fmt: on
+    assert jets_pflow is not None  # Just to keep flake8 happy without adding a noqa above.
+    assert "met" in ast.dump(found[0])
+
+
 def test_parse_multiline_lambda_ok_with_one_as_arg():
     "Make sure we can properly parse a multi-line lambda - but now with argument"
 
