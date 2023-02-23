@@ -650,8 +650,11 @@ def _parse_source_for_lambda(
                 "Found multiple calls on same line"
                 + ("" if caller_name is None else f" for {caller_name}")
                 + " - split the calls across "
-                "lines or change lambda argument names so they are different enough "
-                "for the python parsing code to tell."
+                """lines or change lambda argument names so they are different. For example change:
+                    df.Select(lambda x: x + 1).Select(lambda x: x + 2)
+                    to:
+                    df.Select(lambda x: x + 1).Select(lambda y: y + 2)
+                """
             )
 
         lda = good_lambdas[0]
