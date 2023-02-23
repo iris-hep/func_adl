@@ -689,11 +689,11 @@ def test_parse_select_where():
 
     class my_obj:
         def Where(self, x: Callable):
-            found.append(parse_as_ast(x))
+            found.append(parse_as_ast(x, "Where"))
             return self
 
         def Select(self, x: Callable):
-            found.append(parse_as_ast(x))
+            found.append(parse_as_ast(x, "Select"))
             return self
 
         def AsAwkwardArray(self, stuff: str):
