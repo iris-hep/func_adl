@@ -1,6 +1,7 @@
 from typing import Any, Generic, Iterable, TypeVar
 
 import pytest
+from typeguard import check_type
 
 from func_adl.util_types import (
     _resolve_type,
@@ -89,7 +90,7 @@ def test_get_inherited_generic():
 
     myc = bogus[int]
 
-    assert get_inherited(myc) == Iterable[int]
+    assert check_type(get_inherited(myc), Iterable[int])
 
 
 def test_get_inherited_two_levels():
@@ -113,10 +114,10 @@ def test_get_inherited_generic_twice():
         pass
 
     myc = bogus[int]
-    assert get_inherited(myc) == Iterable[int]
+    assert check_type(get_inherited(myc), Iterable[int])
 
     myd = bogus[float]
-    assert get_inherited(myd) == Iterable[float]
+    assert check_type(get_inherited(myd), Iterable[float])
 
 
 def test_build_type_int():

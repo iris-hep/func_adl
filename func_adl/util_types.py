@@ -1,6 +1,26 @@
 import inspect
 import sys
-from typing import Any, Dict, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, Iterable, Optional, Tuple, Type, TypeVar
+
+from typeguard import check_type
+
+
+def test_type(actual: Type, expected: Type) -> bool:
+    """Test to see if two types are compatible
+
+    Args:
+        actual (Type): The actual type
+        expected (Type): The expected Type
+
+    Returns:
+        bool: True if they are compatible
+    """
+    try:
+        check_type(actual, expected)
+    except Exception:
+        return False
+    return True
+
 
 if sys.version_info >= (3, 8):
     from typing import get_args, get_origin
@@ -25,9 +45,7 @@ def is_iterable(t: Type) -> bool:
 
 def _is_iterable_direct(t: Type) -> bool:
     "Is this type iterable?"
-    if getattr(t, "_name", None) == "Iterable":
-        return True
-    return False
+    return test_type(t, Iterable)
 
 
 def get_inherited(t: Type) -> Type:
@@ -54,7 +72,9 @@ def get_inherited(t: Type) -> Type:
     g_args = get_args(t)
     if len(g_args) > 0:
         mapping = {a.__name__: v for a, v in zip(r.__parameters__, g_args)}
-        r.__args__ = tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))
+
+        r_base = get_origin(r)
+        r = r_base[*tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]
 
     return r
 

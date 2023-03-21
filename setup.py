@@ -49,7 +49,7 @@ setup(
     url="https://github.com/iris-hep/func_adl",
     license="MIT",
     test_suite="tests",
-    install_requires=["make-it-sync"],
+    install_requires=["make-it-sync", "typeguard"],
     setup_requires=["pytest-runner"],
     tests_require=["pytest>=3.9"],
     extras_require=extras_require,
