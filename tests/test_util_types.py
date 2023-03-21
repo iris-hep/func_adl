@@ -106,6 +106,19 @@ def test_get_inherited_two_levels():
     assert get_inherited(myc) == bogus[Iterable[int]]
 
 
+def test_get_inherited_generic_twice():
+    T = TypeVar("T")
+
+    class bogus(Iterable[T]):
+        pass
+
+    myc = bogus[int]
+    assert get_inherited(myc) == Iterable[int]
+
+    myd = bogus[float]
+    assert get_inherited(myd) == Iterable[float]
+
+
 def test_build_type_int():
     assert build_type_dict_from_type(int) == {}
 
