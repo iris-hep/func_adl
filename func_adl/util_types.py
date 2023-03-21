@@ -1,6 +1,6 @@
 import inspect
 import sys
-from typing import Any, Dict, Iterable, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
 if sys.version_info >= (3, 8):
     from typing import get_args, get_origin
