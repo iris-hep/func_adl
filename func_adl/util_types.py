@@ -74,7 +74,7 @@ def get_inherited(t: Type) -> Type:
         mapping = {a.__name__: v for a, v in zip(r.__parameters__, g_args)}
 
         r_base = get_origin(r)
-        r = r_base[*tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]  # NOQA
+        r = r_base[tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]
 
     return r
 
