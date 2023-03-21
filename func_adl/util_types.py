@@ -74,7 +74,7 @@ def get_inherited(t: Type) -> Type:
         mapping = {a.__name__: v for a, v in zip(r.__parameters__, g_args)}
 
         r_base = get_origin(r)
-        r = r_base[*tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]
+        r = r_base[*tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]  # NOQA
 
     return r
 
@@ -137,7 +137,7 @@ def _resolve_type(t: Type, parameters: Dict[str, Type]) -> Optional[Type]:
     Returns:
         None if `t` is parameterized by unknown type var's
         The resolved type (a copy leaving `t` untouched) if TypeVar's are filled in
-        The type if no substition is required.
+        The type if no substitution is required.
     """
     if isinstance(t, TypeVar):
         if t.__name__ in parameters:
