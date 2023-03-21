@@ -2,26 +2,6 @@ import inspect
 import sys
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, TypeVar
 
-from typeguard import check_type
-
-
-def test_type(actual: Type, expected: Type) -> bool:
-    """Test to see if two types are compatible
-
-    Args:
-        actual (Type): The actual type
-        expected (Type): The expected Type
-
-    Returns:
-        bool: True if they are compatible
-    """
-    try:
-        check_type(actual, expected)
-    except Exception:
-        return False
-    return True
-
-
 if sys.version_info >= (3, 8):
     from typing import get_args, get_origin
 else:  # pragma: no cover
@@ -45,7 +25,7 @@ def is_iterable(t: Type) -> bool:
 
 def _is_iterable_direct(t: Type) -> bool:
     "Is this type iterable?"
-    return test_type(t, Iterable)
+    return getattr(t, "_name", None) == "Iterable" or getattr(t, "__name__", None) == "Iterable"
 
 
 def get_inherited(t: Type) -> Type:
