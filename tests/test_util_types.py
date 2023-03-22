@@ -1,4 +1,3 @@
-import collections
 from typing import Any, Generic, Iterable, TypeVar
 
 import pytest
@@ -90,7 +89,7 @@ def test_get_inherited_generic():
 
     myc = bogus[int]
 
-    assert get_inherited(myc) == collections.abc.Iterable[int]  # type: ignore
+    assert get_inherited(myc) == Iterable[int]  # type: ignore
 
 
 def test_get_inherited_two_levels():
@@ -114,10 +113,10 @@ def test_get_inherited_generic_twice():
         pass
 
     myc = bogus[int]
-    assert get_inherited(myc) == collections.abc.Iterable[int]  # type: ignore
+    assert get_inherited(myc) == Iterable[int]  # type: ignore
 
     myd = bogus[float]
-    assert get_inherited(myd) == collections.abc.Iterable[float]  # type: ignore
+    assert get_inherited(myd) == Iterable[float]  # type: ignore
 
 
 def test_build_type_int():

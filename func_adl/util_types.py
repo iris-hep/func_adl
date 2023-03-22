@@ -1,5 +1,6 @@
 import inspect
 import sys
+import typing
 from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
 if sys.version_info >= (3, 8):
@@ -54,6 +55,13 @@ def get_inherited(t: Type) -> Type:
         mapping = {a.__name__: v for a, v in zip(r.__parameters__, g_args)}
 
         r_base = get_origin(r)
+        assert r_base is not None, "Internal error"
+
+        # Get us back to typing if this is a common interface.
+        if r_base.__name__ in typing.__dict__:
+            r_base = typing.__dict__[r_base.__name__]
+
+        # Re-parameterize the type with the information e have from this parameterization.
         r = r_base[tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]
 
     return r
