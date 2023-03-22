@@ -1,5 +1,6 @@
 import inspect
 import sys
+import typing
 from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
 if sys.version_info >= (3, 8):
@@ -25,9 +26,7 @@ def is_iterable(t: Type) -> bool:
 
 def _is_iterable_direct(t: Type) -> bool:
     "Is this type iterable?"
-    if getattr(t, "_name", None) == "Iterable":
-        return True
-    return False
+    return getattr(t, "_name", None) == "Iterable" or getattr(t, "__name__", None) == "Iterable"
 
 
 def get_inherited(t: Type) -> Type:
@@ -54,7 +53,18 @@ def get_inherited(t: Type) -> Type:
     g_args = get_args(t)
     if len(g_args) > 0:
         mapping = {a.__name__: v for a, v in zip(r.__parameters__, g_args)}
-        r.__args__ = tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))
+
+        r_base = get_origin(r)
+        assert r_base is not None, "Internal error"
+
+        # Get us back to typing if this is a common interface.
+        # This is not needed in python 3.11 and forward, where
+        # collections.abc.X can are all be parameterized.
+        if r_base.__name__ in typing.__dict__:
+            r_base = typing.__dict__[r_base.__name__]
+
+        # Re-parameterize the type with the information e have from this parameterization.
+        r = r_base[tuple(_resolve_type(t_arg, mapping) for t_arg in get_args(r))]
 
     return r
 
@@ -117,7 +127,7 @@ def _resolve_type(t: Type, parameters: Dict[str, Type]) -> Optional[Type]:
     Returns:
         None if `t` is parameterized by unknown type var's
         The resolved type (a copy leaving `t` untouched) if TypeVar's are filled in
-        The type if no substition is required.
+        The type if no substitution is required.
     """
     if isinstance(t, TypeVar):
         if t.__name__ in parameters:
