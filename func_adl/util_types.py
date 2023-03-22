@@ -58,6 +58,8 @@ def get_inherited(t: Type) -> Type:
         assert r_base is not None, "Internal error"
 
         # Get us back to typing if this is a common interface.
+        # This is not needed in python 3.11 and forward, where
+        # collections.abc.X can are all be parameterized.
         if r_base.__name__ in typing.__dict__:
             r_base = typing.__dict__[r_base.__name__]
 
