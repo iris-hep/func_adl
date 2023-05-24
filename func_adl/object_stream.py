@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ast
+import copy
 import logging
+import typing
 from typing import (
     Any,
     Awaitable,
@@ -87,6 +89,12 @@ class ObjectStream(Generic[T]):
         """
         return self._q_ast
 
+    def clone_with_new_ast(self, new_ast: ast.AST, new_type: typing.Any):
+        clone = copy.deepcopy(self)
+        clone._q_ast = new_ast
+        clone._item_type = new_type
+        return clone
+
     def SelectMany(
         self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]
     ) -> ObjectStream[S]:
@@ -112,10 +120,10 @@ class ObjectStream(Generic[T]):
         n_stream, n_ast, rtn_type = remap_from_lambda(
             self, _local_simplification(parse_as_ast(func, "SelectMany"))
         )
-        return ObjectStream[S](
+
+        return self.clone_with_new_ast(
             function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
-            unwrap_iterable(rtn_type),
-        )
+            unwrap_iterable(rtn_type))
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
         r"""
@@ -139,7 +147,7 @@ class ObjectStream(Generic[T]):
         n_stream, n_ast, rtn_type = remap_from_lambda(
             self, _local_simplification(parse_as_ast(f, "Select"))
         )
-        return ObjectStream[S](
+        return self.clone_with_new_ast(
             function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]), rtn_type
         )
 
@@ -166,7 +174,7 @@ class ObjectStream(Generic[T]):
         )
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
-        return ObjectStream[T](
+        return self.clone_with_new_ast(
             function_call("Where", [n_stream.query_ast, cast(ast.AST, n_ast)]), self.item_type
         )
 
@@ -177,7 +185,7 @@ class ObjectStream(Generic[T]):
         Returns:
             ObjectStream: A new stream, of the same type and contents, but with metadata added.
         """
-        return ObjectStream[T](
+        return self.clone_with_new_ast(
             function_call("MetaData", [self._q_ast, as_ast(metadata)]), self.item_type
         )
 
@@ -216,7 +224,7 @@ class ObjectStream(Generic[T]):
                     base_ast._q_metadata = {}  # type: ignore
                 base_ast._q_metadata[k] = v  # type: ignore
 
-        return ObjectStream[T](base_ast, self.item_type)
+        return self.clone_with_new_ast(base_ast, self.item_type)
 
     def AsPandasDF(
         self, columns: Union[str, List[str]] = []
@@ -239,8 +247,6 @@ class ObjectStream(Generic[T]):
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
         )
-
-    as_pandas = AsPandasDF
 
     def AsROOTTTree(
         self, filename: str, treename: str, columns: Union[str, List[str]] = []
