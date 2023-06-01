@@ -31,7 +31,7 @@ if version is None:
     import logging
 
     logging.error("func_adl_version environment variable not set")
-    version = "0.0.1a1"
+    version = "3.2"
 version = version.split("/")[-1]
 
 setup(
