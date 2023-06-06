@@ -76,5 +76,6 @@
     "python.formatting.provider": "black",
     "python.linting.flake8Args": [
         "--config=.flake8"
-    ]
+    ],
+    "cmake.configureOnOpen": false
 }
