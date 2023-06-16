@@ -248,6 +248,8 @@ class ObjectStream(Generic[T]):
             function_call("ResultPandasDF", [self._q_ast, as_ast(columns)])
         )
 
+    as_pandas = AsPandasDF
+
     def AsROOTTTree(
         self, filename: str, treename: str, columns: Union[str, List[str]] = []
     ) -> ObjectStream[ReturnedDataPlaceHolder]:
