@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 import copy
 import logging
-import typing
 from typing import (
     Any,
     Awaitable,
@@ -89,11 +88,13 @@ class ObjectStream(Generic[T]):
         """
         return self._q_ast
 
-    def clone_with_new_ast(self, new_ast: ast.AST, new_type: typing.Any):
+    def clone_with_new_ast(
+        self, new_ast: ast.AST, new_type: type[S]
+    ) -> ObjectStream[S]:
         clone = copy.deepcopy(self)
         clone._q_ast = new_ast
         clone._item_type = new_type
-        return clone
+        return clone  # type: ignore
 
     def SelectMany(
         self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]
@@ -123,7 +124,8 @@ class ObjectStream(Generic[T]):
 
         return self.clone_with_new_ast(
             function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
-            unwrap_iterable(rtn_type))
+            unwrap_iterable(rtn_type),
+        )
 
     def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
         r"""
@@ -148,10 +150,13 @@ class ObjectStream(Generic[T]):
             self, _local_simplification(parse_as_ast(f, "Select"))
         )
         return self.clone_with_new_ast(
-            function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]), rtn_type
+            function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]),
+            rtn_type,
         )
 
-    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
+    def Where(
+        self, filter: Union[str, ast.Lambda, Callable[[T], bool]]
+    ) -> ObjectStream[T]:
         r"""
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -175,7 +180,8 @@ class ObjectStream(Generic[T]):
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
         return self.clone_with_new_ast(
-            function_call("Where", [n_stream.query_ast, cast(ast.AST, n_ast)]), self.item_type
+            function_call("Where", [n_stream.query_ast, cast(ast.AST, n_ast)]),
+            self.item_type,
         )
 
     def MetaData(self, metadata: Dict[str, Any]) -> ObjectStream[T]:
@@ -205,8 +211,7 @@ class ObjectStream(Generic[T]):
         """
         from .ast.meta_data import lookup_query_metadata
 
-        first = True
-        base_ast = self.query_ast
+        q_metadata = {}
         for k, v in metadata.items():
             found_md = lookup_query_metadata(self, k)
             add_md = False
@@ -218,13 +223,15 @@ class ObjectStream(Generic[T]):
                 )
                 add_md = True
             if add_md:
-                if first:
-                    first = False
-                    base_ast = self.MetaData({}).query_ast
-                    base_ast._q_metadata = {}  # type: ignore
-                base_ast._q_metadata[k] = v  # type: ignore
+                q_metadata[k] = v  # type: ignore
 
-        return self.clone_with_new_ast(base_ast, self.item_type)
+        base_ast = self.query_ast
+        if len(q_metadata) > 0:
+            new_self = self.clone_with_new_ast(copy.copy(base_ast), self.item_type)
+            new_self.query_ast._q_metadata = q_metadata  # type: ignore
+            return new_self
+        else:
+            return self.clone_with_new_ast(base_ast, self.item_type)
 
     def AsPandasDF(
         self, columns: Union[str, List[str]] = []
@@ -282,7 +289,8 @@ class ObjectStream(Generic[T]):
 
         return ObjectStream[ReturnedDataPlaceHolder](
             function_call(
-                "ResultTTree", [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)]
+                "ResultTTree",
+                [self._q_ast, as_ast(columns), as_ast(treename), as_ast(filename)],
             )
         )
 
@@ -313,7 +321,7 @@ class ObjectStream(Generic[T]):
         Returns:
 
             A new `ObjectStream` with type `[filename]`. This is because multiple files may be
-            written by the backend - the data should be concatinated together to get a final
+            written by the backend - the data should be concatenated together to get a final
             result. The order of the files back is consistent for different queries on the same
             dataset.
         """
@@ -321,7 +329,9 @@ class ObjectStream(Generic[T]):
             columns = [columns]
 
         return ObjectStream[ReturnedDataPlaceHolder](
-            function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)])
+            function_call(
+                "ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)]
+            )
         )
 
     as_parquet = AsParquetFiles
@@ -352,11 +362,12 @@ class ObjectStream(Generic[T]):
     as_awkward = AsAwkwardArray
 
     def _get_executor(
-        self, executor: Optional[Callable[[ast.AST, Optional[str]], Awaitable[Any]]] = None
+        self,
+        executor: Optional[Callable[[ast.AST, Optional[str]], Awaitable[Any]]] = None,
     ) -> Callable[[ast.AST, Optional[str]], Awaitable[Any]]:
         r"""
         Returns an executor that can be used to run this.
-        Logic seperated out as it is used from several different places.
+        Logic separated out as it is used from several different places.
 
         Arguments:
             executor            Callback to run the AST. Can be synchronous or coroutine.
