@@ -2,6 +2,7 @@
 import ast
 import asyncio
 import logging
+from _ast import Call
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 import pytest
@@ -34,7 +35,9 @@ class dd_jet:
 T = TypeVar("T")
 
 
-def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
+def add_md_for_type(
+    s: ObjectStream[T], a: ast.Call
+) -> Tuple[ObjectStream[T], ast.Call]:
     return s.MetaData({"hi": "there"}), a
 
 
@@ -298,10 +301,31 @@ def test_query_metadata_composable(caplog):
     assert len(caplog.text) == 0
 
 
+def test_query_metadata_not_empty():
+    r_base = my_event().QMetaData({"one": "1"})
+    q_ast = r_base.query_ast
+
+    class MDScanner(ast.NodeVisitor):
+        def visit_Call(self, node: Call) -> Any:
+            if not isinstance(node.func, ast.Name):
+                return self.generic_visit(node)
+            if node.func.id != "MetaData":
+                return self.generic_visit(node)
+            assert len(node.args) == 2
+            md_dict = node.args[1]
+            assert isinstance(md_dict, ast.Dict)
+            assert len(md_dict.keys) > 0
+            return self.generic_visit(node)
+
+    MDScanner().visit(q_ast)
+
+
 def test_nested_query_rendered_correctly():
     r = (
         my_event()
-        .Where("lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0")
+        .Where(
+            "lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0"
+        )
         .SelectMany("lambda e: e.jets()")
         .AsROOTTTree("junk.root", "analysis", "jetPT")
         .value()
