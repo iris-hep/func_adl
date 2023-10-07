@@ -35,9 +35,7 @@ class dd_jet:
 T = TypeVar("T")
 
 
-def add_md_for_type(
-    s: ObjectStream[T], a: ast.Call
-) -> Tuple[ObjectStream[T], ast.Call]:
+def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
     return s.MetaData({"hi": "there"}), a
 
 
@@ -323,9 +321,7 @@ def test_query_metadata_not_empty():
 def test_nested_query_rendered_correctly():
     r = (
         my_event()
-        .Where(
-            "lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0"
-        )
+        .Where("lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0")
         .SelectMany("lambda e: e.jets()")
         .AsROOTTTree("junk.root", "analysis", "jetPT")
         .value()
@@ -344,6 +340,18 @@ def test_query_with_comprehensions():
     )
     assert isinstance(r, ast.AST)
     assert "ListComp" not in ast.dump(r)
+
+
+def test_non_imported_function_call():
+    r = my_event().Select(lambda event: np.cos(event.MET_phi)).value()  # NOQA
+    assert isinstance(r, ast.AST)
+
+
+def test_imported_function_call():
+    import numpy as np
+
+    r = my_event().Select(lambda event: np.cos(event.MET_phi)).value()
+    assert isinstance(r, ast.AST)
 
 
 def test_bad_where():

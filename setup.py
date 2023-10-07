@@ -21,6 +21,7 @@ extras_require = {
         "astunparse",
         "black",
         "isort",
+        "numpy",
     ]
 }
 extras_require["complete"] = sorted(set(sum(extras_require.values(), [])))
