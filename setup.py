@@ -61,6 +61,7 @@ setup(
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.9",
@@ -71,6 +72,6 @@ setup(
         "Topic :: Utilities",
     ],
     data_files=[],
-    python_requires=">=3.6, <3.12",
+    python_requires=">=3.6, <3.13",
     platforms="Any",
 )
