@@ -343,15 +343,22 @@ def test_query_with_comprehensions():
 
 
 def test_non_imported_function_call():
-    r = my_event().Select(lambda event: np.cos(event.MET_phi)).value()  # NOQA
+    r = (
+        my_event()
+        .Select(lambda event: np.cos(event.MET_phi))  # type: ignore # noqa
+        .Where(lambda p: p > 0.0)
+        .value()
+    )  # NOQA
     assert isinstance(r, ast.AST)
+    assert "Attribute(value=Name(id='np', ctx=Load()), attr='cos', ctx=Load())" in ast.dump(r)
 
 
 def test_imported_function_call():
     import numpy as np
 
-    r = my_event().Select(lambda event: np.cos(event.MET_phi)).value()
+    r = my_event().Select(lambda event: np.cos(event.MET_phi)).Where(lambda p: p > 0.0).value()
     assert isinstance(r, ast.AST)
+    assert "Attribute(value=Name(id='np', ctx=Load()), attr='cos', ctx=Load())" in ast.dump(r)
 
 
 def test_bad_where():

@@ -5,6 +5,7 @@ import inspect
 import sys
 import tokenize
 from collections import defaultdict
+from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 # Some functions to enable backwards compatibility.
@@ -333,7 +334,10 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
             if not callable(v):
-                return as_literal(self._lookup_dict[node.id])
+                # Modules should be sent on down to be dealt with by the
+                # backend.
+                if not isinstance(v, ModuleType):
+                    return as_literal(v)
         return node
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
