@@ -309,6 +309,19 @@ def test_parse_lambda_capture_nested_local():
     assert ast.dump(r) == ast.dump(r_true)
 
 
+def test_sensible_error_with_bad_variable_capture():
+    class bogus:
+        def __init__(self):
+            self.my_var = 10
+
+    my_var = bogus()
+
+    with pytest.raises(ValueError) as e:
+        parse_as_ast(lambda x: x > my_var)
+
+    assert "my_var" in str(e)
+
+
 def test_parse_simple_func():
     "A oneline function defined at local scope"
 

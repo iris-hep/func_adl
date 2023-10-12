@@ -337,6 +337,13 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 # Modules should be sent on down to be dealt with by the
                 # backend.
                 if not isinstance(v, ModuleType):
+                    legal_capture_types = [str, int, float, bool, complex, str, bytes]
+                    if type(v) not in legal_capture_types:
+                        raise ValueError(
+                            f"Do not know how to capture data type '{type(v).__name__}' for "
+                            f"variable '{node.id}' - only {', '.join([c.__name__ for c in legal_capture_types])} are "
+                            "supported."
+                        )
                     return as_literal(v)
         return node
 
