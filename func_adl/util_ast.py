@@ -341,7 +341,8 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                     if type(v) not in legal_capture_types:
                         raise ValueError(
                             f"Do not know how to capture data type '{type(v).__name__}' for "
-                            f"variable '{node.id}' - only {', '.join([c.__name__ for c in legal_capture_types])} are "
+                            f"variable '{node.id}' - only "
+                            f"{', '.join([c.__name__ for c in legal_capture_types])} are "
                             "supported."
                         )
                     return as_literal(v)
