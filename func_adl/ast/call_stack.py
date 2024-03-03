@@ -1,4 +1,5 @@
-# Implement a call stack which can be used in all our ast parsers
+import ast
+from typing import Dict, List, Optional
 
 
 class argument_stack:
@@ -10,32 +11,30 @@ class argument_stack:
     """
 
     def __init__(self):
-        self._arg_transformer = [{}]
+        self._arg_transformer: List[Dict[str, ast.AST]] = [{}]
 
     def push_stack_frame(self):
         "Create a new frame in which to define variables"
         self._arg_transformer.append({})
 
     def pop_stack_frame(self):
-        "Remove the top most stack frame and discard the varables defined there"
+        "Remove the top most stack frame and discard the variables defined there"
         del self._arg_transformer[-1]
 
-    def lookup_name(self, name, default=None):
+    def lookup_name(self, name: str, default: Optional[ast.AST] = None) -> Optional[ast.AST]:
         """
         Look up name starting from the deepest frame
         on up until it is found.
-        Return name if it is not found.
 
         name - the name we should look up. Any object that can be a key in a dict
-        default - If none, if the name can't be found, return the name. Otherwise return whatever
-        default is.
+        default - returned if `name` can't be found.
         """
         for frames in reversed(self._arg_transformer):
             if name in frames:
                 return frames[name]
-        return name if default is None else default
+        return default
 
-    def define_name(self, name, val):
+    def define_name(self, name: str, val: ast.AST):
         "Add a definition to the current deepest stack frame"
         self._arg_transformer[-1][name] = val
 
