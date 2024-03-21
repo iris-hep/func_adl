@@ -1,8 +1,33 @@
-# Need setuptools even though it isn't used - loads some plugins.
 import os
-from distutils.core import setup
+import sys
 
-from setuptools import find_packages  # noqa: F401
+from setuptools import find_packages, setup  # noqa: F401
+
+
+# Taken from Numba
+def _guard_python_version(max_python):
+    version_module = None
+    try:
+        from packaging import version as version_module
+    except ImportError:
+        try:
+            from setuptools._vendor.packaging import version as version_module
+        except ImportError:
+            pass
+
+    if version_module is None:
+        return
+
+    current_python = version_module.parse(".".join(map(str, sys.version_info[:3])))
+    max_python = version_module.parse(max_python)
+
+    if not current_python < max_python:
+        raise RuntimeError(
+            f"Cannot install on Python version {current_python} as Python {max_python}+ is not yet supported."
+        )
+
+
+_guard_python_version(max_python="3.13")
 
 # Use the readme as the long description.
 with open("README.md", "r") as fh:
@@ -67,12 +92,11 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Topic :: Software Development",
         "Topic :: Utilities",
     ],
     data_files=[],
-    python_requires=">=3.6, <3.13",
+    python_requires=">=3.7",
     platforms="Any",
 )
