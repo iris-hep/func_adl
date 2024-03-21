@@ -439,7 +439,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         Only works if index is a number
         """
-        # Get the value out - this is due to supporting python 3.6-3.9
+        # Get the value out - this is due to supporting python 3.7-3.9
         n = _get_value_from_index(s)
         if n is None:
             return ast.Subscript(v, s, ast.Load())
@@ -564,7 +564,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
 
 def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index, ast.Str]) -> Optional[int]:
-    """Deal with 3.6, 3.7, and 3.8 differences in how indexing for list and tuple
+    """Deal with 3.7, and 3.8 differences in how indexing for list and tuple
     subscripts is handled.
 
     Args:
