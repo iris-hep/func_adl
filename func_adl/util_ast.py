@@ -9,7 +9,7 @@ from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 # Some functions to enable backwards compatibility.
-# Capability may be degraded in older versions - particularly 3.6.
+# Capability may be degraded in older versions.
 if sys.version_info >= (3, 8):  # pragma: no cover
 
     def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
