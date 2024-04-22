@@ -3,6 +3,7 @@ import ast
 import asyncio
 import logging
 from _ast import Call
+from enum import Enum
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 import pytest
@@ -25,11 +26,9 @@ class my_event_with_title(EventDataset):
 
 
 class dd_jet:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...  # noqa
 
-    def eta(self) -> float:
-        ...
+    def eta(self) -> float: ...  # noqa
 
 
 T = TypeVar("T")
@@ -41,8 +40,7 @@ def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], a
 
 @func_adl_callback(add_md_for_type)
 class dd_event:
-    def Jets(self, bank: str) -> Iterable[dd_jet]:
-        ...
+    def Jets(self, bank: str) -> Iterable[dd_jet]: ...  # noqa
 
 
 class my_event_with_type(EventDataset[dd_event]):
@@ -454,12 +452,10 @@ def test_untyped():
 
 def test_typed():
     class Jet:
-        def pt(self) -> float:
-            ...
+        def pt(self) -> float: ...  # noqa
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...  # noqa
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -474,12 +470,10 @@ def test_typed():
 
 
 def test_typed_with_select():
-    class Jet:
-        ...
+    class Jet: ...  # noqa
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...  # noqa
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -494,12 +488,10 @@ def test_typed_with_select():
 
 
 def test_typed_with_selectmany():
-    class Jet:
-        ...
+    class Jet: ...  # noqa
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...  # noqa
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -515,12 +507,10 @@ def test_typed_with_selectmany():
 
 def test_typed_with_select_and_selectmany():
     class Jet:
-        def pt(self) -> float:
-            ...
+        def pt(self) -> float: ...  # noqa
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...  # noqa
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -530,8 +520,7 @@ def test_typed_with_select_and_selectmany():
             await asyncio.sleep(0.01)
             return a
 
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...  # noqa
 
     r1 = evt_typed().SelectMany(lambda e: e.Jets())
     r = r1.Select(lambda j: j.pt())
@@ -540,8 +529,7 @@ def test_typed_with_select_and_selectmany():
 
 def test_typed_with_where():
     class Evt:
-        def MET(self) -> float:
-            ...
+        def MET(self) -> float: ...  # noqa
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -556,8 +544,7 @@ def test_typed_with_where():
 
 
 def test_typed_with_metadata():
-    class Evt:
-        ...
+    class Evt: ...  # noqa
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -569,3 +556,24 @@ def test_typed_with_metadata():
 
     r = evt_typed().MetaData({})
     assert r.item_type is Evt
+
+
+def test_typed_with_enum():
+    class Evt:
+        class Color(Enum):
+            red = 1
+            green = 2
+            blue = 3
+
+        def color(self) -> Color: ...  # noqa
+
+    class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = evt_typed().Select(lambda e: e.color())
+    assert r.item_type is Evt.Color
