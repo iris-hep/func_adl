@@ -45,7 +45,11 @@ _FuncAdlFunction = NamedTuple(
         ("function", Callable),
         (
             "processor_function",
-            Optional[Callable[[ObjectStream[U], ast.Call], Tuple[ObjectStream[U], ast.AST]]],
+            Optional[
+                Callable[
+                    [ObjectStream[U], ast.Call], Tuple[ObjectStream[U], ast.AST]  # type: ignore
+                ]
+            ],
         ),
     ],
 )
@@ -56,8 +60,7 @@ def _load_default_global_functions():
     "Define the python standard functions that map straight through"
     # TODO: Add in other functions
 
-    def my_abs(x: float) -> float:
-        ...
+    def my_abs(x: float) -> float: ...  # noqa
 
     _global_functions["abs"] = _FuncAdlFunction("abs", my_abs, None)
 
@@ -87,7 +90,7 @@ def register_func_adl_function(
             Tuple[ObjectStream[T], ast.AST]]):
             The processor function that can modify the stream, etc.
     """
-    info = _FuncAdlFunction(function.__name__, function, processor_function)
+    info = _FuncAdlFunction(function.__name__, function, processor_function)  # type: ignore
     _global_functions[info.name] = info
 
 
@@ -132,6 +135,7 @@ def func_adl_callable(
         processor (Optional[Callable[[ObjectStream[W], ast.Call],
                   Tuple[ObjectStream[W], ast.AST]]], optional): [description]. Defaults to None.
     """
+
     # TODO: Do we really need to register this inside the decorator? Can we just register
     #       and return the function?
     def decorate(function: Callable):
@@ -218,7 +222,7 @@ def register_func_adl_os_collection(c: C_TYPE) -> C_TYPE:
     Returns:
         [type]: [description]
     """
-    _g_collection_classes[c] = CollectionClassInfo(c)
+    _g_collection_classes[c] = CollectionClassInfo(c)  # type: ignore
     return c
 
 
@@ -236,18 +240,17 @@ class ObjectStreamInternalMethods(ObjectStream[StreamItem]):
     to follow generics in python at runtime (think of this as poor man's type resolution).
     """
 
-    def __init__(self, a: ast.AST, item_type: Type):
-        super().__init__(a, item_type)
+    def __init__(self, a: ast.AST, item_type: Union[Type, object]):
+        super().__init__(a, item_type)  # type: ignore
 
     @property
     def item_type(self) -> Type:
         return self._item_type
 
     def First(self) -> StreamItem:
-        return self.item_type
+        return self.item_type  # type: ignore
 
-    def Count(self) -> int:
-        ...
+    def Count(self) -> int: ...  # noqa
 
     # TODO: Add all other items that belong here
 
@@ -448,7 +451,7 @@ class _MethodTypeReturnInfo:
     node: ast.Call
 
     # Return type
-    return_type: Type
+    return_type: Union[Type, object]
 
     # If full type resolution was done (e.g. lambda following), or
     # if there were no lambda arguments to follow.
@@ -485,7 +488,7 @@ def remap_by_types(
     class type_transformer(ast.NodeTransformer, Generic[S]):
         def __init__(self, o_stream: ObjectStream[S]):
             self._stream = o_stream
-            self._found_types: Dict[Union[str, object], type] = {var_name: var_type}
+            self._found_types: Dict[Union[str, object], Union[type, object]] = {var_name: var_type}
 
         @property
         def stream(self) -> ObjectStream[S]:
@@ -493,7 +496,7 @@ def remap_by_types(
 
         def lookup_type(self, name: Union[str, object]) -> Type:
             "Return the type for a node, Any if we do not know about it"
-            return self._found_types.get(name, Any)
+            return self._found_types.get(name, Any)  # type: ignore
 
         def process_method_call_on_stream_obj(
             self,

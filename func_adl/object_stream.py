@@ -66,7 +66,7 @@ class ObjectStream(Generic[T]):
     `Iterable[T]`).
     """
 
-    def __init__(self, the_ast: ast.AST, item_type: Type = Any):
+    def __init__(self, the_ast: ast.AST, item_type: Type = Any):  # type: ignore
         r"""
         Initialize the stream with the ast that will produce this stream of objects.
         The user will almost never use this initializer.
@@ -88,9 +88,7 @@ class ObjectStream(Generic[T]):
         """
         return self._q_ast
 
-    def clone_with_new_ast(
-        self, new_ast: ast.AST, new_type: type[S]
-    ) -> ObjectStream[S]:
+    def clone_with_new_ast(self, new_ast: ast.AST, new_type: type[S]) -> ObjectStream[S]:
         clone = copy.deepcopy(self)
         clone._q_ast = new_ast
         clone._item_type = new_type
@@ -154,9 +152,7 @@ class ObjectStream(Generic[T]):
             rtn_type,
         )
 
-    def Where(
-        self, filter: Union[str, ast.Lambda, Callable[[T], bool]]
-    ) -> ObjectStream[T]:
+    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
         r"""
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -329,9 +325,7 @@ class ObjectStream(Generic[T]):
             columns = [columns]
 
         return ObjectStream[ReturnedDataPlaceHolder](
-            function_call(
-                "ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)]
-            )
+            function_call("ResultParquet", [self._q_ast, as_ast(columns), as_ast(filename)])
         )
 
     as_parquet = AsParquetFiles
