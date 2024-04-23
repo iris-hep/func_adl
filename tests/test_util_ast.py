@@ -376,15 +376,13 @@ def test_unknown_function():
 def test_known_local_function():
     "function that is declared locally"
 
-    def doit(x):
-        ...
+    def doit(x): ...
 
     f = parse_as_ast(lambda a: doit(a))  # type: ignore # NOQA
     assert "Name(id='doit'" in ast.dump(f)
 
 
-def global_doit_non_func(x):
-    ...
+def global_doit_non_func(x): ...
 
 
 def test_known_global_function():
@@ -513,8 +511,7 @@ def test_indent_parse():
 
     class yo_baby:
         @h.dec_func(lambda y: y + 2)
-        def doit(self, x: int):
-            ...
+        def doit(self, x: int): ...
 
     assert len(seen_funcs) == 1
     l1 = parse_as_ast(seen_funcs[0], "dec_func")
@@ -825,6 +822,49 @@ def test_parse_black_split_lambda_funny():
 
     assert len(found) == 1
     assert "AntiKt4EMTopoJets" in ast.dump(found[0])
+
+
+def test_parse_paramertized_function_simple():
+    a = parse_as_ast(lambda e: e.jetAttribute["hi"](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10)" in d_text
+    assert "Constant(value='hi')" in d_text
+
+
+def test_parse_parameterized_function_type():
+    a = parse_as_ast(lambda e: e.jetAttribute[int](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10)" in d_text
+
+    # Needs to be updated...
+    assert "Name(id='int'" in d_text
+
+
+def test_parse_parameterized_function_defined_type():
+    class my_type:
+        bogus: int = 10
+
+    a = parse_as_ast(lambda e: e.jetAttribute[my_type](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10)" in d_text
+
+    # Needs to be updated...
+    assert "Name(id='my_type'" in d_text
+
+
+def test_parse_parameterized_function_instance():
+    class my_type:
+        def __init__(self, n):
+            self._n = n
+    
+    my_10 = my_type(10)
+
+    a = parse_as_ast(lambda e: e.jetAttribute[my_10](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10)" in d_text
+
+    # Needs to be updated...
+    assert "Name(id='my_type'" in d_text
 
 
 def test_parse_metadata_there():
