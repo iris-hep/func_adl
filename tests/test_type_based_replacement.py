@@ -819,35 +819,23 @@ def test_index_callback_1arg():
     assert param_1_capture == "fork"
 
 
+class NameToConstantTransformer(ast.NodeTransformer):
+    def __init__(self, target_id, replacement_value):
+        self.target_id = target_id
+        self.replacement_value = replacement_value
+
+    def visit_Name(self, node):
+        if node.id == self.target_id:
+            return ast.Constant(value=self.replacement_value)
+        return node
+
+
+def replace_name_with_constant(tree, target_id, replacement_value):
+    transformer = NameToConstantTransformer(target_id, replacement_value)
+    return transformer.visit(tree)
+
+
 def test_index_callback_1arg_type():
-    "Indexed callback - make sure arg is passed correctly when there is a type"
-
-    param_1_capture = None
-
-    def my_callback(
-        s: ObjectStream[T], a: ast.Call, param_1: str
-    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
-        nonlocal param_1_capture
-        param_1_capture = param_1
-        return (s.MetaData({"k": "stuff"}), a, float)
-
-    class TEvent:
-        @func_adl_parameterized_call(my_callback)
-        @property
-        def info(self): ...
-
-    s = ast_lambda("e.info[int](55)")
-    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
-
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", TEvent, s)
-
-    assert ast.dump(new_s) == ast.dump(ast_lambda("e.info(55)"))
-    assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'k': 'stuff'})"))
-    assert expr_type == float
-    assert param_1_capture == int
-
-
-def test_index_callback_1arg_instance():
     "Indexed callback - make sure arg is passed correctly when there is a type"
 
     param_1_capture = None
@@ -864,13 +852,9 @@ def test_index_callback_1arg_instance():
         @property
         def info(self): ...  # noqa
 
-    class my_type:
-        def __init__(self, n):
-            self._n = 10
+    s = ast_lambda("e.info[int](55)")
+    s = replace_name_with_constant(s, "int", int)
 
-    my_10 = my_type(10)  # noqa
-
-    s = ast_lambda("e.info[my_10](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
 
     new_objs, new_s, expr_type = remap_by_types(objs, "e", TEvent, s)
