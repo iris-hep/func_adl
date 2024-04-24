@@ -25,11 +25,9 @@ class my_event_with_title(EventDataset):
 
 
 class dd_jet:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...
 
-    def eta(self) -> float:
-        ...
+    def eta(self) -> float: ...
 
 
 T = TypeVar("T")
@@ -41,8 +39,7 @@ def add_md_for_type(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], a
 
 @func_adl_callback(add_md_for_type)
 class dd_event:
-    def Jets(self, bank: str) -> Iterable[dd_jet]:
-        ...
+    def Jets(self, bank: str) -> Iterable[dd_jet]: ...
 
 
 class my_event_with_type(EventDataset[dd_event]):
@@ -99,6 +96,25 @@ def test_two_simple_query():
     )
 
     assert ast.dump(r1) == ast.dump(r2)
+
+
+def test_query_bad_variable():
+    class my_type:
+        def __init__(self, n):
+            self._n = 10
+
+    my_10 = my_type(10)
+
+    with pytest.raises(ValueError) as e:
+        (
+            my_event()
+            .SelectMany(lambda e: e.jets())
+            .Select(lambda j: j.pT() > my_10)
+            .AsROOTTTree("junk.root", "analysis", "jetPT")
+            .value()
+        )
+
+    assert "my_type" in str(e)
 
 
 def test_with_types():
@@ -454,12 +470,10 @@ def test_untyped():
 
 def test_typed():
     class Jet:
-        def pt(self) -> float:
-            ...
+        def pt(self) -> float: ...
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -474,12 +488,10 @@ def test_typed():
 
 
 def test_typed_with_select():
-    class Jet:
-        ...
+    class Jet: ...
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -494,12 +506,10 @@ def test_typed_with_select():
 
 
 def test_typed_with_selectmany():
-    class Jet:
-        ...
+    class Jet: ...
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -515,12 +525,10 @@ def test_typed_with_selectmany():
 
 def test_typed_with_select_and_selectmany():
     class Jet:
-        def pt(self) -> float:
-            ...
+        def pt(self) -> float: ...
 
     class Evt:
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -530,8 +538,7 @@ def test_typed_with_select_and_selectmany():
             await asyncio.sleep(0.01)
             return a
 
-        def Jets(self) -> Iterable[Jet]:
-            ...
+        def Jets(self) -> Iterable[Jet]: ...
 
     r1 = evt_typed().SelectMany(lambda e: e.Jets())
     r = r1.Select(lambda j: j.pt())
@@ -540,8 +547,7 @@ def test_typed_with_select_and_selectmany():
 
 def test_typed_with_where():
     class Evt:
-        def MET(self) -> float:
-            ...
+        def MET(self) -> float: ...
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
@@ -556,8 +562,7 @@ def test_typed_with_where():
 
 
 def test_typed_with_metadata():
-    class Evt:
-        ...
+    class Evt: ...
 
     class evt_typed(EventDataset[Evt]):
         def __init__(self):
