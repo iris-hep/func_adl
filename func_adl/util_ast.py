@@ -333,19 +333,17 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
-            if not callable(v):
-                # Modules should be sent on down to be dealt with by the
-                # backend.
-                if not isinstance(v, ModuleType):
-                    legal_capture_types = [str, int, float, bool, complex, str, bytes]
-                    if type(v) not in legal_capture_types:
-                        raise ValueError(
-                            f"Do not know how to capture data type '{type(v).__name__}' for "
-                            f"variable '{node.id}' - only "
-                            f"{', '.join([c.__name__ for c in legal_capture_types])} are "
-                            "supported."
-                        )
+            if not callable(v) and not isinstance(v, ModuleType):
+                # If it is something we know how to make into a literal, we just send it down
+                # like that.
+                try:
                     return as_literal(v)
+                except Exception:
+                    pass
+
+                # This is another type of variable. We'll let that remain inside
+                # as some sort of constant.
+                return ast.Constant(value=v, kind=None)
         return node
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
@@ -728,3 +726,28 @@ def scan_for_metadata(a: ast.AST, callback: Callable[[ast.arg], None]):
                 callback(node.args[1])  # type: ignore
 
     metadata_finder().visit(a)
+
+
+g_legal_capture_types = (str, int, float, bool, complex, str, bytes, ModuleType)
+
+
+def check_ast(a: ast.AST):
+    """Check to make sure the ast does not have anything we can't send over the wire
+    in `qastle` or similar.
+
+    Args:
+        a (ast.AST): The AST to check
+
+    Raises:
+        ValueError: If something unsupported is found.
+    """
+
+    class ConstantTypeChecker(ast.NodeVisitor):
+        def visit_Constant(self, node: ast.Constant):
+            if not isinstance(node.value, g_legal_capture_types):
+                raise ValueError(f"Invalid constant type: {type(node.value)} for {ast.dump(node)}")
+            self.generic_visit(node)
+
+    # Usage example:
+    checker = ConstantTypeChecker()
+    checker.visit(a)

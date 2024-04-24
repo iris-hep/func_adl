@@ -7,6 +7,7 @@ import pytest
 from func_adl.util_ast import (
     _realign_indent,
     as_ast,
+    check_ast,
     function_call,
     lambda_args,
     lambda_body_replace,
@@ -20,6 +21,7 @@ from func_adl.util_ast import (
     rewrite_func_as_lambda,
     scan_for_metadata,
 )
+from tests.test_type_based_replacement import replace_name_with_constant
 
 
 # Ast parsing
@@ -307,19 +309,6 @@ def test_parse_lambda_capture_nested_local():
     r = parse_as_ast(lambda x: (lambda y: y > cut_value)(x))
     r_true = parse_as_ast(lambda x: (lambda y: y > 30)(x))
     assert ast.dump(r) == ast.dump(r_true)
-
-
-def test_sensible_error_with_bad_variable_capture():
-    class bogus:
-        def __init__(self):
-            self.my_var = 10
-
-    my_var = bogus()
-
-    with pytest.raises(ValueError) as e:
-        parse_as_ast(lambda x: x > my_var)
-
-    assert "my_var" in str(e)
 
 
 def test_parse_simple_func():
@@ -856,7 +845,7 @@ def test_parse_parameterized_function_instance():
     class my_type:
         def __init__(self, n):
             self._n = n
-    
+
     my_10 = my_type(10)
 
     a = parse_as_ast(lambda e: e.jetAttribute[my_10](10))
@@ -864,7 +853,9 @@ def test_parse_parameterized_function_instance():
     assert "Constant(value=10)" in d_text
 
     # Needs to be updated...
-    assert "Name(id='my_type'" in d_text
+    assert (
+        "Constant(value=<tests.test_util_ast.test_parse_parameterized_function_instance" in d_text
+    )
 
 
 def test_parse_metadata_there():
@@ -898,3 +889,21 @@ def test_realign_indent_2lines():
 
 def test_realign_indent_2lines_uneven():
     assert _realign_indent("    test()\n        dude()") == "test()\n    dude()"
+
+
+def test_check_ast_good():
+    check_ast(ast.parse("1 + 2 + 'abc'"))
+
+
+def test_check_ast_bad():
+    class my_type:
+        def __init__(self, n):
+            self._n = n
+
+    mt = my_type(10)
+    a = ast.parse("1 + 2 + abc")
+    a = replace_name_with_constant(a, "abc", mt)
+    with pytest.raises(ValueError) as e:
+        check_ast(a)
+
+    assert "my_type" in str(e)
