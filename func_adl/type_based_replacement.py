@@ -759,7 +759,9 @@ def remap_by_types(
         ) -> ast.Call:
             "Process a obj.method[param, param, ...](args) style call"
             # Fetch property, make sure it has info attached to it
-            prop = getattr(obj_type, attr_name)
+            prop = getattr(obj_type, attr_name, None)
+            if prop is None:
+                raise RuntimeError("Unable to access {prop} on {obj_type} - should never happen.")
             callback_info = _g_parameterized_callbacks.get(prop, None)
             if callback_info is None:
                 raise ValueError(
