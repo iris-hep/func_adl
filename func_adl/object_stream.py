@@ -22,7 +22,7 @@ from make_it_sync import make_sync
 
 from func_adl.util_types import unwrap_iterable
 
-from .util_ast import as_ast, function_call, parse_as_ast
+from .util_ast import as_ast, check_ast, function_call, parse_as_ast
 
 # Attribute that will be used to store the executor reference
 executor_attr_name = "_func_adl_executor"
@@ -119,6 +119,7 @@ class ObjectStream(Generic[T]):
         n_stream, n_ast, rtn_type = remap_from_lambda(
             self, _local_simplification(parse_as_ast(func, "SelectMany"))
         )
+        check_ast(n_ast)
 
         return self.clone_with_new_ast(
             function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
@@ -147,6 +148,7 @@ class ObjectStream(Generic[T]):
         n_stream, n_ast, rtn_type = remap_from_lambda(
             self, _local_simplification(parse_as_ast(f, "Select"))
         )
+        check_ast(n_ast)
         return self.clone_with_new_ast(
             function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]),
             rtn_type,
@@ -173,6 +175,7 @@ class ObjectStream(Generic[T]):
         n_stream, n_ast, rtn_type = remap_from_lambda(
             self, _local_simplification(parse_as_ast(filter, "Where"))
         )
+        check_ast(n_ast)
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
         return self.clone_with_new_ast(
