@@ -17,9 +17,9 @@ from func_adl.type_based_replacement import (
 
 
 class Track:
-    def pt(self) -> float: ...
+    def pt(self) -> float: ...  # noqa
 
-    def eta(self) -> float: ...
+    def eta(self) -> float: ...  # noqa
 
 
 T = TypeVar("T")
@@ -32,17 +32,17 @@ def add_track_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[
 
 @func_adl_callback(add_track_extra_info)
 class TrackStuff:
-    def pt(self) -> float: ...
+    def pt(self) -> float: ...  # noqa
 
-    def eta(self) -> float: ...
+    def eta(self) -> float: ...  # noqa
 
 
 class Jet:
-    def pt(self) -> float: ...
+    def pt(self) -> float: ...  # noqa
 
-    def eta(self) -> float: ...
+    def eta(self) -> float: ...  # noqa
 
-    def tracks(self) -> Iterable[Track]: ...
+    def tracks(self) -> Iterable[Track]: ...  # noqa
 
 
 def ast_lambda(lambda_func: str) -> ast.Lambda:
@@ -57,7 +57,7 @@ def add_met_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T]
 
 @func_adl_callback(add_met_extra_info)
 class met_extra:
-    def pxy(self) -> float: ...
+    def pxy(self) -> float: ...  # noqa
 
 
 def add_met_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
@@ -72,14 +72,14 @@ def add_met_method_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T
 
 @func_adl_callback(add_met_info)
 class met:
-    def pxy(self) -> float: ...
+    def pxy(self) -> float: ...  # noqa
 
-    def isGood(self) -> bool: ...
+    def isGood(self) -> bool: ...  # noqa
 
-    def metobj(self) -> met_extra: ...
+    def metobj(self) -> met_extra: ...  # noqa
 
     @func_adl_callback(add_met_method_info)
-    def custom(self) -> float: ...
+    def custom(self) -> float: ...  # noqa
 
 
 def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
@@ -101,28 +101,28 @@ class MyIterable(Iterable[T]):
         "Return the last element in the sequence"
         ...
 
-    def Where(self, test: Callable[[T], bool]) -> Iterable[T]: ...
+    def Where(self, test: Callable[[T], bool]) -> Iterable[T]: ...  # noqa
 
 
 @func_adl_callback(add_collection)
 class Event:
-    def Jets(self, bank: str = "default") -> Iterable[Jet]: ...
+    def Jets(self, bank: str = "default") -> Iterable[Jet]: ...  # noqa
 
-    def JetsIterSub(self, bank: str = "default") -> MyIterable[Jet]: ...
+    def JetsIterSub(self, bank: str = "default") -> MyIterable[Jet]: ...  # noqa
 
-    def Jets_req(self, bank_required: str) -> Iterable[Jet]: ...
+    def Jets_req(self, bank_required: str) -> Iterable[Jet]: ...  # noqa
 
-    def MET(self) -> met: ...
+    def MET(self) -> met: ...  # noqa
 
-    def MET_noreturntype(self): ...
+    def MET_noreturntype(self): ...  # noqa
 
-    def Tracks(self) -> Iterable[Track]: ...
+    def Tracks(self) -> Iterable[Track]: ...  # noqa
 
-    def TrackStuffs(self) -> Iterable[TrackStuff]: ...
+    def TrackStuffs(self) -> Iterable[TrackStuff]: ...  # noqa
 
-    def EventNumber(self) -> int: ...
+    def EventNumber(self) -> int: ...  # noqa
 
-    def MyLambdaCallback(self, cb: Callable) -> int: ...
+    def MyLambdaCallback(self, cb: Callable) -> int: ...  # noqa
 
 
 def return_type_test(expr: str, arg_type: type, expected_type: type):
@@ -154,7 +154,7 @@ def test_float():
 
 
 def test_any():
-    return_type_test("e", Any, Any)
+    return_type_test("e", Any, Any)  # type: ignore
 
 
 def test_neg_float():
@@ -245,7 +245,7 @@ def test_subscript():
 
 
 def test_subscript_any():
-    return_type_test("e[0]", Any, Any)
+    return_type_test("e[0]", Any, Any)  # type: ignore
 
 
 def test_collection():
@@ -347,9 +347,9 @@ def test_collection_Custom_Method_int(caplog):
     @register_func_adl_os_collection
     class CustomCollection(ObjectStream[M]):
         def __init__(self, a: ast.AST, item_type: Optional[Type] = None):
-            super().__init__(a, item_type)
+            super().__init__(a, item_type)  # type: ignore
 
-        def MyFirst(self) -> int: ...
+        def MyFirst(self) -> int: ...  # noqa
 
     s = ast_lambda("e.Jets().MyFirst()")
     objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()), Event)
@@ -370,9 +370,9 @@ def test_collection_Custom_Method_multiple_args(caplog):
     @register_func_adl_os_collection
     class CustomCollection(ObjectStream[M]):
         def __init__(self, a: ast.AST, item_type=Any):
-            super().__init__(a, item_type)
+            super().__init__(a, item_type)  # type: ignore
 
-        def MyFirst(self, arg1: int, arg2: int) -> int: ...
+        def MyFirst(self, arg1: int, arg2: int) -> int: ...  # noqa
 
     s = ast_lambda("e.Jets().MyFirst(1,3)")
     objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -395,7 +395,7 @@ def test_collection_Custom_Method_default(caplog):
         def __init__(self, a: ast.AST, item_type):
             super().__init__(a, item_type)
 
-        def Take(self, n: int = 5) -> ObjectStream[M]: ...
+        def Take(self, n: int = 5) -> ObjectStream[M]: ...  # noqa
 
     s = ast_lambda("e.Jets().Take()")
     objs = CustomCollection_default[Event](ast.Name(id="e", ctx=ast.Load()), Event)
@@ -418,7 +418,7 @@ def test_collection_Custom_Method_Jet(caplog):
         def __init__(self, a: ast.AST, item_type):
             super().__init__(a, item_type)
 
-        def MyFirst(self) -> M: ...
+        def MyFirst(self) -> M: ...  # noqa
 
     register_func_adl_os_collection(CustomCollection_Jet)
 
@@ -667,7 +667,7 @@ def test_function_with_processor():
         return new_s, a
 
     @func_adl_callable(MySqrtProcessor)
-    def MySqrt(x: float) -> float: ...
+    def MySqrt(x: float) -> float: ...  # noqa
 
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), item_type=Event)
@@ -684,7 +684,7 @@ def test_function_with_simple():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float) -> float: ...
+    def MySqrt(x: float) -> float: ...  # noqa
 
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -700,7 +700,7 @@ def test_function_with_missing_arg():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(my_x: float) -> float: ...
+    def MySqrt(my_x: float) -> float: ...  # noqa
 
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -715,7 +715,7 @@ def test_function_with_default():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float: ...
+    def MySqrt(x: float = 20) -> float: ...  # noqa
 
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -731,7 +731,7 @@ def test_function_with_default_inside():
     "A function with a default arg that is inside a select"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float: ...
+    def MySqrt(x: float = 20) -> float: ...  # noqa
 
     s = ast_lambda("e.Jets().Select(lambda j: MySqrt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -749,7 +749,7 @@ def test_function_with_keyword():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float: ...
+    def MySqrt(x: float = 20) -> float: ...  # noqa
 
     s = ast_lambda("MySqrt(x=15)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -806,7 +806,7 @@ def test_index_callback_1arg():
     class TEvent:
         @func_adl_parameterized_call(my_callback)
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     s = ast_lambda("e.info['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
@@ -880,7 +880,7 @@ def test_index_callback_2arg():
     class TEvent:
         @func_adl_parameterized_call(my_callback)
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     s = ast_lambda("e.info['fork', 22](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
@@ -905,7 +905,7 @@ def test_index_callback_modify_ast():
     class TEvent:
         @func_adl_parameterized_call(my_callback)
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     s = ast_lambda("e.info['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
@@ -930,10 +930,10 @@ def test_index_callback_modify_ast_nested():
     class MyJet:
         @func_adl_parameterized_call(my_callback)
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     class TEvent:
-        def Jets(self) -> Iterable[MyJet]: ...
+        def Jets(self) -> Iterable[MyJet]: ...  # noqa
 
     s = ast_lambda("e.Jets().Select(lambda j: j.info['fork'](55))")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
@@ -959,7 +959,7 @@ def test_index_callback_on_method():
 
         class TEvent:
             @func_adl_parameterized_call(my_callback)
-            def info(self): ...
+            def info(self): ...  # noqa
 
     assert "info" in str(e)
 
@@ -979,7 +979,7 @@ def test_index_callback_bad_prop():
     class TEvent:
         @func_adl_parameterized_call(my_callback)
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     s = ast_lambda("e.infoo['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
@@ -995,7 +995,7 @@ def test_index_callback_prop_not_dec():
 
     class TEvent:
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     s = ast_lambda("e.info['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
@@ -1011,7 +1011,7 @@ def test_index_callback_prop_index_bad():
 
     class TEvent:
         @property
-        def info(self): ...
+        def info(self): ...  # noqa
 
     s = ast_lambda("e.info['fork':'dork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
