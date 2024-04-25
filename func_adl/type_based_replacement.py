@@ -896,7 +896,8 @@ def remap_by_types(
                 slice = t_node.slice
                 if not isinstance(slice, ast.Constant):
                     raise ValueError(
-                        f"Slices must be indexable constants only - {ast.dump(slice)} is not valid."
+                        f"Slices must be indexable constants only - {ast.dump(slice)} is not "
+                        "valid."
                     )
                 index = slice.value
                 if len(t_node.value.elts) <= index:
@@ -947,7 +948,9 @@ def remap_by_types(
             # type is for that value of the dict.
             if isinstance(t_node.value, ast.Dict):
                 key = t_node.attr
-                key_index = [e for e, k in enumerate(t_node.value.keys) if k.value == key]
+                key_index = [
+                    e for e, k in enumerate(t_node.value.keys) if k.value == key  # type: ignore
+                ]
                 if len(key_index) == 0:
                     raise ValueError(f"Key {key} not found in dict expression!!")
                 value = t_node.value.values[key_index[0]]

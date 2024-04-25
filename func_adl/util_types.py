@@ -46,7 +46,7 @@ def get_inherited(t: Type) -> Type:
     elif hasattr(t, "__origin__") and hasattr(t.__origin__, "__orig_bases__"):
         base_classes = t.__origin__.__orig_bases__
     else:
-        return Any
+        return Any  # type: ignore
 
     r = base_classes[0]  # type: ignore
 
@@ -77,7 +77,7 @@ def unwrap_iterable(t: Type) -> Type:
         t = get_inherited(t)
 
     if t == Any:
-        return Any
+        return Any  # type: ignore
 
     a = get_args(t)
     assert len(a) == 1, f"Coding error - expected iterable type with a parameter, got {t}"
@@ -168,7 +168,7 @@ def resolve_type_vars(
         s = build_type_dict_from_type(context_type, at_class)
     except TypeError:
         s = {}
-    return _resolve_type(parameterized_type, s)
+    return _resolve_type(parameterized_type, s)  # type: ignore
 
 
 def get_class_name(t: Type) -> str:
@@ -206,7 +206,7 @@ def get_method_and_class(class_object: Type, method_name: str) -> Optional[Tuple
     # Check for templated classes
     # TODO: Use inspect.getmro
     if not hasattr(class_object, "__mro__"):
-        class_object = get_origin(class_object)
+        class_object = get_origin(class_object)  # type: ignore
 
     # Walk the resolution hierarchy to find the method
     found_obj = None
@@ -223,6 +223,6 @@ def get_method_and_class(class_object: Type, method_name: str) -> Optional[Tuple
             if found_method == m:
                 found_obj = c
             else:
-                return (found_obj, found_method)
+                return (found_obj, found_method)  # type: ignore
 
-    return (found_obj, found_method)
+    return (found_obj, found_method)  # type: ignore
