@@ -816,14 +816,14 @@ def test_parse_black_split_lambda_funny():
 def test_parse_paramertized_function_simple():
     a = parse_as_ast(lambda e: e.jetAttribute["hi"](10))
     d_text = ast.dump(a)
-    assert "Constant(value=10)" in d_text
-    assert "Constant(value='hi')" in d_text
+    assert "Constant(value=10" in d_text
+    assert "Constant(value='hi'" in d_text
 
 
 def test_parse_parameterized_function_type():
     a = parse_as_ast(lambda e: e.jetAttribute[int](10))
     d_text = ast.dump(a)
-    assert "Constant(value=10)" in d_text
+    assert "Constant(value=10" in d_text
 
     # Needs to be updated...
     assert "Name(id='int'" in d_text
@@ -835,7 +835,7 @@ def test_parse_parameterized_function_defined_type():
 
     a = parse_as_ast(lambda e: e.jetAttribute[my_type](10))
     d_text = ast.dump(a)
-    assert "Constant(value=10)" in d_text
+    assert "Constant(value=10" in d_text
 
     # Needs to be updated...
     assert "Name(id='my_type'" in d_text
@@ -850,7 +850,7 @@ def test_parse_parameterized_function_instance():
 
     a = parse_as_ast(lambda e: e.jetAttribute[my_10](10))
     d_text = ast.dump(a)
-    assert "Constant(value=10)" in d_text
+    assert "Constant(value=10" in d_text
 
     # Needs to be updated...
     assert (
