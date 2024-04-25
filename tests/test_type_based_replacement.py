@@ -503,6 +503,64 @@ def test_collection_Select(caplog):
     assert len(caplog.text) == 0
 
 
+def test_dictionary():
+    "Check that we can type-follow through dictionaries"
+
+    s = ast_lambda("{'jets': e.Jets()}.jets.Select(lambda j: j.pt())")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
+def test_dictionary_bad_key():
+    "Check that we can type-follow through dictionaries"
+
+    with pytest.raises(ValueError) as e:
+        s = ast_lambda("{'jets': e.Jets()}.jetsss.Select(lambda j: j.pt())")
+        objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+        new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert "jetsss" in str(e)
+
+
+def test_indexed_tuple():
+    "Check that we can type-follow through dictionaries"
+
+    s = ast_lambda("(e.Jets(),)[0].Select(lambda j: j.pt())")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
+def test_indexed_tuple_out_of_bounds():
+    "Check that we can type-follow through dictionaries"
+
+    with pytest.raises(ValueError) as e:
+        s = ast_lambda("(e.Jets(),)[3].Select(lambda j: j.pt())")
+        objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+        new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert "3" in str(e)
+
+
+def test_indexed_tuple_bad_slice():
+    "Check that we can type-follow through dictionaries"
+
+    with pytest.raises(ValueError) as e:
+        s = ast_lambda("(e.Jets(),)[0:1].Select(lambda j: j.pt())")
+        objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+        new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert "is not valid" in str(e)
+
+
 def test_collection_Select_meta(caplog):
     "A simple collection"
     caplog.set_level(logging.WARNING)
