@@ -8,26 +8,17 @@ from collections import defaultdict
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
-# Some functions to enable backwards compatibility.
-# Capability may be degraded in older versions.
-if sys.version_info >= (3, 8):  # pragma: no cover
 
-    def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
-        return ast.Constant(value=p, kind=None)
+def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
+    """Convert a python constant into an AST constant node.
 
-else:  # pragma: no cover
+    Args:
+        p (Union[str, int, float, bool, None]): what should be wrapped
 
-    def as_literal(p: Union[str, int, float, bool, None]):
-        if isinstance(p, str):
-            return ast.Str(p)
-        elif isinstance(p, (int, float)):
-            return ast.Num(p)
-        elif isinstance(p, bool):
-            return ast.NameConstant(p)
-        elif p is None:
-            return ast.NameConstant(None)
-        else:
-            raise ValueError(f"Unknown type {type(p)} - do not know how to make a literal!")
+    Returns:
+        ast.Constant: The ast constant node that represents the value.
+    """
+    return ast.Constant(value=p, kind=None)
 
 
 def as_ast(p_var: Any) -> ast.AST:
@@ -333,19 +324,10 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
-            if not callable(v):
-                # Modules should be sent on down to be dealt with by the
-                # backend.
-                if not isinstance(v, ModuleType):
-                    legal_capture_types = [str, int, float, bool, complex, str, bytes]
-                    if type(v) not in legal_capture_types:
-                        raise ValueError(
-                            f"Do not know how to capture data type '{type(v).__name__}' for "
-                            f"variable '{node.id}' - only "
-                            f"{', '.join([c.__name__ for c in legal_capture_types])} are "
-                            "supported."
-                        )
-                    return as_literal(v)
+            if not callable(v) and not isinstance(v, ModuleType):
+                # If it is something we know how to make into a literal, we just send it down
+                # like that.
+                return as_literal(v)
         return node
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
@@ -728,3 +710,28 @@ def scan_for_metadata(a: ast.AST, callback: Callable[[ast.arg], None]):
                 callback(node.args[1])  # type: ignore
 
     metadata_finder().visit(a)
+
+
+g_legal_capture_types = (str, int, float, bool, complex, str, bytes, ModuleType)
+
+
+def check_ast(a: ast.AST):
+    """Check to make sure the ast does not have anything we can't send over the wire
+    in `qastle` or similar.
+
+    Args:
+        a (ast.AST): The AST to check
+
+    Raises:
+        ValueError: If something unsupported is found.
+    """
+
+    class ConstantTypeChecker(ast.NodeVisitor):
+        def visit_Constant(self, node: ast.Constant):
+            if not isinstance(node.value, g_legal_capture_types):
+                raise ValueError(f"Invalid constant type: {type(node.value)} for {ast.dump(node)}")
+            self.generic_visit(node)
+
+    # Usage example:
+    checker = ConstantTypeChecker()
+    checker.visit(a)

@@ -99,6 +99,25 @@ def test_two_simple_query():
     assert ast.dump(r1) == ast.dump(r2)
 
 
+def test_query_bad_variable():
+    class my_type:
+        def __init__(self, n):
+            self._n = 10
+
+    my_10 = my_type(10)
+
+    with pytest.raises(ValueError) as e:
+        (
+            my_event()
+            .SelectMany(lambda e: e.jets())
+            .Select(lambda j: j.pT() > my_10)
+            .AsROOTTTree("junk.root", "analysis", "jetPT")
+            .value()
+        )
+
+    assert "my_type" in str(e)
+
+
 def test_with_types():
     r1 = my_event_with_type().SelectMany(lambda e: e.Jets("jets"))
     r = r1.Select(lambda j: j.eta()).value()

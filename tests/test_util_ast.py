@@ -7,6 +7,7 @@ import pytest
 from func_adl.util_ast import (
     _realign_indent,
     as_ast,
+    check_ast,
     function_call,
     lambda_args,
     lambda_body_replace,
@@ -20,6 +21,7 @@ from func_adl.util_ast import (
     rewrite_func_as_lambda,
     scan_for_metadata,
 )
+from tests.test_type_based_replacement import replace_name_with_constant
 
 
 # Ast parsing
@@ -309,19 +311,6 @@ def test_parse_lambda_capture_nested_local():
     assert ast.dump(r) == ast.dump(r_true)
 
 
-def test_sensible_error_with_bad_variable_capture():
-    class bogus:
-        def __init__(self):
-            self.my_var = 10
-
-    my_var = bogus()
-
-    with pytest.raises(ValueError) as e:
-        parse_as_ast(lambda x: x > my_var)
-
-    assert "my_var" in str(e)
-
-
 def test_parse_simple_func():
     "A oneline function defined at local scope"
 
@@ -376,15 +365,13 @@ def test_unknown_function():
 def test_known_local_function():
     "function that is declared locally"
 
-    def doit(x):
-        ...
+    def doit(x): ...
 
     f = parse_as_ast(lambda a: doit(a))  # type: ignore # NOQA
     assert "Name(id='doit'" in ast.dump(f)
 
 
-def global_doit_non_func(x):
-    ...
+def global_doit_non_func(x): ...
 
 
 def test_known_global_function():
@@ -513,8 +500,7 @@ def test_indent_parse():
 
     class yo_baby:
         @h.dec_func(lambda y: y + 2)
-        def doit(self, x: int):
-            ...
+        def doit(self, x: int): ...
 
     assert len(seen_funcs) == 1
     l1 = parse_as_ast(seen_funcs[0], "dec_func")
@@ -827,6 +813,51 @@ def test_parse_black_split_lambda_funny():
     assert "AntiKt4EMTopoJets" in ast.dump(found[0])
 
 
+def test_parse_paramertized_function_simple():
+    a = parse_as_ast(lambda e: e.jetAttribute["hi"](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10" in d_text
+    assert "Constant(value='hi'" in d_text
+
+
+def test_parse_parameterized_function_type():
+    a = parse_as_ast(lambda e: e.jetAttribute[int](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10" in d_text
+
+    # Needs to be updated...
+    assert "Name(id='int'" in d_text
+
+
+def test_parse_parameterized_function_defined_type():
+    class my_type:
+        bogus: int = 10
+
+    a = parse_as_ast(lambda e: e.jetAttribute[my_type](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10" in d_text
+
+    # Needs to be updated...
+    assert "Name(id='my_type'" in d_text
+
+
+def test_parse_parameterized_function_instance():
+    class my_type:
+        def __init__(self, n):
+            self._n = n
+
+    my_10 = my_type(10)
+
+    a = parse_as_ast(lambda e: e.jetAttribute[my_10](10))
+    d_text = ast.dump(a)
+    assert "Constant(value=10" in d_text
+
+    # Needs to be updated...
+    assert (
+        "Constant(value=<tests.test_util_ast.test_parse_parameterized_function_instance" in d_text
+    )
+
+
 def test_parse_metadata_there():
     recoreded = None
 
@@ -858,3 +889,21 @@ def test_realign_indent_2lines():
 
 def test_realign_indent_2lines_uneven():
     assert _realign_indent("    test()\n        dude()") == "test()\n    dude()"
+
+
+def test_check_ast_good():
+    check_ast(ast.parse("1 + 2 + 'abc'"))
+
+
+def test_check_ast_bad():
+    class my_type:
+        def __init__(self, n):
+            self._n = n
+
+    mt = my_type(10)
+    a = ast.parse("1 + 2 + abc")
+    a = replace_name_with_constant(a, "abc", mt)
+    with pytest.raises(ValueError) as e:
+        check_ast(a)
+
+    assert "my_type" in str(e)
