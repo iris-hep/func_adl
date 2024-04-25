@@ -8,26 +8,17 @@ from collections import defaultdict
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
-# Some functions to enable backwards compatibility.
-# Capability may be degraded in older versions - particularly 3.6.
-if sys.version_info >= (3, 8):  # pragma: no cover
 
-    def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
-        return ast.Constant(value=p, kind=None)
+def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
+    """Convert a python constant into an AST constant node.
 
-else:  # pragma: no cover
+    Args:
+        p (Union[str, int, float, bool, None]): what should be wrapped
 
-    def as_literal(p: Union[str, int, float, bool, None]):
-        if isinstance(p, str):
-            return ast.Str(p)
-        elif isinstance(p, (int, float)):
-            return ast.Num(p)
-        elif isinstance(p, bool):
-            return ast.NameConstant(p)
-        elif p is None:
-            return ast.NameConstant(None)
-        else:
-            raise ValueError(f"Unknown type {type(p)} - do not know how to make a literal!")
+    Returns:
+        ast.Constant: The ast constant node that represents the value.
+    """
+    return ast.Constant(value=p, kind=None)
 
 
 def as_ast(p_var: Any) -> ast.AST:
@@ -336,14 +327,7 @@ class _rewrite_captured_vars(ast.NodeTransformer):
             if not callable(v) and not isinstance(v, ModuleType):
                 # If it is something we know how to make into a literal, we just send it down
                 # like that.
-                try:
-                    return as_literal(v)
-                except Exception:
-                    pass
-
-                # This is another type of variable. We'll let that remain inside
-                # as some sort of constant.
-                return ast.Constant(value=v, kind=None)
+                return as_literal(v)
         return node
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
