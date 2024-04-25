@@ -3,6 +3,7 @@ import ast
 import asyncio
 import logging
 from _ast import Call
+from enum import Enum
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 import pytest
@@ -574,3 +575,24 @@ def test_typed_with_metadata():
 
     r = evt_typed().MetaData({})
     assert r.item_type is Evt
+
+
+def test_typed_with_enum():
+    class Evt:
+        class Color(Enum):
+            red = 1
+            green = 2
+            blue = 3
+
+        def color(self) -> Color: ...  # noqa
+
+    class evt_typed(EventDataset[Evt]):
+        def __init__(self):
+            super().__init__(Evt)
+
+        async def execute_result_async(self, a: ast.AST, title: Optional[str] = None):
+            await asyncio.sleep(0.01)
+            return a
+
+    r = evt_typed().Select(lambda e: e.color())
+    assert r.item_type is Evt.Color

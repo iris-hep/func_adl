@@ -162,7 +162,7 @@ def _find_keyword(
 
 
 # Some functions to enable backwards compatibility.
-# Capability may be degraded in older versions - particularly 3.6.
+# Capability may be degraded in older versions.
 if sys.version_info >= (3, 8):  # pragma: no cover
 
     def get_type_args(tp):
