@@ -496,7 +496,16 @@ def remap_by_types(
 
         def lookup_type(self, name: Union[str, object]) -> Type:
             "Return the type for a node, Any if we do not know about it"
-            return self._found_types.get(name, Any)  # type: ignore
+            t = self._found_types.get(name, None)
+            if t is not None:
+                return t  # type: ignore
+            if not isinstance(name, ast.AST):
+                return Any  # type: ignore
+
+            # It could be we can determine the type from this ast.
+            return Any  # type: ignore
+
+            return t  # type: ignore
 
         def process_method_call_on_stream_obj(
             self,
@@ -883,9 +892,21 @@ def remap_by_types(
         def visit_Subscript(self, node: ast.Subscript) -> Any:
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Subscript)
-            inner_type = unwrap_iterable(self.lookup_type(t_node.value))
-            self._found_types[node] = inner_type
-            self._found_types[t_node] = inner_type
+            if isinstance(t_node.value, ast.Tuple):
+                slice = t_node.slice
+                if not isinstance(slice, ast.Constant):
+                    raise ValueError(
+                        f"Slices must be indexable constants only - {ast.dump(slice)} is not valid."
+                    )
+                index = slice.value
+                if len(t_node.value.elts) <= index:
+                    raise ValueError(f"Index {index} out of range for {ast.dump(node.value)}")
+                self._found_types[node] = self.lookup_type(t_node.value.elts[index])
+                self._found_types[t_node] = self.lookup_type(t_node.value.elts[index])
+            else:
+                inner_type = unwrap_iterable(self.lookup_type(t_node.value))
+                self._found_types[node] = inner_type
+                self._found_types[t_node] = inner_type
             return t_node
 
         def visit_Name(self, node: ast.Name) -> ast.Name:
@@ -918,6 +939,20 @@ def remap_by_types(
                 raise ValueError("Do not know how to work with pythons None")
             self._found_types[node] = bool
             return node
+
+        def visit_Attribute(self, node: ast.Attribute) -> Any:
+            t_node = self.generic_visit(node)
+            assert isinstance(t_node, ast.Attribute)
+            # If this is a dict reference, then figure out what the
+            # type is for that value of the dict.
+            if isinstance(t_node.value, ast.Dict):
+                key = t_node.attr
+                key_index = [e for e, k in enumerate(t_node.value.keys) if k.value == key]
+                if len(key_index) == 0:
+                    raise ValueError(f"Key {key} not found in dict expression!!")
+                value = t_node.value.values[key_index[0]]
+                self._found_types[node] = self.lookup_type(value)
+            return t_node
 
     tt = type_transformer(o_stream)
     r_a = tt.visit(a)
