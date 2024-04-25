@@ -5,7 +5,7 @@ import inspect
 import sys
 import tokenize
 from collections import defaultdict
-from dataclasses import dataclass, is_dataclass
+from dataclasses import is_dataclass
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
@@ -331,7 +331,7 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 return as_literal(v)
 
             if is_dataclass(v):
-                return as_literal(v)
+                return ast.Constant(value=v, kind=None)
 
         return node
 
