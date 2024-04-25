@@ -5,6 +5,7 @@ import inspect
 import sys
 import tokenize
 from collections import defaultdict
+from dataclasses import dataclass, is_dataclass
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
@@ -328,6 +329,10 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 # If it is something we know how to make into a literal, we just send it down
                 # like that.
                 return as_literal(v)
+
+            if is_dataclass(v):
+                return as_literal(v)
+
         return node
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:

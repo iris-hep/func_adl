@@ -1,5 +1,6 @@
 import ast
 import sys
+from dataclasses import dataclass
 from typing import Callable, cast
 
 import pytest
@@ -856,6 +857,17 @@ def test_parse_parameterized_function_instance():
     assert (
         "Constant(value=<tests.test_util_ast.test_parse_parameterized_function_instance" in d_text
     )
+
+
+def test_dataclass_creation():
+    @dataclass
+    class my_data:
+        pt: float
+        eta: int
+
+    a = parse_as_ast(lambda e: my_data(10.0, 20))
+    d_text = ast.dump(a)
+    assert "Constant(value=<class 'tests" in d_text
 
 
 def test_parse_metadata_there():
