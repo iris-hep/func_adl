@@ -545,8 +545,13 @@ def test_dictionary_bad_key():
     assert "jetsss" in str(e)
 
 
+def test_dictionary_through_Select():
+    """Make sure the Select statement carries the typing all the way through"""
+    assert False
+
+
 def test_indexed_tuple():
-    "Check that we can type-follow through dictionaries"
+    "Check that we can type-follow through tuples"
 
     s = ast_lambda("(e.Jets(),)[0].Select(lambda j: j.pt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
