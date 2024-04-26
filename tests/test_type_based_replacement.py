@@ -1,6 +1,7 @@
 import ast
 import copy
 import logging
+from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
@@ -14,6 +15,7 @@ from func_adl.type_based_replacement import (
     remap_by_types,
     remap_from_lambda,
 )
+from func_adl.util_ast import parse_as_ast
 
 
 class Track:
@@ -559,6 +561,57 @@ def test_indexed_tuple_bad_slice():
         new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
     assert "is not valid" in str(e)
+
+
+def test_dataclass_create():
+    "Check a simple, correct, data class reference"
+
+    @dataclass
+    class MyData:
+        pt: float
+        eta: float
+
+    s = parse_as_ast(lambda e: e.Jets().Select(lambda j: MyData(j.pt(), j.eta()))).body
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[MyData]
+
+
+def test_dataclass_simple_reference():
+    "Check a simple, correct, data class reference"
+
+    @dataclass
+    class MyData:
+        pt: float
+        eta: float
+
+    s = ast_lambda("e.Jets().Select(lambda j: MyData(j.pt(), j.eta())).Select(lambda d: d.pt)")
+
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[MyData]
+
+
+def test_dataclass_simple_bad_reference():
+    "Check a simple, correct, data class reference"
+
+    @dataclass
+    class MyData:
+        pt: float
+        eta: float
+
+    s = ast_lambda("e.Jets().Select(lambda j: MyData(j.pt(), j.eta())).Select(lambda d: d.bad_pt)")
+
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    with pytest.raises(ValueError) as e:
+        remap_by_types(objs, "e", Event, s)
+
+    assert "bad_pt" in str(e)
 
 
 def test_collection_Select_meta(caplog):
