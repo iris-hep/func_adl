@@ -927,7 +927,10 @@ def remap_by_types(
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Dict)
 
-            fields: List[Tuple[str, type]] = [(ast.literal_eval(f), self.lookup_type(v)) for f, v in zip(t_node.keys, t_node.values)]  # type: ignore
+            fields: List[Tuple[str, type]] = [
+                (ast.literal_eval(f), self.lookup_type(v))  # type: ignore
+                for f, v in zip(t_node.keys, t_node.values)
+            ]
             dict_dataclass = make_dataclass("dict_dataclass", fields)
 
             self._found_types[t_node] = dict_dataclass
