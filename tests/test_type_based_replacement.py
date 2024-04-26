@@ -1,6 +1,8 @@
 import ast
 import copy
+import inspect
 import logging
+from inspect import isclass
 from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
@@ -504,6 +506,23 @@ def test_collection_Select(caplog):
 
 
 def test_dictionary():
+    "Make sure that dictionaries turn into named types"
+
+    s = ast_lambda("{'jets': e.Jets()}")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    # Fix to look for the named class with the correct types.
+    assert isclass(expr_type)
+    sig = inspect.signature(expr_type.__init__)
+    assert len(sig.parameters) == 2
+    assert "jets" in sig.parameters
+    j_info = sig.parameters["jets"]
+    assert str(j_info.annotation) == "typing.Iterable[tests.test_type_based_replacement.Jet]"
+
+
+def test_dictionary_sequence():
     "Check that we can type-follow through dictionaries"
 
     s = ast_lambda("{'jets': e.Jets()}.jets.Select(lambda j: j.pt())")

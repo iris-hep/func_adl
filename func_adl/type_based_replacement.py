@@ -5,7 +5,7 @@ import copy
 import inspect
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, make_dataclass
 from typing import (
     Any,
     Callable,
@@ -922,6 +922,15 @@ def remap_by_types(
                 logging.getLogger(__name__).warning(f"Unknown type for name {node.id}")
                 self._found_types[node] = Any
             return node
+
+        def visit_Dict(self, node: ast.Dict) -> Any:
+            t_node = self.generic_visit(node)
+            assert isinstance(t_node, ast.Dict)
+
+            fields: List[Tuple[str, type]] = [(ast.literal_eval(f), self.lookup_type(v)) for f, v in zip(t_node.keys, t_node.values)]  # type: ignore
+            dict_dataclass = make_dataclass("dict_dataclass", fields)
+
+            self._found_types[t_node] = dict_dataclass
 
         def visit_Constant(self, node: ast.Constant) -> Any:
             self._found_types[node] = type(node.value)
