@@ -564,6 +564,20 @@ def test_dictionary_through_Select():
     assert j_info.annotation == float
 
 
+def test_dictionary_through_Select_reference():
+    """Make sure the Select statement carries the typing all the way through,
+    including a later reference"""
+
+    s = ast_lambda(
+        "e.Jets().Select(lambda j: {'pt': j.pt(), 'eta': j.eta()}).Select(lambda info: info.pt)"
+    )
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
 def test_indexed_tuple():
     "Check that we can type-follow through tuples"
 

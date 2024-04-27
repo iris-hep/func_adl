@@ -5,7 +5,7 @@ import copy
 import inspect
 import logging
 import sys
-from dataclasses import dataclass, make_dataclass
+from dataclasses import dataclass, is_dataclass, make_dataclass
 from typing import (
     Any,
     Callable,
@@ -971,6 +971,11 @@ def remap_by_types(
                     raise ValueError(f"Key {key} not found in dict expression!!")
                 value = t_node.value.values[key_index[0]]
                 self._found_types[node] = self.lookup_type(value)
+            elif ((dc := self.lookup_type(t_node.value)) is not None) and is_dataclass(dc):
+                dc_types = get_type_hints(dc)
+                if node.attr not in dc_types:
+                    raise ValueError(f"Key {node.attr} not found in dataclass/dictionary {dc}")
+                self._found_types[node] = dc_types[node.attr]
             return t_node
 
     tt = type_transformer(o_stream)
