@@ -5,7 +5,7 @@ import copy
 import inspect
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass, make_dataclass
 from typing import (
     Any,
     Callable,
@@ -923,6 +923,19 @@ def remap_by_types(
                 self._found_types[node] = Any
             return node
 
+        def visit_Dict(self, node: ast.Dict) -> Any:
+            t_node = self.generic_visit(node)
+            assert isinstance(t_node, ast.Dict)
+
+            fields: List[Tuple[str, type]] = [
+                (ast.literal_eval(f), self.lookup_type(v))  # type: ignore
+                for f, v in zip(t_node.keys, t_node.values)
+            ]
+            dict_dataclass = make_dataclass("dict_dataclass", fields)
+
+            self._found_types[t_node] = dict_dataclass
+            return t_node
+
         def visit_Constant(self, node: ast.Constant) -> Any:
             self._found_types[node] = type(node.value)
             return node
@@ -958,6 +971,11 @@ def remap_by_types(
                     raise ValueError(f"Key {key} not found in dict expression!!")
                 value = t_node.value.values[key_index[0]]
                 self._found_types[node] = self.lookup_type(value)
+            elif ((dc := self.lookup_type(t_node.value)) is not None) and is_dataclass(dc):
+                dc_types = get_type_hints(dc)
+                if node.attr not in dc_types:
+                    raise ValueError(f"Key {node.attr} not found in dataclass/dictionary {dc}")
+                self._found_types[node] = dc_types[node.attr]
             return t_node
 
     tt = type_transformer(o_stream)
