@@ -934,6 +934,7 @@ def remap_by_types(
             dict_dataclass = make_dataclass("dict_dataclass", fields)
 
             self._found_types[t_node] = dict_dataclass
+            return t_node
 
         def visit_Constant(self, node: ast.Constant) -> Any:
             self._found_types[node] = type(node.value)
