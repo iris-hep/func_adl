@@ -3,7 +3,7 @@ import copy
 import inspect
 import logging
 from inspect import isclass
-from typing import Any, AnyStr, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
 
