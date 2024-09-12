@@ -341,6 +341,17 @@ def test_collection_First(caplog):
     assert len(caplog.text) == 0
 
 
+def test_collection_len(caplog):
+    "Make sure `len` is properly typed"
+    s = ast_lambda("len(e.Jets('default'))")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == int
+    assert len(caplog.text) == 0
+
+
 def test_collection_Custom_Method_int(caplog):
     "A custom collection method not pre-given"
     caplog.set_level(logging.WARNING)

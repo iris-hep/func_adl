@@ -61,8 +61,10 @@ def _load_default_global_functions():
     # TODO: Add in other functions
 
     def my_abs(x: float) -> float: ...  # noqa
+    def my_len(x: Iterable) -> int: ...  # noqa
 
     _global_functions["abs"] = _FuncAdlFunction("abs", my_abs, None)
+    _global_functions["len"] = _FuncAdlFunction("len", my_len, None)
 
 
 _load_default_global_functions()
