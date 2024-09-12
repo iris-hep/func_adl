@@ -968,6 +968,8 @@ def remap_by_types(
                     e for e, k in enumerate(t_node.value.keys) if k.value == key  # type: ignore
                 ]
                 if len(key_index) == 0:
+                    if t_node.attr.lower() == "zip":
+                        return t_node
                     raise ValueError(f"Key {key} not found in dict expression!!")
                 value = t_node.value.values[key_index[0]]
                 self._found_types[node] = self.lookup_type(value)

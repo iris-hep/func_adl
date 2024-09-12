@@ -3,7 +3,7 @@ import copy
 import inspect
 import logging
 from inspect import isclass
-from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, AnyStr, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
 
 import pytest
 
@@ -560,7 +560,7 @@ def test_dictionary_Zip_key():
 
     new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
-    assert False
+    assert expr_type == Any
 
 
 def test_dictionary_through_Select():
