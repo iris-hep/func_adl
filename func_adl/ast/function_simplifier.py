@@ -244,8 +244,8 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             "SelectMany", [cast(ast.AST, captured_body), cast(ast.AST, func_g)]
         )
         new_select_lambda = lambda_build(captured_arg, new_select)
-        new_selectmany = function_call("SelectMany", [seq, cast(ast.AST, new_select_lambda)])
-        return new_selectmany
+        new_select_many = function_call("SelectMany", [seq, cast(ast.AST, new_select_lambda)])
+        return new_select_many
 
     def call_SelectMany(self, node: ast.Call, args: List[ast.AST]):
         r"""
@@ -442,7 +442,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         # Get the value out - this is due to supporting python 3.7-3.9
         n = _get_value_from_index(s)
         if n is None:
-            return ast.Subscript(v, s, ast.Load())
+            return ast.Subscript(v, s, ast.Load())  # type: ignore
         assert isinstance(n, int), "Programming error: index is not an integer in tuple subscript"
         if n >= len(v.elts):
             raise FuncADLIndexError(
@@ -460,7 +460,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         """
         n = _get_value_from_index(s)
         if n is None:
-            return ast.Subscript(v, s, ast.Load())
+            return ast.Subscript(v, s, ast.Load())  # type: ignore
         if n >= len(v.elts):
             raise FuncADLIndexError(
                 f"Attempt to access the {n}th element of a tuple"
@@ -484,7 +484,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             if _get_value_from_index(value) == s:
                 return v.values[index]
 
-        return ast.Subscript(v, s, ast.Load())
+        return ast.Subscript(v, s, ast.Load())  # type: ignore
 
     def visit_Subscript_Of_First(self, first: ast.AST, s):
         """
