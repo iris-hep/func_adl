@@ -560,7 +560,7 @@ def test_dictionary_Zip_key():
 
     new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
-    assert "jetsss" in str(e)
+    assert False
 
 
 def test_dictionary_through_Select():
