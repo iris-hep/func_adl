@@ -102,7 +102,7 @@ def func_adl_callable(
         Callable[[ObjectStream[W], ast.Call], Tuple[ObjectStream[W], ast.AST]]
     ] = None
 ):
-    """Dectorator that will declare a function that can be used inline in
+    """Decorator that will declare a function that can be used inline in
     a `func_adl` expression. The body of the function, what the backend
     translates it to, must be given by another route (e.g. via `MetaData`
     and the `processor` argument).
@@ -388,7 +388,7 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
         )
         return_type = Any
 
-    return call, return_type
+    return call, return_type  # type: ignore
 
 
 def fixup_ast_from_modifications(transformed_ast: ast.AST, original_ast: ast.Call) -> ast.Call:
@@ -582,7 +582,7 @@ def remap_by_types(
             # If this is a known collection class, we can use call-backs to follow it.
             if get_origin(call_site_info.obj_type) in _g_collection_classes:
                 rtn_value = self.process_method_call_on_stream_obj(
-                    _g_collection_classes[get_origin(call_site_info.obj_type)],
+                    _g_collection_classes[get_origin(call_site_info.obj_type)],  # type: ignore
                     m_name,
                     r_node,
                     get_args(call_site_info.obj_type)[0],
@@ -631,7 +631,7 @@ def remap_by_types(
 
             Args:
                 node (ast.Call): The ast node
-                obj_type (type): The object type this method call is occuring against
+                obj_type (type): The object type this method call is occurring against
 
             Returns:
                 ast.AST: An updated ast that is the new method call (with default args, etc.)
@@ -643,7 +643,7 @@ def remap_by_types(
             base_obj_list_all = [obj_type]
             if is_iterable(obj_type):
                 item_type = unwrap_iterable(obj_type)
-                base_obj_list_all += [c[item_type] for c in _g_collection_classes]
+                base_obj_list_all += [c[item_type] for c in _g_collection_classes]  # type: ignore
 
             assert isinstance(r_node.func, ast.Attribute)
             m_name = r_node.func.attr
@@ -758,7 +758,7 @@ def remap_by_types(
                     f"function {func_info.function.__name__} ({str(e)})"
                 ) from e
 
-        def process_paramaterized_method_call(
+        def process_parameterized_method_call(
             self,
             node: ast.Call,
             obj_type: Type,
@@ -815,7 +815,7 @@ def remap_by_types(
                 if isinstance(t_node.func.value, ast.Attribute):
                     found_type = self.lookup_type(t_node.func.value.value)
                     if found_type is not None:
-                        t_node = self.process_paramaterized_method_call(
+                        t_node = self.process_parameterized_method_call(
                             t_node,
                             found_type,
                             t_node.func.value.attr,
@@ -941,17 +941,17 @@ def remap_by_types(
             return node
 
         def visit_Num(self, node: ast.Num) -> Any:  # pragma: no cover
-            "3.7 compatability"
+            "3.7 compatibility"
             self._found_types[node] = type(node.n)
             return node
 
         def visit_Str(self, node: ast.Str) -> Any:  # pragma: no cover
-            "3.7 compatability"
+            "3.7 compatibility"
             self._found_types[node] = str
             return node
 
         def visit_NameConstant(self, node: ast.NameConstant) -> Any:  # pragma: no cover
-            "3.7 compatability"
+            "3.7 compatibility"
             if node.value is None:
                 raise ValueError("Do not know how to work with pythons None")
             self._found_types[node] = bool
@@ -968,6 +968,8 @@ def remap_by_types(
                     e for e, k in enumerate(t_node.value.keys) if k.value == key  # type: ignore
                 ]
                 if len(key_index) == 0:
+                    if t_node.attr.lower() == "zip":
+                        return t_node
                     raise ValueError(f"Key {key} not found in dict expression!!")
                 value = t_node.value.values[key_index[0]]
                 self._found_types[node] = self.lookup_type(value)
@@ -999,7 +1001,7 @@ def remap_from_lambda(
     orig_type = o_stream.item_type
     var_name = l_func.args.args[0].arg
     stream, new_body, return_type = remap_by_types(o_stream, var_name, orig_type, l_func.body)
-    return stream, ast.Lambda(l_func.args, new_body), return_type
+    return stream, ast.Lambda(l_func.args, new_body), return_type  # type: ignore
 
 
 def reset_global_functions():
