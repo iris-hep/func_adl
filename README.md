@@ -6,6 +6,7 @@
 [![Code Coverage](https://codecov.io/gh/iris-hep/func_adl/graph/badge.svg)](https://codecov.io/gh/iris-hep/func_adl)
 
 [![PyPI version](https://badge.fury.io/py/func-adl.svg)](https://badge.fury.io/py/func-adl)
+[![conda-forge version](https://img.shields.io/conda/vn/conda-forge/func-adl.svg)](https://github.com/conda-forge/func-adl-feedstock.git)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/func-adl.svg)](https://pypi.org/project/func-adl/)
 
 `func_adl` Uses an SQL like language, and extracts data and computed values from a ROOT file or an ATLAS xAOD file
@@ -93,7 +94,7 @@ class dd_jet:
 class dd_event:
     def Jets(self, bank: str) -> Iterable[dd_jet]:
         ...
-    
+
     def EventNumber(self, bank='default') -> int
         ...
 
