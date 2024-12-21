@@ -1,0 +1,13 @@
+authors:
+  - family-names: Proffitt
+    given-names: Mason
+  - family-names: Watts
+    given-names: Gordon
+title: "FuncADL: Functional Analysis Description Language"
+version: 1.0.0
+doi: 10.1051/epjconf/202125103068
+url: https://arxiv.org/abs/2103.02432
+journal: "EPJ Web Conf."
+volume: "251"
+pages: "03068"
+year: 2021
