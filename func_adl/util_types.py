@@ -1,19 +1,7 @@
 import inspect
-import sys
 import typing
 from typing import Any, Dict, Optional, Tuple, Type, TypeVar
-
-if sys.version_info >= (3, 8):
-    from typing import get_args, get_origin
-else:  # pragma: no cover
-    # TODO: Remove this when we drop support for 3.7
-    def get_args(tp):
-        "Return arguments - this is done very simply and will fail ugly"
-        return getattr(tp, "__args__", ())
-
-    def get_origin(tp):
-        "Return the origin - this is done very simply and will fail ugly"
-        return getattr(tp, "__origin__", None)
+from typing import get_args, get_origin
 
 
 def is_iterable(t: Type) -> bool:
