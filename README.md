@@ -93,7 +93,7 @@ class dd_jet:
 class dd_event:
     def Jets(self, bank: str) -> Iterable[dd_jet]:
         ...
-    
+
     def EventNumber(self, bank='default') -> int
         ...
 
@@ -204,3 +204,28 @@ For examples, see the `test_type_based_replacement` file. The class-level decora
 ## Development
 
 After a new release has been built and passes the tests you can release it by creating a new release on `github`. An action that runs when a release is "created" will send it to `pypi`.
+
+## Citation
+
+The preferred BibTeX entry for citation of `func_adl` includes both the software repository and the EPJ Web Conf. paper:
+
+```bibtex
+@software{func_adl,
+    author = {Gordon Watts},
+    title = "{func\_adl}",
+    url = {https://github.com/iris-hep/func_adl}
+}
+
+@article{Proffitt:2021wfh,
+    author = "Proffitt, Mason and Watts, Gordon",
+    title = "{FuncADL: Functional Analysis Description Language}",
+    eprint = "2103.02432",
+    archivePrefix = "arXiv",
+    primaryClass = "physics.data-an",
+    doi = "10.1051/epjconf/202125103068",
+    journal = "EPJ Web Conf.",
+    volume = "251",
+    pages = "03068",
+    year = "2021"
+}
+```
