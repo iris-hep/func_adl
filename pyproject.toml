@@ -35,6 +35,9 @@ classifiers = [
     "Topic :: Software Development",
     "Topic :: Utilities"
 ]
+dependencies = [
+    "make-it-sync"
+]
 
 [project.optional-dependencies]
 test = [
