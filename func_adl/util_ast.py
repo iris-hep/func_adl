@@ -44,7 +44,7 @@ def as_ast(p_var: Any) -> ast.AST:
     return b.value
 
 
-def function_call(function_name: str, args: List[ast.AST]) -> ast.Call:
+def function_call(function_name: str, args: List[ast.expr]) -> ast.Call:
     """
     Generate a function call to `function_name` with a list of `args`.
 
@@ -106,10 +106,10 @@ def lambda_call(args: Union[str, List[str]], lam: Union[ast.Lambda, ast.Module])
     if isinstance(args, str):
         args = [args]
     named_args = [ast.Name(x, ast.Load()) for x in args]
-    return ast.Call(lambda_unwrap(lam), named_args, [])
+    return ast.Call(lambda_unwrap(lam), named_args, [])  # type: ignore
 
 
-def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
+def lambda_build(args: Union[str, List[str]], l_expr: ast.expr) -> ast.Lambda:
     """
     Given a named argument(s), and an expression, build a `Lambda` AST node.
 
@@ -136,7 +136,7 @@ def lambda_build(args: Union[str, List[str]], l_expr: ast.AST) -> ast.Lambda:
     return call_lambda
 
 
-def lambda_body_replace(lam: ast.Lambda, new_expr: ast.AST) -> ast.Lambda:
+def lambda_body_replace(lam: ast.Lambda, new_expr: ast.expr) -> ast.Lambda:
     """
     Return a new lambda function that has new_expr as the body rather than the old one.
     Otherwise, everything is the same.
@@ -247,7 +247,7 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
     # the arguments
     args = f.args
     ret = cast(ast.Return, f.body[0])
-    return ast.Lambda(args, ret.value)
+    return ast.Lambda(args, ret.value)  # type: ignore
 
 
 class _rewrite_captured_vars(ast.NodeTransformer):
