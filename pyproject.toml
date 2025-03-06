@@ -49,6 +49,7 @@ test = [
     "black",
     "isort",
     "numpy"
+    "hatch"
 ]
 
 [project.scripts]
