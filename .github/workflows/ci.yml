@@ -19,7 +19,7 @@ jobs:
           python-version: "3.9"
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip
           pip install --no-cache-dir -e .[test]
           pip list
       - name: Lint with Flake8
@@ -48,7 +48,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip
           pip install --no-cache-dir -e .[test]
           pip list
       - name: Test with pytest
