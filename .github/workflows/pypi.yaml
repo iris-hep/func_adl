@@ -22,7 +22,7 @@ jobs:
         run: |
           # Extract version number from github.ref and write to version.txt
           version=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///')
-          echo "__version__=\"$v\"" > func_adl/version.txt
+          echo "__version__=\"$version\"" > func_adl/version.txt
           hatch build
       - name: Publish a func_adl to PyPI
         uses: pypa/gh-action-pypi-publish@v1.3.1
