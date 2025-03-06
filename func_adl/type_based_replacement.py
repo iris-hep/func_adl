@@ -895,16 +895,13 @@ def remap_by_types(
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Subscript)
             if isinstance(t_node.value, ast.Tuple):
-                slice = t_node.slice
-                # This if statement can be removed when we no longer support 3.8.
-                if isinstance(slice, ast.Index):
-                    slice = slice.value  # type: ignore
-                if not isinstance(slice, ast.Constant):
+                _slice = t_node.slice
+                if not isinstance(_slice, ast.Constant):
                     raise ValueError(
-                        f"Slices must be indexable constants only - {ast.dump(slice)} is not "
+                        f"Slices must be indexable constants only - {ast.dump(_slice)} is not "
                         "valid."
                     )
-                index = slice.value
+                index = _slice.value
                 if len(t_node.value.elts) <= index:
                     raise ValueError(f"Index {index} out of range for {ast.dump(node.value)}")
                 self._found_types[node] = self.lookup_type(t_node.value.elts[index])
