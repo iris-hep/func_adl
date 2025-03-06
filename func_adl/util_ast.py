@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import inspect
-import sys
 import tokenize
 from collections import defaultdict
 from types import ModuleType

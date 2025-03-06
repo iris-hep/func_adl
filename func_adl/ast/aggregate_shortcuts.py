@@ -1,7 +1,7 @@
 import ast
-import sys
-from func_adl.util_ast import function_call
 from typing import cast
+
+from func_adl.util_ast import function_call
 
 
 def _generate_count_call(seq: ast.AST, lambda_string: str = "lambda acc,v: acc+1") -> ast.Call:
