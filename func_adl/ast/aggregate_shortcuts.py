@@ -15,7 +15,7 @@ def _generate_count_call(seq: ast.AST, lambda_string: str = "lambda acc,v: acc+1
     agg_ast - An ast call to the Aggregate call.
     """
     agg_lambda = cast(ast.Expr, ast.parse(lambda_string).body[0]).value
-    agg_start = ast.Num(0) if sys.version_info < (3, 8, 0) else ast.Constant(0, kind=None)
+    agg_start = ast.Constant(0, kind=None)
 
     return function_call("Aggregate", [seq, cast(ast.AST, agg_start), cast(ast.AST, agg_lambda)])
 
