@@ -27,7 +27,7 @@ def _guard_python_version(max_python):
         )
 
 
-_guard_python_version(max_python="3.13")
+_guard_python_version(max_python="3.14")
 
 # Use the readme as the long description.
 with open("README.md", "r") as fh:
@@ -87,6 +87,7 @@ setup(
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.10",
