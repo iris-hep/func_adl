@@ -545,6 +545,17 @@ def test_dictionary_sequence():
     assert expr_type == Iterable[float]
 
 
+def test_dictionary_sequence_slice():
+    "Check that we can type-follow through dictionaries"
+
+    s = ast_lambda("{'jets': e.Jets()}['jets'].Select(lambda j: j.pt())")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
 def test_dictionary_bad_key():
     "Check that we can type-follow through dictionaries"
 
@@ -598,6 +609,20 @@ def test_dictionary_through_Select_reference():
 
     s = ast_lambda(
         "e.Jets().Select(lambda j: {'pt': j.pt(), 'eta': j.eta()}).Select(lambda info: info.pt)"
+    )
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
+def test_dictionary_through_Select_reference_slice():
+    """Make sure the Select statement carries the typing all the way through,
+    including a later reference"""
+
+    s = ast_lambda(
+        "e.Jets().Select(lambda j: {'pt': j.pt(), 'eta': j.eta()}).Select(lambda info: info['pt'])"
     )
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
