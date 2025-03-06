@@ -29,7 +29,7 @@ jobs:
         env:
           func_adl_version: 1.0b10
         run: |
-          python setup.py sdist bdist_wheel
+          hatch build
 
   test:
     runs-on: ${{ matrix.os }}
