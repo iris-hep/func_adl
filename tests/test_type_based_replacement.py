@@ -545,6 +545,17 @@ def test_dictionary_sequence():
     assert expr_type == Iterable[float]
 
 
+def test_dictionary_sequence_slice():
+    "Check that we can type-follow through dictionaries"
+
+    s = ast_lambda("{'jets': e.Jets()}['jets'].Select(lambda j: j.pt())")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
 def test_dictionary_bad_key():
     "Check that we can type-follow through dictionaries"
 
