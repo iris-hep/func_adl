@@ -896,7 +896,7 @@ def remap_by_types(
             assert isinstance(t_node, ast.Subscript)
             if isinstance(t_node.value, ast.Tuple):
                 _slice = t_node.slice
-                if not isinstance(slice, ast.Constant):
+                if not isinstance(_slice, ast.Constant):
                     raise ValueError(
                         f"Slices must be indexable constants only - {ast.dump(_slice)} is not "
                         "valid."
