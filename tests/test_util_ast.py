@@ -73,16 +73,7 @@ def test_as_ast_list():
 def test_function_call_simple():
     a = function_call("dude", [as_ast(1)])
     print(ast.dump(ast.parse("dude(1)")))
-    if sys.version_info < (3, 8):
-        expected = "Call(func=Name(id='dude', ctx=Load()), args=[Num(n=1)], keywords=[])"
-    elif sys.version_info < (3, 9):
-        expected = (
-            "Call(func=Name(id='dude', ctx=Load()), "
-            "args=[Constant(value=1, kind=None)], keywords=[])"
-        )
-    else:
-        expected = "Call(func=Name(id='dude', ctx=Load()), args=[Constant(value=1)], keywords=[])"
-    assert expected == ast.dump(a)
+    expected = "Call(func=Name(id='dude', ctx=Load()), args=[Constant(value=1)], keywords=[])"
 
 
 # Identity
