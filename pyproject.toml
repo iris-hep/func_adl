@@ -10,7 +10,6 @@ build-backend = "hatchling.build"
 
 [project]
 name = "func_adl"
-version = "0.0.1a1"
 description = "Functional Analysis Description Language Base Package"
 readme = "README.md"
 authors = [
@@ -38,6 +37,7 @@ classifiers = [
 dependencies = [
     "make-it-sync"
 ]
+dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
@@ -59,7 +59,7 @@ test = [
 # No scripts defined in setup.py
 
 [tool.hatch.version]
-path = "func_adl/__init__.py"
+path = "func_adl/version.txt"
 
 [tool.hatch.build.targets.sdist]
 include = ["README.md"]

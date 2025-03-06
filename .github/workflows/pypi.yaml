@@ -18,10 +18,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install hatch
-      - name: Build the func_adl wheel
-        env:
-          func_adl_version: ${{ github.ref }}
+      - name: Build the package
         run: |
+          echo "__version__=${{ github.ref }}" >> func_adl/version.txt
           hatch build
       - name: Publish a func_adl to PyPI
         uses: pypa/gh-action-pypi-publish@v1.3.1
