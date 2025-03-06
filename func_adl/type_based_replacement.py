@@ -882,6 +882,14 @@ def remap_by_types(
                     raise ValueError(f"Index {index} out of range for {ast.dump(node.value)}")
                 self._found_types[node] = self.lookup_type(t_node.value.elts[index])
                 self._found_types[t_node] = self.lookup_type(t_node.value.elts[index])
+            elif ((dc := self.lookup_type(t_node.value)) is not None) and is_dataclass(dc):
+                dc_types = get_type_hints(dc)
+                _slice = ast.literal_eval(t_node.slice)
+                if _slice not in dc_types:
+                    raise ValueError(
+                        f"Key {ast.unparse(t_node.slice)} not found in dataclass/dictionary {dc}"
+                    )
+                self._found_types[node] = dc_types[_slice]
             else:
                 inner_type = unwrap_iterable(self.lookup_type(t_node.value))
                 self._found_types[node] = inner_type
