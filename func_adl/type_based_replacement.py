@@ -4,7 +4,6 @@ import ast
 import copy
 import inspect
 import logging
-import sys
 from dataclasses import dataclass, is_dataclass, make_dataclass
 from typing import (
     Any,
@@ -102,7 +101,7 @@ W = TypeVar("W")
 def func_adl_callable(
     processor: Optional[
         Callable[[ObjectStream[W], ast.Call], Tuple[ObjectStream[W], ast.AST]]
-    ] = None
+    ] = None,
 ):
     """Decorator that will declare a function that can be used inline in
     a `func_adl` expression. The body of the function, what the backend
@@ -163,33 +162,10 @@ def _find_keyword(
     return None, keywords
 
 
-# Some functions to enable backwards compatibility.
-# Capability may be degraded in older versions.
-if sys.version_info >= (3, 8):  # pragma: no cover
-
-    def get_type_args(tp):
-        import typing
-
-        return typing.get_args(tp)
-
-else:  # pragma: no cover
-
-    def get_type_args(tp):
-        """Get type arguments with all substitutions performed.
-        For unions, basic simplifications used by Union constructor are performed.
-        Examples::
-            get_args(Dict[str, int]) == (str, int)
-            get_args(int) == ()
-            get_args(Union[int, Union[T, int], str][int]) == (int, str)
-            get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])
-            get_args(Callable[[], T][int]) == ([], int)
-        """
-        return getattr(tp, "__args__", ())
-
-
 @dataclass
 class CollectionClassInfo:
     "Info for a collection class"
+
     obj_type: Type
 
 
@@ -265,7 +241,7 @@ def _load_g_collection_classes():
 def func_adl_callback(
     callback: Callable[
         [ObjectStream[StreamItem], ast.Call], Tuple[ObjectStream[StreamItem], ast.Call]
-    ]
+    ],
 ):
     """Decorator to use on either classes or class methods that participate
     in `func_adl` queries. As these classes are traversed by the `func-adl`
@@ -297,7 +273,7 @@ TProp = TypeVar("TProp")
 def func_adl_parameterized_call(
     cb: Callable[
         [ObjectStream[StreamItem], ast.Call, Any], Tuple[ObjectStream[StreamItem], ast.Call, Type]
-    ]
+    ],
 ) -> Callable[[TProp], TProp]:
     """Mark a property access to be treated as a parameterized callback, with `cb` being called
     when the callback is detected. The parameters from the slice operations are passed to the

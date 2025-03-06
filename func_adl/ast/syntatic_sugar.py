@@ -1,18 +1,7 @@
 import ast
-import sys
 from typing import Any, List
 
 from func_adl.util_ast import lambda_build
-
-if sys.version_info >= (3, 9):
-
-    def unparse_ast(a: ast.AST) -> str:
-        return ast.unparse(a)
-
-else:  # pragma: no cover
-
-    def unparse_ast(a: ast.AST) -> str:
-        return ast.dump(a)
 
 
 def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
@@ -30,7 +19,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
     class syntax_transformer(ast.NodeTransformer):
         def resolve_generator(
-            self, lambda_body: ast.AST, generators: List[ast.comprehension], node: ast.AST
+            self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
             """Translate a list comprehension or a generator to Select statements.
 
@@ -50,10 +39,10 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 if not isinstance(target, ast.Name):
                     raise ValueError(
                         f"Comprehension variable must be a name, but found {target}"
-                        f" - {unparse_ast(node)}."
+                        f" - {ast.unparse(node)}."
                     )
                 if c.is_async:
-                    raise ValueError(f"Comprehension can't be async - {unparse_ast(node)}.")
+                    raise ValueError(f"Comprehension can't be async - {ast.unparse(node)}.")
                 source_collection = c.iter
 
                 # Turn the if clauses into Where statements
