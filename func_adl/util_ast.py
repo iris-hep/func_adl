@@ -20,7 +20,7 @@ def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
     return ast.Constant(value=p, kind=None)
 
 
-def as_ast(p_var: Any) -> ast.AST:
+def as_ast(p_var: Any) -> ast.expr:
     """Convert any python constant into an ast
 
     Args:

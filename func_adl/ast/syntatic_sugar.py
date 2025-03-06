@@ -19,7 +19,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
     class syntax_transformer(ast.NodeTransformer):
         def resolve_generator(
-            self, lambda_body: ast.AST, generators: List[ast.comprehension], node: ast.AST
+            self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
             """Translate a list comprehension or a generator to Select statements.
 

@@ -100,13 +100,13 @@ def test_lambda_simple_ast_expr():
 
 
 def test_lambda_build_single_arg():
-    expr = ast.parse("x+1")
+    expr = cast(ast.expr, ast.parse("x+1"))
     ln = lambda_build("x", expr)
     assert isinstance(ln, ast.Lambda)
 
 
 def test_lambda_build_list_arg():
-    expr = ast.parse("x+1")
+    expr = cast(ast.expr, ast.parse("x+1"))
     ln = lambda_build(["x"], expr)
     assert isinstance(ln, ast.Lambda)
 
