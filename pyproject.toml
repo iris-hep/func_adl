@@ -48,7 +48,7 @@ test = [
     "astunparse",
     "black",
     "isort",
-    "numpy"
+    "numpy",
     "hatch"
 ]
 
