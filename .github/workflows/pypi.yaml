@@ -20,7 +20,8 @@ jobs:
           pip install hatch
       - name: Build the package
         run: |
-          echo "__version__=${{ github.ref }}" >> func_adl/version.txt
+          # Extract version number from github.ref and write to version.txt
+          echo "${{ github.ref }}" | sed 's/refs\/tags\///' > func_adl/version.txt
           hatch build
       - name: Publish a func_adl to PyPI
         uses: pypa/gh-action-pypi-publish@v1.3.1
