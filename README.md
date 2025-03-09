@@ -23,7 +23,9 @@ See the documentation for more information on what expressions and capabilities 
 
 ## Captured Variables
 
-Python supports closures in `lambda` values and functions. This library will resolve those closures at the point where the select method is called. For example (where `ds` is a dataset):
+Python supports closures in `lambda` values and functions, as well as enum's and class constants. In all cases these are captured and injected as the resolved constant.
+
+This library will resolve those closures at the point where the select method is called. For example (where `ds` is a dataset):
 
 ```python
 met_cut = 40

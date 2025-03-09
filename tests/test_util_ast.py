@@ -1,5 +1,6 @@
 import ast
 import sys
+from enum import Enum
 from typing import Callable, cast
 
 import pytest
@@ -270,6 +271,37 @@ def test_parse_lambda_capture_nested_local():
     r = parse_as_ast(lambda x: (lambda y: y > cut_value)(x))
     r_true = parse_as_ast(lambda x: (lambda y: y > 30)(x))
     assert ast.dump(r) == ast.dump(r_true)
+
+
+def test_parse_lambda_class_constant():
+    class forkit:
+        it: int = 10
+
+    r = parse_as_ast(lambda x: x > forkit.it)
+    r_true = parse_as_ast(lambda x: x > 10)
+
+    assert ast.unparse(r) == ast.unparse(r_true)
+
+
+def test_parse_lambda_class_enum():
+
+    class forkit:
+        class MyEnum(Enum):
+            VALUE = 20
+
+    r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
+    r_true = parse_as_ast(lambda x: x > 20)
+
+    assert ast.unparse(r) == ast.unparse(r_true)
+
+
+def test_parse_lambda_class_constant_in_module():
+    from . import xAOD
+
+    r = parse_as_ast(lambda x: x > xAOD.my_fork_it.it)
+    r_true = parse_as_ast(lambda x: x > 22)
+
+    assert ast.unparse(r) == ast.unparse(r_true)
 
 
 def test_parse_simple_func():
@@ -791,15 +823,18 @@ def test_parse_parameterized_function_type():
 
 
 def test_parse_parameterized_function_defined_type():
+    """This shows up in our calibration work - for example,
+
+    `j.getValue[cpp_int]('decoration_name')
+    """
+
     class my_type:
-        bogus: int = 10
+        bogus: int = 20
 
     a = parse_as_ast(lambda e: e.jetAttribute[my_type](10))
     d_text = ast.dump(a)
     assert "Constant(value=10" in d_text
-
-    # Needs to be updated...
-    assert "Name(id='my_type'" in d_text
+    assert "<locals>.my_type" in d_text
 
 
 def test_parse_parameterized_function_instance():
