@@ -1,5 +1,6 @@
 import ast
 import sys
+from enum import Enum
 from typing import Callable, cast
 
 import pytest
@@ -272,12 +273,33 @@ def test_parse_lambda_capture_nested_local():
     assert ast.dump(r) == ast.dump(r_true)
 
 
-def test_parase_lambda_class_constant():
+def test_parse_lambda_class_constant():
     class forkit:
         it: int = 10
 
     r = parse_as_ast(lambda x: x > forkit.it)
     r_true = parse_as_ast(lambda x: x > 10)
+
+    assert ast.unparse(r) == ast.unparse(r_true)
+
+
+def test_parse_lambda_class_enum():
+
+    class forkit:
+        class MyEnum(Enum):
+            VALUE = 20
+
+    r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
+    r_true = parse_as_ast(lambda x: x > 20)
+
+    assert ast.unparse(r) == ast.unparse(r_true)
+
+
+def test_parse_lambda_class_constant_in_module():
+    from . import xAOD
+
+    r = parse_as_ast(lambda x: x > xAOD.my_fork_it.it)
+    r_true = parse_as_ast(lambda x: x > 22)
 
     assert ast.unparse(r) == ast.unparse(r_true)
 

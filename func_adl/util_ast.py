@@ -4,6 +4,7 @@ import ast
 import inspect
 import tokenize
 from collections import defaultdict
+from enum import EnumType
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
@@ -262,12 +263,12 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
-            if not callable(v) and not isinstance(v, ModuleType):
+            if isinstance(v, type) or isinstance(v, ModuleType):
+                return ast.Constant(value=v)
+            elif not callable(v) and not isinstance(v, ModuleType):
                 # If it is something we know how to make into a literal, we just send it down
                 # like that.
                 return as_literal(v)
-            elif isinstance(v, type):
-                return ast.Constant(value=v)
             else:
                 # If it is a local function, we need to parse it as an AST
                 return node
@@ -289,6 +290,8 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         # Now, if it comes back a constant, can we do a lookup to resolve it?
         if hasattr(value, "value") and hasattr(value.value, node.attr):
             new_value = getattr(value.value, node.attr)
+            if isinstance(value.value, EnumType):
+                new_value = new_value.value
             return ast.Constant(value=new_value)
 
         # If we fail, then just move on.
@@ -299,6 +302,15 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         v = super().generic_visit(node)
         self._ignore_stack.pop()
         return v
+
+    def visit_Call(self, node: ast.Call) -> Any:
+        "If the rewritten call turns into an actual function, then we have to bail"
+        old_func = node.func
+        rewritten_call = cast(ast.Call, super().generic_visit(node))
+        if isinstance(rewritten_call.func, ast.Constant):
+            rewritten_call.func = old_func
+
+        return rewritten_call
 
     def is_arg(self, a_name: str) -> bool:
         "If the arg is on the stack, then return true"
