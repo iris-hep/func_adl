@@ -1,9 +1,10 @@
 import ast
-from func_adl.object_stream import ObjectStream
 from typing import Any, cast
 
 import pytest
+
 from func_adl import EventDataset, find_EventDataset
+from func_adl.object_stream import ObjectStream
 
 
 def test_cannot_create():
@@ -20,7 +21,7 @@ class my_event(EventDataset):
 class my_event_extra_args(EventDataset):
     def __init__(self):
         super().__init__()
-        cast(ast.Call, self.query_ast).args.append(ast.Str(s="hi"))
+        cast(ast.Call, self.query_ast).args.append(ast.Constant(value="hi"))
 
     async def execute_result_async(self, a: ast.AST) -> Any:
         return 10
@@ -58,7 +59,7 @@ def test_eds_recovery_two_ds():
     q1 = r1.Select(lambda a: a + 1)
     q2 = r2.Select(lambda b: b + 1)
 
-    q = ObjectStream(ast.BinOp(q1.query_ast, ast.Add, q2.query_ast))
+    q = ObjectStream(ast.BinOp(q1.query_ast, ast.Add, q2.query_ast))  # type: ignore
     with pytest.raises(Exception) as e:
         find_EventDataset(q.query_ast)
 
@@ -66,7 +67,7 @@ def test_eds_recovery_two_ds():
 
 
 def test_eds_recovery_no_root():
-    q = ObjectStream(ast.BinOp(ast.Num(1), ast.Add, ast.Num(2)))
+    q = ObjectStream(ast.BinOp(ast.Constant(1), ast.Add, ast.Constant(2)))  # type: ignore
     with pytest.raises(Exception) as e:
         find_EventDataset(q.query_ast)
 
