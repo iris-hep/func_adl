@@ -480,7 +480,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
     def visit_Subscript_Dict_with_value(self, v: ast.Dict, s: Union[str, int]):
         "Do the lookup for the dict"
         for index, value in enumerate(v.keys):
-            assert isinstance(value, (ast.Str, ast.Constant))
+            assert isinstance(value, ast.Constant)
             if _get_value_from_index(value) == s:
                 return v.values[index]
 
@@ -563,7 +563,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         return ast.Attribute(value=visited_value, attr=node.attr, ctx=ast.Load())
 
 
-def _get_value_from_index(arg: Union[ast.Constant, ast.Index, ast.Str]) -> Optional[int]:
+def _get_value_from_index(arg: Union[ast.Constant, ast.Index]) -> Optional[int]:
     """Deal with 3.7, and 3.8 differences in how indexing for list and tuple
     subscripts is handled.
 
@@ -575,8 +575,6 @@ def _get_value_from_index(arg: Union[ast.Constant, ast.Index, ast.Str]) -> Optio
     def extract(a: ast.Constant) -> Optional[int]:
         if isinstance(a, ast.Constant):
             return a.value
-        if isinstance(a, ast.Str):
-            return a.s
         return None
 
     if isinstance(arg, ast.Index):

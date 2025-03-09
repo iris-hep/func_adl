@@ -923,11 +923,6 @@ def remap_by_types(
             self._found_types[node] = type(node.value)
             return node
 
-        def visit_Str(self, node: ast.Str) -> Any:  # pragma: no cover
-            "3.7 compatibility"
-            self._found_types[node] = str
-            return node
-
         def visit_NameConstant(self, node: ast.NameConstant) -> Any:  # pragma: no cover
             "3.7 compatibility"
             if node.value is None:

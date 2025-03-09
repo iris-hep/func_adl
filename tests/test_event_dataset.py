@@ -21,7 +21,7 @@ class my_event(EventDataset):
 class my_event_extra_args(EventDataset):
     def __init__(self):
         super().__init__()
-        cast(ast.Call, self.query_ast).args.append(ast.Str(s="hi"))
+        cast(ast.Call, self.query_ast).args.append(ast.Constant(value="hi"))
 
     async def execute_result_async(self, a: ast.AST) -> Any:
         return 10
