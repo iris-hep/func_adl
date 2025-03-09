@@ -2,8 +2,9 @@ name: CI/CD
 
 on:
   push:
+    branches:
+      - master
   pull_request:
-  # Run daily at 0:01 UTC
   schedule:
     # cron string to run once a week
     - cron: "30 1 1,15 * *"
