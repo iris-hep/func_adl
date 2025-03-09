@@ -63,7 +63,7 @@ def test_node_transform_function_ast_with_object_args():
     assert expected == ast.dump(e.visit(start))
     assert e.count == 1
     assert len(e.args) == 1
-    assert isinstance(e.args[0], ast.Num)
+    assert isinstance(e.args[0], ast.Constant)
     assert e.args[0].n == 10
 
 
@@ -169,7 +169,7 @@ def test_node_visit_function_ast_with_object_args():
     e.visit(start)
     assert e.count == 1
     assert len(e.args) == 1
-    assert isinstance(e.args[0], ast.Num)
+    assert isinstance(e.args[0], ast.Constant)
     assert e.args[0].n == 10
 
 

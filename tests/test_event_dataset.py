@@ -1,9 +1,10 @@
 import ast
-from func_adl.object_stream import ObjectStream
 from typing import Any, cast
 
 import pytest
+
 from func_adl import EventDataset, find_EventDataset
+from func_adl.object_stream import ObjectStream
 
 
 def test_cannot_create():
@@ -66,7 +67,7 @@ def test_eds_recovery_two_ds():
 
 
 def test_eds_recovery_no_root():
-    q = ObjectStream(ast.BinOp(ast.Num(1), ast.Add, ast.Num(2)))
+    q = ObjectStream(ast.BinOp(ast.Constant(1), ast.Add, ast.Constant(2)))
     with pytest.raises(Exception) as e:
         find_EventDataset(q.query_ast)
 
