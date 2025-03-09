@@ -433,14 +433,14 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         else:
             return FuncADLNodeTransformer.visit_Call(self, call_node)
 
-    def visit_Subscript_Tuple(self, v: ast.Tuple, s: Union[ast.Constant, ast.Index]):
+    def visit_Subscript_Tuple(self, v: ast.Tuple, s: ast.Constant):
         """
         (t1, t2, t3...)[1] => t2
 
         Only works if index is a number
         """
         # Get the value out - this is due to supporting python 3.7-3.9
-        n = _get_value_from_index(s)
+        n = s.value
         if n is None:
             return ast.Subscript(v, s, ast.Load())  # type: ignore
         assert isinstance(n, int), "Programming error: index is not an integer in tuple subscript"
@@ -452,13 +452,13 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
-    def visit_Subscript_List(self, v: ast.List, s: Union[ast.Constant, ast.Index]):
+    def visit_Subscript_List(self, v: ast.List, s: ast.Constant):
         """
         [t1, t2, t3...][1] => t2
 
         Only works if index is a number
         """
-        n = _get_value_from_index(s)
+        n = s.value
         if n is None:
             return ast.Subscript(v, s, ast.Load())  # type: ignore
         if n >= len(v.elts):
@@ -469,11 +469,11 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
-    def visit_Subscript_Dict(self, v: ast.Dict, s: Union[ast.Constant, ast.Index]):
+    def visit_Subscript_Dict(self, v: ast.Dict, s: ast.Constant):
         """
         {t1, t2, t3...}[1] => t2
         """
-        sub = _get_value_from_index(s)
+        sub = s.value
         assert isinstance(sub, (str, int))
         return self.visit_Subscript_Dict_with_value(v, sub)
 
@@ -481,7 +481,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         "Do the lookup for the dict"
         for index, value in enumerate(v.keys):
             assert isinstance(value, ast.Constant)
-            if _get_value_from_index(value) == s:
+            if value.value == s:
                 return v.values[index]
 
         return ast.Subscript(v, s, ast.Load())  # type: ignore
@@ -561,23 +561,3 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             return self.visit_Subscript_Dict_with_value(visited_value, node.attr)
 
         return ast.Attribute(value=visited_value, attr=node.attr, ctx=ast.Load())
-
-
-def _get_value_from_index(arg: Union[ast.Constant, ast.Index]) -> Optional[int]:
-    """Deal with 3.7, and 3.8 differences in how indexing for list and tuple
-    subscripts is handled.
-
-    Args:
-        arg (Union[ast.Constant, ast.Index]): Input ast to extract an index from.
-                                                       Hopefully.
-    """
-
-    def extract(a: ast.Constant) -> Optional[int]:
-        if isinstance(a, ast.Constant):
-            return a.value
-        return None
-
-    if isinstance(arg, ast.Index):
-        return extract(arg.value)  # type: ignore
-    else:
-        return extract(arg)
