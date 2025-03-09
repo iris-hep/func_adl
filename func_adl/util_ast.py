@@ -83,7 +83,7 @@ def lambda_args(lam: Union[ast.Module, ast.Lambda]) -> ast.arguments:
     return lambda_unwrap(lam).args
 
 
-def lambda_body(lam: Union[ast.Lambda, ast.Module]) -> ast.AST:
+def lambda_body(lam: Union[ast.Lambda, ast.Module]) -> ast.expr:
     """
     Given an AST lambda node, get the expression it uses and return it. This just makes life
     easier, no real logic is occurring here.

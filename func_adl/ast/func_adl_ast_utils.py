@@ -1,6 +1,7 @@
 import ast
+from typing import Any, List, Optional, Tuple, cast
+
 from func_adl.util_ast import function_call
-from typing import Tuple, List, Optional, cast, Any
 
 
 def is_call_of(node: ast.AST, func_name: str) -> bool:
@@ -15,7 +16,7 @@ def is_call_of(node: ast.AST, func_name: str) -> bool:
     return node.func.id == func_name
 
 
-def unpack_Call(node: ast.Call) -> Tuple[Optional[str], Optional[List[ast.AST]]]:
+def unpack_Call(node: ast.Call) -> Tuple[Optional[str], Optional[List[ast.expr]]]:
     """
     Unpack the contents of a call ast.
 
@@ -30,8 +31,7 @@ def unpack_Call(node: ast.Call) -> Tuple[Optional[str], Optional[List[ast.AST]]]
     if not isinstance(node.func, ast.Name):
         return (None, None)
 
-    args = cast(List[ast.AST], node.args)  # type: List[ast.AST]
-    return (node.func.id, args)
+    return (node.func.id, node.args)
 
 
 class FuncADLNodeTransformer(ast.NodeTransformer):
@@ -116,8 +116,6 @@ def change_extension_functions_to_calls(
                 return node
             if node.func.attr not in function_names:
                 return node
-            return function_call(
-                node.func.attr, cast(List[ast.AST], [node.func.value] + node.args)
-            )
+            return function_call(node.func.attr, [node.func.value] + node.args)
 
     return transform_calls().visit(a)

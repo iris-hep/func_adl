@@ -92,10 +92,15 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     return call_g_lambda
 
 
-def make_Select(source: ast.AST, selection: ast.AST):
+def make_Select(source: ast.expr, selection: ast.expr):
     "Make a select, and return source is selection is an identity"
-    return (
-        source if lambda_is_identity(selection) else function_call("Select", [source, selection])
+    return cast(
+        ast.expr,
+        (
+            source
+            if lambda_is_identity(selection)
+            else function_call("Select", [source, selection])
+        ),
     )
 
 
@@ -240,11 +245,9 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         captured_arg = func_f.args.args[0].arg
         captured_body = func_f.body
-        new_select = function_call(
-            "SelectMany", [cast(ast.AST, captured_body), cast(ast.AST, func_g)]
-        )
+        new_select = function_call("SelectMany", [captured_body, func_g])
         new_select_lambda = lambda_build(captured_arg, new_select)
-        new_select_many = function_call("SelectMany", [seq, cast(ast.AST, new_select_lambda)])
+        new_select_many = function_call("SelectMany", [seq, new_select_lambda])
         return new_select_many
 
     def call_SelectMany(self, node: ast.Call, args: List[ast.AST]):
@@ -412,7 +415,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq_a_call = ast.Call(**call_args)
         select = make_Select(seq, lambda_build(a, seq_a_call))
 
-        return self.visit(function_call("First", [cast(ast.AST, select)]))
+        return self.visit(function_call("First", [select]))
 
     def visit_Call(self, call_node):
         """We are looking for cases where an argument is another function or expression.
@@ -486,7 +489,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return ast.Subscript(v, s, ast.Load())  # type: ignore
 
-    def visit_Subscript_Of_First(self, first: ast.AST, s):
+    def visit_Subscript_Of_First(self, first: ast.expr, s):
         """
         Convert a seq.First()[0]
         ==>
@@ -501,7 +504,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             first, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()), s, ast.Load()))
         )
 
-        return self.visit(function_call("First", [cast(ast.AST, select)]))
+        return self.visit(function_call("First", [select]))
 
     def visit_Subscript(self, node):
         r"""
@@ -530,7 +533,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         "Do lookup and see if we should translate or not."
         return self._arg_stack.lookup_name(name_node.id, default=name_node)
 
-    def visit_Attribute_Of_First(self, first: ast.AST, attr: str):
+    def visit_Attribute_Of_First(self, first: ast.expr, attr: str):
         """
         Convert a seq.First().attr
         ==>
@@ -545,7 +548,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             first, lambda_build(a, ast.Attribute(value=ast.Name(a, ast.Load()), attr=attr))
         )
 
-        return self.visit(function_call("First", [cast(ast.AST, select)]))
+        return self.visit(function_call("First", [select]))
 
     def visit_Attribute(self, node):
         """
