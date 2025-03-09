@@ -4,7 +4,7 @@ import ast
 import inspect
 import tokenize
 from collections import defaultdict
-from enum import EnumType
+from enum import Enum
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
@@ -290,7 +290,8 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         # Now, if it comes back a constant, can we do a lookup to resolve it?
         if hasattr(value, "value") and hasattr(value.value, node.attr):
             new_value = getattr(value.value, node.attr)
-            if isinstance(value.value, EnumType):
+            # When 3.10 is not supported, replace with EnumType
+            if isinstance(value.value, Enum.__class__):
                 new_value = new_value.value
             return ast.Constant(value=new_value)
 
