@@ -923,13 +923,6 @@ def remap_by_types(
             self._found_types[node] = type(node.value)
             return node
 
-        def visit_NameConstant(self, node: ast.NameConstant) -> Any:  # pragma: no cover
-            "3.7 compatibility"
-            if node.value is None:
-                raise ValueError("Do not know how to work with pythons None")
-            self._found_types[node] = bool
-            return node
-
         def visit_Attribute(self, node: ast.Attribute) -> Any:
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Attribute)

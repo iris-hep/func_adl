@@ -192,7 +192,7 @@ def lambda_is_true(lam: ast.AST) -> bool:
     if not lambda_test(lam):
         return False
     rl = lambda_unwrap(lam)
-    if not isinstance(rl.body, ast.NameConstant):
+    if not isinstance(rl.body, ast.Constant):
         return False
 
     return rl.body.value is True
