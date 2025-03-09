@@ -1,7 +1,7 @@
 # Various node visitors to clean up nested function calls of various types.
 import ast
 import copy
-from typing import List, Optional, Tuple, Union, cast
+from typing import List, Tuple, Union, cast
 
 from func_adl.ast.call_stack import argument_stack, stack_frame
 from func_adl.ast.func_adl_ast_utils import (

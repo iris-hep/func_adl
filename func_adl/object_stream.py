@@ -15,7 +15,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 from make_it_sync import make_sync

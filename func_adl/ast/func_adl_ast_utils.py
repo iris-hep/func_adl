@@ -1,5 +1,5 @@
 import ast
-from typing import Any, List, Optional, Tuple, cast
+from typing import Any, List, Optional, Tuple
 
 from func_adl.util_ast import function_call
 
