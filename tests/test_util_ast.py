@@ -272,6 +272,16 @@ def test_parse_lambda_capture_nested_local():
     assert ast.dump(r) == ast.dump(r_true)
 
 
+def test_parase_lambda_class_constant():
+    class forkit:
+        it: int = 10
+
+    r = parse_as_ast(lambda x: x > forkit.it)
+    r_true = parse_as_ast(lambda x: x > 10)
+
+    assert ast.unparse(r) == ast.unparse(r_true)
+
+
 def test_parse_simple_func():
     "A oneline function defined at local scope"
 
@@ -791,15 +801,18 @@ def test_parse_parameterized_function_type():
 
 
 def test_parse_parameterized_function_defined_type():
+    """This shows up in our calibration work - for example,
+
+    `j.getValue[cpp_int]('decoration_name')
+    """
+
     class my_type:
-        bogus: int = 10
+        bogus: int = 20
 
     a = parse_as_ast(lambda e: e.jetAttribute[my_type](10))
     d_text = ast.dump(a)
     assert "Constant(value=10" in d_text
-
-    # Needs to be updated...
-    assert "Name(id='my_type'" in d_text
+    assert "<locals>.my_type" in d_text
 
 
 def test_parse_parameterized_function_instance():

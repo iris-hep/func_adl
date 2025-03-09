@@ -266,6 +266,32 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 # If it is something we know how to make into a literal, we just send it down
                 # like that.
                 return as_literal(v)
+            elif isinstance(v, type):
+                return ast.Constant(value=v)
+            else:
+                # If it is a local function, we need to parse it as an AST
+                return node
+        return node
+
+    def visit_Attribute(self, node: ast.Attribute) -> Any:
+        """If the value comes back as a class or other object that python
+        can do a lookup for, see if the `attr` is in there, and resolve it.
+
+        Args:
+            node (ast.Attribute): The attribute reference to decode
+
+        Returns:
+            ast.expr: The resolved ast.Constant.
+        """
+        # Translate the value via our usual process
+        value = self.visit(node.value)
+
+        # Now, if it comes back a constant, can we do a lookup to resolve it?
+        if hasattr(value, "value") and hasattr(value.value, node.attr):
+            new_value = getattr(value.value, node.attr)
+            return ast.Constant(value=new_value)
+
+        # If we fail, then just move on.
         return node
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
