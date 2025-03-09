@@ -64,7 +64,7 @@ def test_node_transform_function_ast_with_object_args():
     assert e.count == 1
     assert len(e.args) == 1
     assert isinstance(e.args[0], ast.Constant)
-    assert e.args[0].n == 10
+    assert e.args[0].value == 10
 
 
 def test_node_transform_function_ast_with_object_args_norec():
@@ -170,7 +170,7 @@ def test_node_visit_function_ast_with_object_args():
     assert e.count == 1
     assert len(e.args) == 1
     assert isinstance(e.args[0], ast.Constant)
-    assert e.args[0].n == 10
+    assert e.args[0].value == 10
 
 
 def test_node_visit_function_ast_with_object_args_norec():
