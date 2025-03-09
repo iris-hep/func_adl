@@ -15,7 +15,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 from make_it_sync import make_sync
@@ -66,7 +65,7 @@ class ObjectStream(Generic[T]):
     `Iterable[T]`).
     """
 
-    def __init__(self, the_ast: ast.AST, item_type: Type = Any):  # type: ignore
+    def __init__(self, the_ast: ast.expr, item_type: Type = Any):  # type: ignore
         r"""
         Initialize the stream with the ast that will produce this stream of objects.
         The user will almost never use this initializer.
@@ -80,7 +79,7 @@ class ObjectStream(Generic[T]):
         return self._item_type
 
     @property
-    def query_ast(self) -> ast.AST:
+    def query_ast(self) -> ast.expr:
         """Return the query `ast` that this `ObjectStream` represents
 
         Returns:
@@ -122,7 +121,7 @@ class ObjectStream(Generic[T]):
         check_ast(n_ast)
 
         return self.clone_with_new_ast(
-            function_call("SelectMany", [n_stream.query_ast, cast(ast.AST, n_ast)]),
+            function_call("SelectMany", [n_stream.query_ast, n_ast]),
             unwrap_iterable(rtn_type),
         )
 
@@ -150,7 +149,7 @@ class ObjectStream(Generic[T]):
         )
         check_ast(n_ast)
         return self.clone_with_new_ast(
-            function_call("Select", [n_stream.query_ast, cast(ast.AST, n_ast)]),
+            function_call("Select", [n_stream.query_ast, n_ast]),
             rtn_type,
         )
 
@@ -179,7 +178,7 @@ class ObjectStream(Generic[T]):
         if rtn_type != bool:
             raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
         return self.clone_with_new_ast(
-            function_call("Where", [n_stream.query_ast, cast(ast.AST, n_ast)]),
+            function_call("Where", [n_stream.query_ast, n_ast]),
             self.item_type,
         )
 

@@ -1,7 +1,7 @@
 # Various node visitors to clean up nested function calls of various types.
 import ast
 import copy
-from typing import List, Optional, Tuple, Union, cast
+from typing import List, Tuple, Union, cast
 
 from func_adl.ast.call_stack import argument_stack, stack_frame
 from func_adl.ast.func_adl_ast_utils import (
@@ -92,10 +92,15 @@ def convolute(ast_g: ast.Lambda, ast_f: ast.Lambda):
     return call_g_lambda
 
 
-def make_Select(source: ast.AST, selection: ast.AST):
+def make_Select(source: ast.expr, selection: ast.expr):
     "Make a select, and return source is selection is an identity"
-    return (
-        source if lambda_is_identity(selection) else function_call("Select", [source, selection])
+    return cast(
+        ast.expr,
+        (
+            source
+            if lambda_is_identity(selection)
+            else function_call("Select", [source, selection])
+        ),
     )
 
 
@@ -240,11 +245,9 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         captured_arg = func_f.args.args[0].arg
         captured_body = func_f.body
-        new_select = function_call(
-            "SelectMany", [cast(ast.AST, captured_body), cast(ast.AST, func_g)]
-        )
+        new_select = function_call("SelectMany", [captured_body, func_g])
         new_select_lambda = lambda_build(captured_arg, new_select)
-        new_select_many = function_call("SelectMany", [seq, cast(ast.AST, new_select_lambda)])
+        new_select_many = function_call("SelectMany", [seq, new_select_lambda])
         return new_select_many
 
     def call_SelectMany(self, node: ast.Call, args: List[ast.AST]):
@@ -412,7 +415,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq_a_call = ast.Call(**call_args)
         select = make_Select(seq, lambda_build(a, seq_a_call))
 
-        return self.visit(function_call("First", [cast(ast.AST, select)]))
+        return self.visit(function_call("First", [select]))
 
     def visit_Call(self, call_node):
         """We are looking for cases where an argument is another function or expression.
@@ -433,14 +436,14 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         else:
             return FuncADLNodeTransformer.visit_Call(self, call_node)
 
-    def visit_Subscript_Tuple(self, v: ast.Tuple, s: Union[ast.Num, ast.Constant, ast.Index]):
+    def visit_Subscript_Tuple(self, v: ast.Tuple, s: ast.Constant):
         """
         (t1, t2, t3...)[1] => t2
 
         Only works if index is a number
         """
         # Get the value out - this is due to supporting python 3.7-3.9
-        n = _get_value_from_index(s)
+        n = s.value
         if n is None:
             return ast.Subscript(v, s, ast.Load())  # type: ignore
         assert isinstance(n, int), "Programming error: index is not an integer in tuple subscript"
@@ -452,13 +455,13 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
-    def visit_Subscript_List(self, v: ast.List, s: Union[ast.Num, ast.Constant, ast.Index]):
+    def visit_Subscript_List(self, v: ast.List, s: ast.Constant):
         """
         [t1, t2, t3...][1] => t2
 
         Only works if index is a number
         """
-        n = _get_value_from_index(s)
+        n = s.value
         if n is None:
             return ast.Subscript(v, s, ast.Load())  # type: ignore
         if n >= len(v.elts):
@@ -469,24 +472,24 @@ class simplify_chained_calls(FuncADLNodeTransformer):
 
         return v.elts[n]
 
-    def visit_Subscript_Dict(self, v: ast.Dict, s: Union[ast.Num, ast.Constant, ast.Index]):
+    def visit_Subscript_Dict(self, v: ast.Dict, s: ast.Constant):
         """
         {t1, t2, t3...}[1] => t2
         """
-        sub = _get_value_from_index(s)
+        sub = s.value
         assert isinstance(sub, (str, int))
         return self.visit_Subscript_Dict_with_value(v, sub)
 
     def visit_Subscript_Dict_with_value(self, v: ast.Dict, s: Union[str, int]):
         "Do the lookup for the dict"
         for index, value in enumerate(v.keys):
-            assert isinstance(value, (ast.Str, ast.Constant, ast.Num))
-            if _get_value_from_index(value) == s:
+            assert isinstance(value, ast.Constant)
+            if value.value == s:
                 return v.values[index]
 
         return ast.Subscript(v, s, ast.Load())  # type: ignore
 
-    def visit_Subscript_Of_First(self, first: ast.AST, s):
+    def visit_Subscript_Of_First(self, first: ast.expr, s):
         """
         Convert a seq.First()[0]
         ==>
@@ -501,7 +504,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             first, lambda_build(a, ast.Subscript(ast.Name(a, ast.Load()), s, ast.Load()))
         )
 
-        return self.visit(function_call("First", [cast(ast.AST, select)]))
+        return self.visit(function_call("First", [select]))
 
     def visit_Subscript(self, node):
         r"""
@@ -530,7 +533,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         "Do lookup and see if we should translate or not."
         return self._arg_stack.lookup_name(name_node.id, default=name_node)
 
-    def visit_Attribute_Of_First(self, first: ast.AST, attr: str):
+    def visit_Attribute_Of_First(self, first: ast.expr, attr: str):
         """
         Convert a seq.First().attr
         ==>
@@ -545,7 +548,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             first, lambda_build(a, ast.Attribute(value=ast.Name(a, ast.Load()), attr=attr))
         )
 
-        return self.visit(function_call("First", [cast(ast.AST, select)]))
+        return self.visit(function_call("First", [select]))
 
     def visit_Attribute(self, node):
         """
@@ -561,27 +564,3 @@ class simplify_chained_calls(FuncADLNodeTransformer):
             return self.visit_Subscript_Dict_with_value(visited_value, node.attr)
 
         return ast.Attribute(value=visited_value, attr=node.attr, ctx=ast.Load())
-
-
-def _get_value_from_index(arg: Union[ast.Num, ast.Constant, ast.Index, ast.Str]) -> Optional[int]:
-    """Deal with 3.7, and 3.8 differences in how indexing for list and tuple
-    subscripts is handled.
-
-    Args:
-        arg (Union[ast.Num, ast.Constant, ast.Index]): Input ast to extract an index from.
-                                                       Hopefully.
-    """
-
-    def extract(a: Union[ast.Num, ast.Constant]) -> Optional[int]:
-        if isinstance(a, ast.Num):
-            return cast(int, a.n)
-        if isinstance(a, ast.Constant):
-            return a.value
-        if isinstance(a, ast.Str):
-            return a.s
-        return None
-
-    if isinstance(arg, ast.Index):
-        return extract(arg.value)  # type: ignore
-    else:
-        return extract(arg)

@@ -755,10 +755,7 @@ def remap_by_types(
                 )
 
             # Get the parameters from the subscript
-            if isinstance(slice, ast.Index):
-                parameters = ast.literal_eval(slice.value)  # type: ignore
-            else:
-                parameters = ast.literal_eval(slice)
+            parameters = ast.literal_eval(slice)
 
             # rebuild the expression, removing the slice operation and turning this into a
             # "normal" call.
@@ -921,23 +918,6 @@ def remap_by_types(
 
         def visit_Constant(self, node: ast.Constant) -> Any:
             self._found_types[node] = type(node.value)
-            return node
-
-        def visit_Num(self, node: ast.Num) -> Any:  # pragma: no cover
-            "3.7 compatibility"
-            self._found_types[node] = type(node.n)
-            return node
-
-        def visit_Str(self, node: ast.Str) -> Any:  # pragma: no cover
-            "3.7 compatibility"
-            self._found_types[node] = str
-            return node
-
-        def visit_NameConstant(self, node: ast.NameConstant) -> Any:  # pragma: no cover
-            "3.7 compatibility"
-            if node.value is None:
-                raise ValueError("Do not know how to work with pythons None")
-            self._found_types[node] = bool
             return node
 
         def visit_Attribute(self, node: ast.Attribute) -> Any:
