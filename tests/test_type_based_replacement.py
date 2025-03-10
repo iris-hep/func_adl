@@ -408,7 +408,7 @@ def test_collection_Custom_Method_default(caplog):
 
     @register_func_adl_os_collection
     class CustomCollection_default(ObjectStream[M]):
-        def __init__(self, a: ast.AST, item_type):
+        def __init__(self, a: ast.expr, item_type):
             super().__init__(a, item_type)
 
         def Take(self, n: int = 5) -> ObjectStream[M]: ...  # noqa
@@ -431,7 +431,7 @@ def test_collection_Custom_Method_Jet(caplog):
     M = TypeVar("M")
 
     class CustomCollection_Jet(ObjectStream[M]):
-        def __init__(self, a: ast.AST, item_type):
+        def __init__(self, a: ast.expr, item_type):
             super().__init__(a, item_type)
 
         def MyFirst(self) -> M: ...  # noqa
@@ -638,7 +638,7 @@ def test_dictionary_user_defined_follow_types():
 
     @dataclass
     class my_dc:
-        jets: Iterable[Jet]
+        jets: ObjectStream[Jet]
 
     s = parse_as_ast(lambda e: my_dc(jets=e.Jets()).jets.Select(lambda j: j.pt())).body
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
