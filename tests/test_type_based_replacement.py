@@ -2,6 +2,7 @@ import ast
 import copy
 import inspect
 import logging
+from dataclasses import dataclass
 from inspect import isclass
 from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
 
@@ -16,6 +17,7 @@ from func_adl.type_based_replacement import (
     remap_by_types,
     remap_from_lambda,
 )
+from func_adl.util_ast import parse_as_ast
 from func_adl.util_types import is_iterable, unwrap_iterable
 
 
@@ -627,6 +629,21 @@ def test_dictionary_through_Select_reference_slice():
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     _, _, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
+def test_dictionary_user_defined_follow_types():
+    "Make sure user can define a dictionary and the type properly is propagated through"
+
+    @dataclass
+    class my_dc:
+        jets: Iterable[Jet]
+
+    s = parse_as_ast(lambda e: my_dc(jets=e.Jets()).jets.Select(lambda j: j.pt())).body
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
 
     assert expr_type == Iterable[float]
 
