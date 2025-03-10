@@ -308,7 +308,14 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         "If the rewritten call turns into an actual function, then we have to bail"
         old_func = node.func
         rewritten_call = cast(ast.Call, super().generic_visit(node))
-        if isinstance(rewritten_call.func, ast.Constant):
+
+        # Function calls we generally want to pass on down to the backend, without getting their generic
+        # form. OTOH, we do want to make sure that dataclasses are "used" for later
+        # translation.
+        # TODO: Make this a more robust test
+        if isinstance(rewritten_call.func, ast.Constant) and not hasattr(
+            rewritten_call.func.value, "__dataclass_fields__"
+        ):
             rewritten_call.func = old_func
 
         return rewritten_call

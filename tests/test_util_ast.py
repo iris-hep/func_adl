@@ -1,5 +1,6 @@
 import ast
 import sys
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, cast
 
@@ -311,6 +312,16 @@ def test_parse_lambda_imported_class():
 
     r = parse_as_ast(lambda e: np.cos(e))
     assert "np.cos" in ast.unparse(r)
+
+
+def test_parse_dataclass_reference():
+    @dataclass
+    class my_data_class:
+        x: int
+
+    r = parse_as_ast(lambda e: my_data_class(x=e))
+
+    assert "<locals>.my_data_class" in ast.unparse(r)
 
 
 def test_parse_simple_func():
