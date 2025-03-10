@@ -633,7 +633,7 @@ def test_dictionary_through_Select_reference_slice():
     assert expr_type == Iterable[float]
 
 
-def test_dictionary_user_defined_follow_types():
+def test_dataclass_user_defined_follow_types():
     "Make sure user can define a dictionary and the type properly is propagated through"
 
     @dataclass
@@ -648,7 +648,7 @@ def test_dictionary_user_defined_follow_types():
     assert expr_type == Iterable[float]
 
 
-def test_dictionary_user_defined_follow_types_postional():
+def test_dataclass_user_defined_follow_types_postional():
     "Make sure user can define a dictionary and the type properly is propagated through"
 
     @dataclass
@@ -663,7 +663,7 @@ def test_dictionary_user_defined_follow_types_postional():
     assert expr_type == Iterable[float]
 
 
-def test_dictionary_user_defined_follow_types_combo():
+def test_dataclass_user_defined_follow_types_combo():
     "Make sure user can define a dictionary and the type properly is propagated through"
 
     @dataclass
