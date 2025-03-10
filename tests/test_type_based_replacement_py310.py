@@ -29,30 +29,23 @@ def add_track_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[
 
 @func_adl_callback(add_track_extra_info)
 class TrackStuff:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...
 
-    def eta(self) -> float:
-        ...
+    def eta(self) -> float: ...
 
 
 class Track:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...
 
-    def eta(self) -> float:
-        ...
+    def eta(self) -> float: ...
 
 
 class Jet:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...
 
-    def eta(self) -> float:
-        ...
+    def eta(self) -> float: ...
 
-    def tracks(self) -> Iterable[Track]:
-        ...
+    def tracks(self) -> Iterable[Track]: ...
 
 
 def ast_lambda(lambda_func: str) -> ast.Lambda:
@@ -70,8 +63,7 @@ def add_met_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T]
 
 @func_adl_callback(add_met_extra_info)
 class met_extra:
-    def pxy(self) -> float:
-        ...
+    def pxy(self) -> float: ...
 
 
 def add_met_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
@@ -86,18 +78,14 @@ def add_met_method_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T
 
 @func_adl_callback(add_met_info)
 class met:
-    def pxy(self) -> float:
-        ...
+    def pxy(self) -> float: ...
 
-    def isGood(self) -> bool:
-        ...
+    def isGood(self) -> bool: ...
 
-    def metobj(self) -> met_extra:
-        ...
+    def metobj(self) -> met_extra: ...
 
     @func_adl_callback(add_met_method_info)
-    def custom(self) -> float:
-        ...
+    def custom(self) -> float: ...
 
 
 def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
@@ -116,26 +104,19 @@ def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], as
 
 @func_adl_callback(add_collection)
 class Event:
-    def Jets(self, bank: str = "default") -> Iterable[Jet]:
-        ...
+    def Jets(self, bank: str = "default") -> Iterable[Jet]: ...
 
-    def Jets_req(self, bank_required: str) -> Iterable[Jet]:
-        ...
+    def Jets_req(self, bank_required: str) -> Iterable[Jet]: ...
 
-    def MET(self) -> met:
-        ...
+    def MET(self) -> met: ...
 
-    def MET_noreturntype(self):
-        ...
+    def MET_noreturntype(self): ...
 
-    def Tracks(self) -> Iterable[Track]:
-        ...
+    def Tracks(self) -> Iterable[Track]: ...
 
-    def TrackStuffs(self) -> Iterable[TrackStuff]:
-        ...
+    def TrackStuffs(self) -> Iterable[TrackStuff]: ...
 
-    def EventNumber(self) -> int:
-        ...
+    def EventNumber(self) -> int: ...
 
 
 def return_type_test(expr: str, arg_type: type, expected_type: type):
@@ -167,7 +148,7 @@ def test_float():
 
 
 def test_any():
-    return_type_test("e", Any, Any)
+    return_type_test("e", cast(type, Any), cast(type, Any))
 
 
 def test_neg_float():
@@ -248,11 +229,11 @@ def test_subscript():
 
 
 def test_subscript_any():
-    return_type_test("e[0]", Any, Any)
+    return_type_test("e[0]", cast(type, Any), cast(type, Any))
 
 
 def test_unknown_name(caplog):
-    return_type_test("e+cpp_any", Any, Any)
+    return_type_test("e+cpp_any", cast(type, Any), cast(type, Any))
 
     assert "cpp_any" in caplog.text
 
@@ -320,13 +301,11 @@ Result = TypeVar("Result")
 
 
 class _itsb_FADLStream(Iterable[R]):
-    def Select(self, x: Callable[[R], Result]) -> _itsb_FADLStream[Result]:
-        ...
+    def Select(self, x: Callable[[R], Result]) -> _itsb_FADLStream[Result]: ...
 
 
 class _itsb_MyTrack:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...
 
 
 def test_shortcut_nested_with_iterable_subclass():
@@ -334,8 +313,7 @@ def test_shortcut_nested_with_iterable_subclass():
     inside the method are called"""
 
     class MyEvent:
-        def MyTracks(self) -> _itsb_FADLStream[_itsb_MyTrack]:
-            ...
+        def MyTracks(self) -> _itsb_FADLStream[_itsb_MyTrack]: ...
 
     s = ast_lambda(
         "ds.Select(lambda e: e.MyTracks()).Select(lambda ts: ts.Select(lambda t: t.pt()))"
@@ -491,8 +469,7 @@ def test_function_with_processor():
         return new_s, a
 
     @func_adl_callable(MySqrtProcessor)
-    def MySqrt(x: float) -> float:
-        ...
+    def MySqrt(x: float) -> float: ...
 
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), item_type=Event)
@@ -509,8 +486,7 @@ def test_function_with_simple():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float) -> float:
-        ...
+    def MySqrt(x: float) -> float: ...
 
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -526,8 +502,7 @@ def test_function_with_missing_arg():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(my_x: float) -> float:
-        ...
+    def MySqrt(my_x: float) -> float: ...
 
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -542,8 +517,7 @@ def test_function_with_default():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float:
-        ...
+    def MySqrt(x: float = 20) -> float: ...
 
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
@@ -559,8 +533,7 @@ def test_function_with_keyword():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float:
-        ...
+    def MySqrt(x: float = 20) -> float: ...
 
     s = ast_lambda("MySqrt(x=15)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
