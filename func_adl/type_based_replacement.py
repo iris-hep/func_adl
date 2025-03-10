@@ -775,6 +775,21 @@ def remap_by_types(
 
             return r_node
 
+        def process_dataclass_creation(self, node: ast.Call):
+            """This is a dataclass creation with a user dataclass.
+
+            NOTE: We will create a dataclass on our own, because we want to track actual
+            types, not the types the user thinks they may be using.
+            """
+            # Arguments are specified as kwargs.
+            fields: List[Tuple[str, type]] = [
+                (f.arg, self.lookup_type(f.value)) for f in node.keywords if f.arg is not None
+            ]
+            dict_dataclass = make_dataclass("dict_dataclass", fields)
+
+            self._found_types[node] = dict_dataclass
+            return node
+
         def visit_Call(self, node: ast.Call) -> ast.AST:
             t_node = self.generic_visit(node)
             assert isinstance(t_node, ast.Call)
@@ -797,6 +812,10 @@ def remap_by_types(
                             t_node.func.slice,
                             t_node.func.value,
                         )
+            elif isinstance(t_node.func, ast.Constant) and hasattr(
+                t_node.func.value, "__dataclass_fields__"
+            ):
+                self.process_dataclass_creation(t_node)
             return t_node
 
         def visit_Lambda(self, node: ast.Lambda) -> Any:
