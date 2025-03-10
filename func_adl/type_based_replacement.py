@@ -782,10 +782,16 @@ def remap_by_types(
             types, not the types the user thinks they may be using.
             """
             # Arguments are specified as kwargs.
-            fields: List[Tuple[str, type]] = [
+            assert isinstance(node.func, ast.Constant)
+            signature = inspect.signature(node.func.value)
+            fields_kw: List[Tuple[str, type]] = [
                 (f.arg, self.lookup_type(f.value)) for f in node.keywords if f.arg is not None
             ]
-            dict_dataclass = make_dataclass("dict_dataclass", fields)
+            fields_args: List[Tuple[str, type]] = [
+                (a_name.name, self.lookup_type(a_arg))
+                for a_name, a_arg in zip(signature.parameters.values(), node.args)
+            ]
+            dict_dataclass = make_dataclass("dict_dataclass", fields_args + fields_kw)
 
             self._found_types[node] = dict_dataclass
             return node
