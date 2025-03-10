@@ -4,6 +4,7 @@ import ast
 import inspect
 import tokenize
 from collections import defaultdict
+from dataclasses import is_dataclass
 from enum import Enum
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
@@ -313,8 +314,8 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         # form. OTOH, we do want to make sure that dataclasses are "used" for later
         # translation.
         # TODO: Make this a more robust test
-        if isinstance(rewritten_call.func, ast.Constant) and not hasattr(
-            rewritten_call.func.value, "__dataclass_fields__"
+        if isinstance(rewritten_call.func, ast.Constant) and not is_dataclass(
+            rewritten_call.func.value
         ):
             rewritten_call.func = old_func
 

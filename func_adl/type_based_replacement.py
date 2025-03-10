@@ -818,9 +818,7 @@ def remap_by_types(
                             t_node.func.slice,
                             t_node.func.value,
                         )
-            elif isinstance(t_node.func, ast.Constant) and hasattr(
-                t_node.func.value, "__dataclass_fields__"
-            ):
+            elif isinstance(t_node.func, ast.Constant) and is_dataclass(t_node.func.value):
                 self.process_dataclass_creation(t_node)
             return t_node
 
