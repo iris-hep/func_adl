@@ -304,6 +304,15 @@ def test_parse_lambda_class_constant_in_module():
     assert ast.unparse(r) == ast.unparse(r_true)
 
 
+def test_parse_lambda_imported_class():
+    "Check that numpy and similar are properly passed"
+
+    import numpy as np
+
+    r = parse_as_ast(lambda e: np.cos(e))
+    assert "np.cos" in ast.unparse(r)
+
+
 def test_parse_simple_func():
     "A oneline function defined at local scope"
 
