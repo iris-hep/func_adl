@@ -648,6 +648,39 @@ def test_dictionary_user_defined_follow_types():
     assert expr_type == Iterable[float]
 
 
+def test_dictionary_user_defined_follow_types_postional():
+    "Make sure user can define a dictionary and the type properly is propagated through"
+
+    @dataclass
+    class my_dc:
+        jets: ObjectStream[Jet]
+
+    s = parse_as_ast(lambda e: my_dc(e.Jets()).jets.Select(lambda j: j.pt())).body
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
+def test_dictionary_user_defined_follow_types_combo():
+    "Make sure user can define a dictionary and the type properly is propagated through"
+
+    @dataclass
+    class my_dc:
+        jets: ObjectStream[Jet]
+        electrons: ObjectStream[Jet]
+
+    s = parse_as_ast(
+        lambda e: my_dc(e.Jets(), electrons=e.Jets()).jets.Select(lambda j: j.pt())
+    ).body
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[float]
+
+
 def test_indexed_tuple():
     "Check that we can type-follow through tuples"
 
