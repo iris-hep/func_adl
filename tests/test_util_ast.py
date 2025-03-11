@@ -1,5 +1,7 @@
 import ast
 import sys
+from collections import namedtuple
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, cast
 
@@ -302,6 +304,34 @@ def test_parse_lambda_class_constant_in_module():
     r_true = parse_as_ast(lambda x: x > 22)
 
     assert ast.unparse(r) == ast.unparse(r_true)
+
+
+def test_parse_lambda_imported_class():
+    "Check that numpy and similar are properly passed"
+
+    import numpy as np
+
+    r = parse_as_ast(lambda e: np.cos(e))
+    assert "np.cos" in ast.unparse(r)
+
+
+def test_parse_dataclass_reference():
+    @dataclass
+    class my_data_class:
+        x: int
+
+    r = parse_as_ast(lambda e: my_data_class(x=e))
+
+    assert "<locals>.my_data_class" in ast.unparse(r)
+
+
+def test_parse_named_tuple_reference():
+
+    MyDataClass = namedtuple("MyDataClass", ["x"])
+
+    r = parse_as_ast(lambda e: MyDataClass(x=e))
+
+    assert "test_util_ast.MyDataClass" in ast.unparse(r)
 
 
 def test_parse_simple_func():

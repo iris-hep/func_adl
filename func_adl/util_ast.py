@@ -4,6 +4,7 @@ import ast
 import inspect
 import tokenize
 from collections import defaultdict
+from dataclasses import is_dataclass
 from enum import Enum
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
@@ -305,10 +306,13 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         return v
 
     def visit_Call(self, node: ast.Call) -> Any:
-        "If the rewritten call turns into an actual function, then we have to bail"
+        "If the rewritten call turns into an actual function, then we have to bail,"
         old_func = node.func
         rewritten_call = cast(ast.Call, super().generic_visit(node))
-        if isinstance(rewritten_call.func, ast.Constant):
+        if isinstance(rewritten_call.func, ast.Constant) and not (
+            is_dataclass(rewritten_call.func.value)
+            or hasattr(rewritten_call.func.value, "_fields")
+        ):
             rewritten_call.func = old_func
 
         return rewritten_call
