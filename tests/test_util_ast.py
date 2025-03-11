@@ -1,6 +1,7 @@
 import ast
-from dataclasses import dataclass
 import sys
+from collections import namedtuple
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, cast
 
@@ -322,6 +323,15 @@ def test_parse_dataclass_reference():
     r = parse_as_ast(lambda e: my_data_class(x=e))
 
     assert "<locals>.my_data_class" in ast.unparse(r)
+
+
+def test_parse_named_tuple_reference():
+
+    MyDataClass = namedtuple("MyDataClass", ["x"])
+
+    r = parse_as_ast(lambda e: MyDataClass(x=e))
+
+    assert "test_util_ast.MyDataClass" in ast.unparse(r)
 
 
 def test_parse_simple_func():

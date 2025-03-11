@@ -309,8 +309,9 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         "If the rewritten call turns into an actual function, then we have to bail,"
         old_func = node.func
         rewritten_call = cast(ast.Call, super().generic_visit(node))
-        if isinstance(rewritten_call.func, ast.Constant) and not is_dataclass(
-            rewritten_call.func.value
+        if isinstance(rewritten_call.func, ast.Constant) and not (
+            is_dataclass(rewritten_call.func.value)
+            or hasattr(rewritten_call.func.value, "_fields")
         ):
             rewritten_call.func = old_func
 
