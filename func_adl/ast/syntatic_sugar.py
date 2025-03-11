@@ -86,47 +86,72 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
             return a
 
-        def visit_Call(self, node: ast.Call) -> Any:
-            "Translate a data class into a dictionary"
-            a = self.generic_visit(node)
+        def convert_call_to_dict(
+            self, a: ast.Call, node: ast.AST, sig_arg_names: List[str]
+        ) -> ast.AST:
+            """Translate a data class into a dictionary.
 
-            if (
-                isinstance(a, ast.Call)
-                and isinstance(a.func, ast.Constant)
-                and is_dataclass(a.func.value)
-            ):
+            Args:
+                a (ast.Call): The call node representing the data class instantiation
+                node (ast.AST): The original AST node
+
+            Returns:
+                ast.AST: The reformed AST as a dictionary
+            """
+            if len(sig_arg_names) < (len(a.args) + len(a.keywords)):
                 assert isinstance(a.func, ast.Constant)
-
-                # We have a dataclass. Turn it into a dictionary
-                signature = inspect.signature(a.func.value)  # type: ignore
-                sig_arg_names = [p.name for p in signature.parameters.values()]
-
-                if len(sig_arg_names) < (len(a.args) + len(a.keywords)):
-                    raise ValueError(
-                        f"Too many arguments for dataclass {a.func.value} - {ast.unparse(node)}."
-                    )
-
-                arg_values = a.args
-                arg_names = [ast.Constant(value=n) for n in sig_arg_names[: len(arg_values)]]
-                arg_lookup = {a.arg: a.value for a in a.keywords}
-                for name in sig_arg_names[len(arg_values) :]:
-                    if name in arg_lookup:
-                        arg_values.append(arg_lookup[name])
-                        arg_names.append(ast.Constant(value=name))
-
-                for name in arg_lookup.keys():
-                    if name not in sig_arg_names:
-                        assert isinstance(a.func, ast.Constant)
-                        raise ValueError(
-                            f"Argument {name} not found in dataclass {a.func.value}"
-                            f" - {ast.unparse(node)}."
-                        )
-
-                return ast.Dict(
-                    keys=arg_names,  # type: ignore
-                    values=arg_values,
+                raise ValueError(
+                    f"Too many arguments for dataclass {a.func.value} - {ast.unparse(node)}."
                 )
 
+            arg_values = a.args
+            arg_names = [ast.Constant(value=n) for n in sig_arg_names[: len(arg_values)]]
+            arg_lookup = {a.arg: a.value for a in a.keywords}
+            for name in sig_arg_names[len(arg_values) :]:
+                if name in arg_lookup:
+                    arg_values.append(arg_lookup[name])
+                    arg_names.append(ast.Constant(value=name))
+
+            for name in arg_lookup.keys():
+                if name not in sig_arg_names:
+                    assert isinstance(a.func, ast.Constant)
+                    raise ValueError(
+                        f"Argument {name} not found in dataclass {a.func.value}"
+                        f" - {ast.unparse(node)}."
+                    )
+
+            return ast.Dict(
+                keys=arg_names,  # type: ignore
+                values=arg_values,
+            )
+
+        def visit_Call(self, node: ast.Call) -> Any:
+            """
+            This method checks if the call is to a dataclass or a named tuple and converts
+            the call to a dictionary representation if so.
+
+            Args:
+                node (ast.Call): The AST Call node to visit.
+            Returns:
+                Any: The transformed node if it matches the criteria, otherwise the original node.
+            """
+            a = self.generic_visit(node)
+
+            if isinstance(a, ast.Call) and isinstance(a.func, ast.Constant):
+                if is_dataclass(a.func.value):
+                    assert isinstance(a.func, ast.Constant)
+
+                    # We have a dataclass. Turn it into a dictionary
+                    signature = inspect.signature(a.func.value)  # type: ignore
+                    sig_arg_names = [p.name for p in signature.parameters.values()]
+
+                    return self.convert_call_to_dict(a, node, sig_arg_names)
+
+                elif hasattr(a.func.value, "_fields"):
+                    # We have a named tuple. Turn it into a dictionary
+                    arg_names = [n for n in a.func.value._fields]
+
+                    return self.convert_call_to_dict(a, node, arg_names)
             return a
 
     return syntax_transformer().visit(a)

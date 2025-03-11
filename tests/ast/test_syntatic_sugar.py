@@ -1,4 +1,5 @@
 import ast
+from collections import namedtuple
 from dataclasses import dataclass
 
 import pytest
@@ -172,3 +173,53 @@ def test_resolve_dataclass_bad_args():
             lambda e: dc_1(z=e.Jets()).x.Select(lambda j: j.pt())  # type: ignore
         ).body
         resolve_syntatic_sugar(a)
+
+
+def test_resolve_named_tuple_no_args():
+    "Make sure a named tuple becomes a dictionary"
+
+    nt_1 = namedtuple("nt_1", ["x", "y"])
+
+    a = parse_as_ast(lambda e: nt_1(e.Jets(), e.Electrons()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_named_tuple_too_few_args():
+    "Make sure a named tuple becomes a dictionary"
+
+    nt_1 = namedtuple("nt_1", ["x", "y"])
+
+    a = parse_as_ast(lambda e: nt_1(e.Jets()).x.Select(lambda j: j.pt())).body  # type: ignore
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_named_tuple_too_many_args():
+    "Make sure a named tuple becomes a dictionary"
+
+    nt_1 = namedtuple("nt_1", ["x", "y"])
+
+    with pytest.raises(ValueError):
+        a = parse_as_ast(
+            lambda e: nt_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(  # type: ignore
+                lambda j: j.pt()
+            )  # type: ignore
+        ).body
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_named_tuple_kwards():
+    "Make sure a named tuple becomes a dictionary"
+
+    nt_1 = namedtuple("nt_1", ["x", "y"])
+
+    a = parse_as_ast(lambda e: nt_1(x=e.Jets(), y=e.Electrons()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
