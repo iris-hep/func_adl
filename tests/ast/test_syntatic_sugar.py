@@ -77,13 +77,18 @@ def test_resolve_no_async():
     assert "can't be async" in str(e)
 
 
+class LocalJet:
+    def pt(self) -> float:
+        return 0.0
+
+
 def test_resolve_dataclass_no_args():
     "Make sure a dataclass becomes a dictionary"
 
     @dataclass
     class dc_1:
-        x: ObjectStream[int]
-        y: ObjectStream[int]
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
 
     a = parse_as_ast(lambda e: dc_1(e.Jets(), e.Electrons()).x.Select(lambda j: j.pt())).body
     a_resolved = resolve_syntatic_sugar(a)
@@ -97,8 +102,8 @@ def test_resolve_dataclass_named_args():
 
     @dataclass
     class dc_1:
-        x: ObjectStream[int]
-        y: ObjectStream[int]
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
 
     a = parse_as_ast(lambda e: dc_1(x=e.Jets(), y=e.Electrons()).x.Select(lambda j: j.pt())).body
     a_resolved = resolve_syntatic_sugar(a)
@@ -112,8 +117,8 @@ def test_resolve_dataclass_mixed_args():
 
     @dataclass
     class dc_1:
-        x: ObjectStream[int]
-        y: ObjectStream[int]
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
 
     a = parse_as_ast(lambda e: dc_1(e.Jets(), y=e.Electrons()).x.Select(lambda j: j.pt())).body
     a_resolved = resolve_syntatic_sugar(a)
@@ -127,10 +132,10 @@ def test_resolve_dataclass_too_few_args():
 
     @dataclass
     class dc_1:
-        x: ObjectStream[int]
-        y: ObjectStream[int]
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
 
-    a = parse_as_ast(lambda e: dc_1(e.Jets()).x.Select(lambda j: j.pt())).body
+    a = parse_as_ast(lambda e: dc_1(e.Jets()).x.Select(lambda j: j.pt())).body  # type: ignore
     a_resolved = resolve_syntatic_sugar(a)
 
     a_expected = ast.parse("{'x': e.Jets()}.x.Select(lambda j: j.pt())")
@@ -142,12 +147,14 @@ def test_resolve_dataclass_too_many_args():
 
     @dataclass
     class dc_1:
-        x: ObjectStream[int]
-        y: ObjectStream[int]
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
 
     with pytest.raises(ValueError):
         a = parse_as_ast(
-            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(lambda j: j.pt())
+            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(  # type: ignore
+                lambda j: j.pt()
+            )  # type: ignore
         ).body
         resolve_syntatic_sugar(a)
 
@@ -157,9 +164,11 @@ def test_resolve_dataclass_bad_args():
 
     @dataclass
     class dc_1:
-        x: ObjectStream[int]
-        y: ObjectStream[int]
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
 
     with pytest.raises(ValueError):
-        a = parse_as_ast(lambda e: dc_1(z=e.Jets()).x.Select(lambda j: j.pt())).body
+        a = parse_as_ast(
+            lambda e: dc_1(z=e.Jets()).x.Select(lambda j: j.pt())  # type: ignore
+        ).body
         resolve_syntatic_sugar(a)

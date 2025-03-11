@@ -1,7 +1,7 @@
 import ast
 import inspect
 from dataclasses import is_dataclass
-from typing import Any, List, Tuple
+from typing import Any, List
 
 from func_adl.util_ast import lambda_build
 
@@ -95,8 +95,10 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 and isinstance(a.func, ast.Constant)
                 and is_dataclass(a.func.value)
             ):
+                assert isinstance(a.func, ast.Constant)
+
                 # We have a dataclass. Turn it into a dictionary
-                signature = inspect.signature(a.func.value)
+                signature = inspect.signature(a.func.value)  # type: ignore
                 sig_arg_names = [p.name for p in signature.parameters.values()]
 
                 if len(sig_arg_names) < (len(a.args) + len(a.keywords)):
@@ -114,13 +116,14 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
                 for name in arg_lookup.keys():
                     if name not in sig_arg_names:
+                        assert isinstance(a.func, ast.Constant)
                         raise ValueError(
                             f"Argument {name} not found in dataclass {a.func.value}"
                             f" - {ast.unparse(node)}."
                         )
 
                 return ast.Dict(
-                    keys=arg_names,
+                    keys=arg_names,  # type: ignore
                     values=arg_values,
                 )
 
