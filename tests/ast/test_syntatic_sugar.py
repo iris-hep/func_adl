@@ -77,7 +77,37 @@ def test_resolve_no_async():
     assert "can't be async" in str(e)
 
 
-def test_resolve_dataclass():
+def test_resolve_dataclass_no_args():
+    "Make sure a dataclass becomes a dictionary"
+
+    @dataclass
+    class dc_1:
+        x: ObjectStream[int]
+        y: ObjectStream[int]
+
+    a = parse_as_ast(lambda e: dc_1(e.Jets(), e.Electrons()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_dataclass_named_args():
+    "Make sure a dataclass becomes a dictionary"
+
+    @dataclass
+    class dc_1:
+        x: ObjectStream[int]
+        y: ObjectStream[int]
+
+    a = parse_as_ast(lambda e: dc_1(x=e.Jets(), y=e.Electrons()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_dataclass_mixed_args():
     "Make sure a dataclass becomes a dictionary"
 
     @dataclass
@@ -90,3 +120,46 @@ def test_resolve_dataclass():
 
     a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_dataclass_too_few_args():
+    "Make sure a dataclass becomes a dictionary"
+
+    @dataclass
+    class dc_1:
+        x: ObjectStream[int]
+        y: ObjectStream[int]
+
+    a = parse_as_ast(lambda e: dc_1(e.Jets()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_dataclass_too_many_args():
+    "Make sure a dataclass becomes a dictionary"
+
+    @dataclass
+    class dc_1:
+        x: ObjectStream[int]
+        y: ObjectStream[int]
+
+    with pytest.raises(ValueError):
+        a = parse_as_ast(
+            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(lambda j: j.pt())
+        ).body
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_dataclass_bad_args():
+    "Make sure a dataclass becomes a dictionary"
+
+    @dataclass
+    class dc_1:
+        x: ObjectStream[int]
+        y: ObjectStream[int]
+
+    with pytest.raises(ValueError):
+        a = parse_as_ast(lambda e: dc_1(z=e.Jets()).x.Select(lambda j: j.pt())).body
+        resolve_syntatic_sugar(a)

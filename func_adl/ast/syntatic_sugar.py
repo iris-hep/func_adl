@@ -1,5 +1,7 @@
 import ast
-from typing import Any, List
+import inspect
+from dataclasses import is_dataclass
+from typing import Any, List, Tuple
 
 from func_adl.util_ast import lambda_build
 
@@ -9,6 +11,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
     * List comprehensions are turned into `Select` statements
     * Generator expressions are turned into `Select` statements
+    * A data class is converted into a dictionary.
 
     Args:
         a (ast.AST): The AST to scan for syntatic sugar
@@ -80,6 +83,46 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
             if isinstance(a, ast.GeneratorExp):
                 a = self.resolve_generator(a.elt, a.generators, node)
+
+            return a
+
+        def visit_Call(self, node: ast.Call) -> Any:
+            "Translate a data class into a dictionary"
+            a = self.generic_visit(node)
+
+            if (
+                isinstance(a, ast.Call)
+                and isinstance(a.func, ast.Constant)
+                and is_dataclass(a.func.value)
+            ):
+                # We have a dataclass. Turn it into a dictionary
+                signature = inspect.signature(a.func.value)
+                sig_arg_names = [p.name for p in signature.parameters.values()]
+
+                if len(sig_arg_names) < (len(a.args) + len(a.keywords)):
+                    raise ValueError(
+                        f"Too many arguments for dataclass {a.func.value} - {ast.unparse(node)}."
+                    )
+
+                arg_values = a.args
+                arg_names = [ast.Constant(value=n) for n in sig_arg_names[: len(arg_values)]]
+                arg_lookup = {a.arg: a.value for a in a.keywords}
+                for name in sig_arg_names[len(arg_values) :]:
+                    if name in arg_lookup:
+                        arg_values.append(arg_lookup[name])
+                        arg_names.append(ast.Constant(value=name))
+
+                for name in arg_lookup.keys():
+                    if name not in sig_arg_names:
+                        raise ValueError(
+                            f"Argument {name} not found in dataclass {a.func.value}"
+                            f" - {ast.unparse(node)}."
+                        )
+
+                return ast.Dict(
+                    keys=arg_names,
+                    values=arg_values,
+                )
 
             return a
 
