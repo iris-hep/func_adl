@@ -1,4 +1,5 @@
 import ast
+from dataclasses import dataclass
 import sys
 from enum import Enum
 from typing import Callable, cast
@@ -302,6 +303,25 @@ def test_parse_lambda_class_constant_in_module():
     r_true = parse_as_ast(lambda x: x > 22)
 
     assert ast.unparse(r) == ast.unparse(r_true)
+
+
+def test_parse_lambda_imported_class():
+    "Check that numpy and similar are properly passed"
+
+    import numpy as np
+
+    r = parse_as_ast(lambda e: np.cos(e))
+    assert "np.cos" in ast.unparse(r)
+
+
+def test_parse_dataclass_reference():
+    @dataclass
+    class my_data_class:
+        x: int
+
+    r = parse_as_ast(lambda e: my_data_class(x=e))
+
+    assert "<locals>.my_data_class" in ast.unparse(r)
 
 
 def test_parse_simple_func():
