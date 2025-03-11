@@ -187,6 +187,22 @@ def test_resolve_named_tuple_no_args():
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
 
 
+def test_resolve_named_tuple_typed():
+    "Make sure a named tuple becomes a dictionary"
+
+    from typing import NamedTuple
+
+    class nt_1(NamedTuple):
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
+
+    a = parse_as_ast(lambda e: nt_1(e.Jets(), e.Electrons()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
 def test_resolve_named_tuple_too_few_args():
     "Make sure a named tuple becomes a dictionary"
 
@@ -223,3 +239,18 @@ def test_resolve_named_tuple_kwards():
 
     a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_random_class():
+    "A regular class should not be resolved"
+
+    class nt_1:
+        x: ObjectStream[LocalJet]
+        y: ObjectStream[LocalJet]
+
+    a = parse_as_ast(
+        lambda e: nt_1(x=e.Jets(), y=e.Electrons()).x.Select(lambda j: j.pt())  # type: ignore
+    ).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    assert "nt_1(" in ast.unparse(a_resolved)
