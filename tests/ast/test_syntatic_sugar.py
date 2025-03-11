@@ -1,8 +1,11 @@
 import ast
+from dataclasses import dataclass
 
 import pytest
 
+from func_adl import ObjectStream
 from func_adl.ast.syntatic_sugar import resolve_syntatic_sugar
+from func_adl.util_ast import parse_as_ast
 
 
 def test_resolve_normal_expression():
@@ -72,3 +75,18 @@ def test_resolve_no_async():
         resolve_syntatic_sugar(a)
 
     assert "can't be async" in str(e)
+
+
+def test_resolve_dataclass():
+    "Make sure a dataclass becomes a dictionary"
+
+    @dataclass
+    class dc_1:
+        x: ObjectStream[int]
+        y: ObjectStream[int]
+
+    a = parse_as_ast(lambda e: dc_1(e.Jets(), y=e.Electrons()).x.Select(lambda j: j.pt())).body
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("{'x': e.Jets(), 'y': e.Electrons()}.x.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
