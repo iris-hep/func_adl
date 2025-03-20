@@ -517,6 +517,21 @@ def test_collection_Select(caplog):
     assert len(caplog.text) == 0
 
 
+@pytest.mark.parametrize("select_value, expected_type", [(2, int), (2.0, float)])
+def test_collection_Select_const_types_param(caplog, select_value, expected_type):
+    "A simple collection"
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda(f"e.Jets().Select(lambda j: {select_value})")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[expected_type]
+
+    assert len(caplog.text) == 0
+
+
 def test_dictionary():
     "Make sure that dictionaries turn into named types"
 
