@@ -1011,6 +1011,32 @@ def test_index_callback_1arg():
     assert param_1_capture == "fork"
 
 
+def test_callback_arg_missing():
+    "Indexed callback - make sure error message is sensible with missing []"
+
+    param_1_capture = None
+
+    def my_callback(
+        s: ObjectStream[T], a: ast.Call, param_1: str
+    ) -> Tuple[ObjectStream[T], ast.Call, Type]:
+        nonlocal param_1_capture
+        param_1_capture = param_1
+        return (s.MetaData({"k": "stuff"}), a, float)
+
+    class TEvent:
+        @func_adl_parameterized_call(my_callback)
+        @property
+        def info(self): ...  # noqa
+
+    s = ast_lambda("e.info(55)")
+    objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
+
+    with pytest.raises(ValueError) as e:
+        remap_by_types(objs, {"e": TEvent}, s)
+
+    assert "info" in str(e)
+
+
 class NameToConstantTransformer(ast.NodeTransformer):
     def __init__(self, target_id, replacement_value):
         self.target_id = target_id

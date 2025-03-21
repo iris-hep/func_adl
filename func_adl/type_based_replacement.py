@@ -329,6 +329,13 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
     Returns:
         Tuple[ast.Call, Type]: The modified call site and return type.
     """
+    if not callable(func):
+        raise ValueError(
+            f"The name '{ast.unparse(call.func)}' in the expression '{ast.unparse(call)}' is "
+            f"not actually a function or method ({func}). Could it need to be parameterized"
+            f" with a '[cpp_vfloat]' or similar?"
+        )
+
     sig = inspect.signature(func)
     i_arg = 0
     arg_array = list(call.args)
