@@ -132,7 +132,7 @@ def return_type_test(expr: str, arg_type: type, expected_type: type):
     s = ast_lambda(expr)
     objs = ObjectStream(ast.Name(id="e", ctx=ast.Load()), arg_type)
 
-    _, _, expr_type = remap_by_types(objs, "e", arg_type, s)
+    _, _, expr_type = remap_by_types(objs, {"e": arg_type}, s)
     assert expr_type == expected_type
 
 
@@ -256,7 +256,7 @@ def test_collection():
     s = ast_lambda("e.Jets('default')")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -269,7 +269,7 @@ def test_required_arg():
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     with pytest.raises(ValueError) as e:
-        remap_by_types(objs, "e", Event, s)
+        remap_by_types(objs, {"e": Event}, s)
 
     assert "bank_required" in str(e)
 
@@ -279,7 +279,7 @@ def test_collection_with_default():
     s = ast_lambda("e.Jets()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -293,7 +293,7 @@ def test_shortcut_nested_callback():
     s = ast_lambda("e.TrackStuffs().Where(lambda t: abs(t.pt()) > 10)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(
         ast_lambda("e.TrackStuffs().Where(lambda t: abs(t.pt()) > 10)")
@@ -313,7 +313,7 @@ def test_shortcut_2nested_callback():
     )
     objs = ObjectStream[Iterable[Event]](ast.Name(id="ds", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[Event], s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"ds": Iterable[Event]}, s)
 
     assert ast.dump(new_s) == ast.dump(
         ast_lambda(
@@ -334,7 +334,7 @@ def test_collection_First(caplog):
     s = ast_lambda("e.Jets().First()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Jet
 
@@ -346,7 +346,7 @@ def test_collection_len(caplog):
     s = ast_lambda("len(e.Jets('default'))")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == int
     assert len(caplog.text) == 0
@@ -368,7 +368,7 @@ def test_collection_Custom_Method_int(caplog):
     s = ast_lambda("e.Jets().MyFirst()")
     objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == int
 
@@ -391,7 +391,7 @@ def test_collection_Custom_Method_multiple_args(caplog):
     s = ast_lambda("e.Jets().MyFirst(1,3)")
     objs = CustomCollection[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == int
 
@@ -414,7 +414,7 @@ def test_collection_Custom_Method_default(caplog):
     s = ast_lambda("e.Jets().Take()")
     objs = CustomCollection_default[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    _, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    _, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == ObjectStream[Jet]
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default').Take(5)"))
@@ -439,7 +439,7 @@ def test_collection_Custom_Method_Jet(caplog):
     s = ast_lambda("e.Jets().MyFirst()")
     objs = CustomCollection_Jet[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Jet
 
@@ -453,7 +453,7 @@ def test_collection_CustomIterable(caplog):
     s = ast_lambda("e.JetsIterSub().Last()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Jet
 
@@ -467,7 +467,7 @@ def test_collection_CustomIterable_fallback(caplog):
     s = ast_lambda("e.JetsIterSub().Where(lambda j: j.pt() > 10)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[Jet]
 
@@ -481,7 +481,7 @@ def test_collection_lambda_not_followed(caplog):
     s = ast_lambda("e.MyLambdaCallback(lambda f: True)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == int
 
@@ -496,7 +496,7 @@ def test_collection_Where(caplog):
     s = ast_lambda("e.Jets().Where(lambda f: True)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[Jet]
 
@@ -510,7 +510,7 @@ def test_collection_Select(caplog):
     s = ast_lambda("e.Jets().Select(lambda j: j.pt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
 
@@ -525,7 +525,7 @@ def test_collection_Select_const_types_param(caplog, select_value, expected_type
     s = ast_lambda(f"e.Jets().Select(lambda j: {select_value})")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[expected_type]
 
@@ -539,7 +539,7 @@ def test_collection_Select_const_calc(caplog):
     s = ast_lambda("e.Jets().Select(lambda j: len(e.Jets()))")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[int]
 
@@ -552,7 +552,7 @@ def test_dictionary():
     s = ast_lambda("{'jets': e.Jets()}")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     # Fix to look for the named class with the correct types.
     assert isclass(expr_type)
@@ -569,7 +569,7 @@ def test_dictionary_sequence():
     s = ast_lambda("{'jets': e.Jets()}.jets.Select(lambda j: j.pt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
 
@@ -580,7 +580,7 @@ def test_dictionary_sequence_slice():
     s = ast_lambda("{'jets': e.Jets()}['jets'].Select(lambda j: j.pt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
 
@@ -592,7 +592,7 @@ def test_dictionary_bad_key():
         s = ast_lambda("{'jets': e.Jets()}.jetsss.Select(lambda j: j.pt())")
         objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-        new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+        new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert "jetsss" in str(e)
 
@@ -609,7 +609,7 @@ def test_dictionary_Zip_key():
     )
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Any
 
@@ -620,7 +620,7 @@ def test_dictionary_through_Select():
     s = ast_lambda("e.Jets().Select(lambda j: {'pt': j.pt(), 'eta': j.eta()})")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert is_iterable(expr_type)
     obj_itr = unwrap_iterable(expr_type)
@@ -641,7 +641,7 @@ def test_dictionary_through_Select_reference():
     )
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
 
@@ -655,7 +655,7 @@ def test_dictionary_through_Select_reference_slice():
     )
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
 
@@ -666,7 +666,7 @@ def test_indexed_tuple():
     s = ast_lambda("(e.Jets(),)[0].Select(lambda j: j.pt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
 
@@ -678,7 +678,7 @@ def test_indexed_tuple_out_of_bounds():
         s = ast_lambda("(e.Jets(),)[3].Select(lambda j: j.pt())")
         objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-        new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+        new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert "3" in str(e)
 
@@ -690,7 +690,7 @@ def test_indexed_tuple_bad_slice():
         s = ast_lambda("(e.Jets(),)[0:1].Select(lambda j: j.pt())")
         objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-        new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+        new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert "is not valid" in str(e)
 
@@ -702,7 +702,7 @@ def test_collection_Select_meta(caplog):
     s = ast_lambda("e.TrackStuffs().Select(lambda t: t.pt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == Iterable[float]
     assert ast.dump(new_objs.query_ast) == ast.dump(
@@ -717,7 +717,7 @@ def test_method_on_collection():
     s = ast_lambda("e.MET().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'pxy stuff'})"))
@@ -729,7 +729,7 @@ def test_method_callback():
     s = ast_lambda("e.MET().custom()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().custom()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(
@@ -743,7 +743,7 @@ def test_method_on_collection_bool():
     s = ast_lambda("e.MET().isGood()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == bool
 
@@ -753,7 +753,7 @@ def test_method_on_method_on_collection():
     s = ast_lambda("e.MET().metobj().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().metobj().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(
@@ -767,7 +767,7 @@ def test_method_modify_ast():
     s = ast_lambda("e.EventNumber()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.EventNumber(20)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -780,7 +780,7 @@ def test_method_with_no_return_type(caplog):
     s = ast_lambda("e.MET_noreturntype().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_noreturntype().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -794,7 +794,7 @@ def test_method_with_no_prototype(caplog):
     s = ast_lambda("e.MET_bogus().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_bogus().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -808,7 +808,7 @@ def test_math_method(caplog):
     s = ast_lambda("abs(e.MET.pxy())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert len(caplog.text) == 0
 
@@ -819,7 +819,7 @@ def test_method_with_no_inital_type(caplog):
     s = ast_lambda("e.MET_bogus().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Any, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Any}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_bogus().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -832,7 +832,7 @@ def test_bogus_method():
     s = ast_lambda("e.Jetsss('default')")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jetsss('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -844,7 +844,7 @@ def test_plain_object_method():
     s = ast_lambda("j.pt()")
     objs = ObjectStream[Jet](ast.Name(id="j", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "j", Jet, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"j": Jet}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("j.pt()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("j"))
@@ -864,7 +864,7 @@ def test_function_with_processor():
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), item_type=Event)
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'func_stuff'})"))
@@ -881,7 +881,7 @@ def test_function_with_simple():
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -898,7 +898,7 @@ def test_function_with_missing_arg():
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     with pytest.raises(ValueError) as e:
-        remap_by_types(objs, "e", Event, s)
+        remap_by_types(objs, {"e": Event}, s)
 
     assert "my_x" in str(e)
 
@@ -912,7 +912,7 @@ def test_function_with_default():
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(20)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -928,7 +928,7 @@ def test_function_with_default_inside():
     s = ast_lambda("e.Jets().Select(lambda j: MySqrt())")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(
         ast_lambda("e.Jets('default').Select(lambda j: MySqrt(20))")
@@ -946,7 +946,7 @@ def test_function_with_keyword():
     s = ast_lambda("MySqrt(x=15)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(15)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -958,7 +958,7 @@ def test_remap_lambda_helper():
     s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), item_type=Event)
 
-    new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
+    new_objs, new_s, rtn_type = remap_from_lambda(objs, s, {})
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -976,7 +976,7 @@ def test_remap_lambda_subclass():
     s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
     objs = MyStream[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
+    new_objs, new_s, rtn_type = remap_from_lambda(objs, s, {})
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -1003,7 +1003,7 @@ def test_index_callback_1arg():
     s = ast_lambda("e.info['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", TEvent, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": TEvent}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.info(55)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'k': 'stuff'})"))
@@ -1049,7 +1049,7 @@ def test_index_callback_1arg_type():
 
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", TEvent, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": TEvent}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.info(55)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'k': 'stuff'})"))
@@ -1077,7 +1077,7 @@ def test_index_callback_2arg():
     s = ast_lambda("e.info['fork', 22](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
 
-    remap_by_types(objs, "e", TEvent, s)
+    remap_by_types(objs, {"e": TEvent}, s)
 
     assert param_1_capture == ("fork", 22)
 
@@ -1102,7 +1102,7 @@ def test_index_callback_modify_ast():
     s = ast_lambda("e.info['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
 
-    _, new_s, _ = remap_by_types(objs, "e", TEvent, s)
+    _, new_s, _ = remap_by_types(objs, {"e": TEvent}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.dude(55)"))
 
@@ -1130,7 +1130,7 @@ def test_index_callback_modify_ast_nested():
     s = ast_lambda("e.Jets().Select(lambda j: j.info['fork'](55))")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
 
-    _, new_s, _ = remap_by_types(objs, "e", TEvent, s)
+    _, new_s, _ = remap_by_types(objs, {"e": TEvent}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets().Select(lambda j: j.dude(55))"))
 
@@ -1176,7 +1176,7 @@ def test_index_callback_bad_prop():
     s = ast_lambda("e.infoo['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
     with pytest.raises(AttributeError) as e:
-        remap_by_types(objs, "e", TEvent, s)
+        remap_by_types(objs, {"e": TEvent}, s)
 
     assert "infoo" in str(e)
     assert "TEvent" in str(e)
@@ -1192,7 +1192,7 @@ def test_index_callback_prop_not_dec():
     s = ast_lambda("e.info['fork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
     with pytest.raises(ValueError) as e:
-        remap_by_types(objs, "e", TEvent, s)
+        remap_by_types(objs, {"e": TEvent}, s)
 
     assert "info" in str(e)
     assert "TEvent" in str(e)
@@ -1208,7 +1208,7 @@ def test_index_callback_prop_index_bad():
     s = ast_lambda("e.info['fork':'dork'](55)")
     objs = ObjectStream[TEvent](ast.Name(id="e", ctx=ast.Load()))
     with pytest.raises(ValueError) as e:
-        remap_by_types(objs, "e", TEvent, s)
+        remap_by_types(objs, {"e": TEvent}, s)
 
     assert "info" in str(e)
     assert "TEvent" in str(e)

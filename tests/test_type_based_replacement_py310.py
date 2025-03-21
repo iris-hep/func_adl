@@ -29,30 +29,25 @@ def add_track_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[
 
 @func_adl_callback(add_track_extra_info)
 class TrackStuff:
-    def pt(self) -> float:
-        ...
+    def pt(self) -> float: ...  # noqa: E704
 
-    def eta(self) -> float:
-        ...
+    def eta(self) -> float: ...  # noqa: E704
 
 
 class Track:
-    def pt(self) -> float:
-        ...
 
-    def eta(self) -> float:
-        ...
+    def pt(self) -> float: ...  # noqa: E704
+
+    def eta(self) -> float: ...  # noqa: E704
 
 
 class Jet:
-    def pt(self) -> float:
-        ...
 
-    def eta(self) -> float:
-        ...
+    def pt(self) -> float: ...  # noqa: E704
 
-    def tracks(self) -> Iterable[Track]:
-        ...
+    def eta(self) -> float: ...  # noqa: E704
+
+    def tracks(self) -> Iterable[Track]: ...  # noqa: E704
 
 
 def ast_lambda(lambda_func: str) -> ast.Lambda:
@@ -70,8 +65,8 @@ def add_met_extra_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T]
 
 @func_adl_callback(add_met_extra_info)
 class met_extra:
-    def pxy(self) -> float:
-        ...
+
+    def pxy(self) -> float: ...  # noqa: E704
 
 
 def add_met_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
@@ -86,18 +81,15 @@ def add_met_method_info(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T
 
 @func_adl_callback(add_met_info)
 class met:
-    def pxy(self) -> float:
-        ...
 
-    def isGood(self) -> bool:
-        ...
+    def pxy(self) -> float: ...  # noqa: E704
 
-    def metobj(self) -> met_extra:
-        ...
+    def isGood(self) -> bool: ...  # noqa: E704
+
+    def metobj(self) -> met_extra: ...  # noqa: E704
 
     @func_adl_callback(add_met_method_info)
-    def custom(self) -> float:
-        ...
+    def custom(self) -> float: ...  # noqa: E704
 
 
 def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], ast.Call]:
@@ -116,33 +108,27 @@ def add_collection(s: ObjectStream[T], a: ast.Call) -> Tuple[ObjectStream[T], as
 
 @func_adl_callback(add_collection)
 class Event:
-    def Jets(self, bank: str = "default") -> Iterable[Jet]:
-        ...
 
-    def Jets_req(self, bank_required: str) -> Iterable[Jet]:
-        ...
+    def Jets(self, bank: str = "default") -> Iterable[Jet]: ...  # noqa: E704
 
-    def MET(self) -> met:
-        ...
+    def Jets_req(self, bank_required: str) -> Iterable[Jet]: ...  # noqa: E704
 
-    def MET_noreturntype(self):
-        ...
+    def MET(self) -> met: ...  # noqa: E704
 
-    def Tracks(self) -> Iterable[Track]:
-        ...
+    def MET_noreturntype(self): ...  # noqa: E704
 
-    def TrackStuffs(self) -> Iterable[TrackStuff]:
-        ...
+    def Tracks(self) -> Iterable[Track]: ...  # noqa: E704
 
-    def EventNumber(self) -> int:
-        ...
+    def TrackStuffs(self) -> Iterable[TrackStuff]: ...  # noqa: E704
+
+    def EventNumber(self) -> int: ...  # noqa: E704
 
 
 def return_type_test(expr: str, arg_type: type, expected_type: type):
     s = ast_lambda(expr)
     objs = ObjectStream(ast.Name(id="e", ctx=ast.Load()), arg_type)
 
-    _, _, expr_type = remap_by_types(objs, "e", arg_type, s)
+    _, _, expr_type = remap_by_types(objs, {"e": arg_type}, s)
     assert expr_type == expected_type
 
 
@@ -167,7 +153,7 @@ def test_float():
 
 
 def test_any():
-    return_type_test("e", Any, Any)
+    return_type_test("e", Any, Any)  # type: ignore
 
 
 def test_neg_float():
@@ -248,11 +234,11 @@ def test_subscript():
 
 
 def test_subscript_any():
-    return_type_test("e[0]", Any, Any)
+    return_type_test("e[0]", Any, Any)  # type: ignore
 
 
 def test_unknown_name(caplog):
-    return_type_test("e+cpp_any", Any, Any)
+    return_type_test("e+cpp_any", Any, Any)  # type: ignore
 
     assert "cpp_any" in caplog.text
 
@@ -262,7 +248,7 @@ def test_collection():
     s = ast_lambda("e.Jets('default')")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -275,7 +261,7 @@ def test_required_arg():
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     with pytest.raises(ValueError) as e:
-        remap_by_types(objs, "e", Event, s)
+        remap_by_types(objs, {"e": Event}, s)
 
     assert "bank_required" in str(e)
 
@@ -285,7 +271,7 @@ def test_collection_with_default():
     s = ast_lambda("e.Jets()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -301,7 +287,7 @@ def test_shortcut_2nested_callback():
     )
     objs = ObjectStream[Iterable[Event]](ast.Name(id="ds", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[Event], s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"ds": Iterable[Event]}, s)
 
     assert ast.dump(new_s) == ast.dump(
         ast_lambda(
@@ -320,13 +306,13 @@ Result = TypeVar("Result")
 
 
 class _itsb_FADLStream(Iterable[R]):
-    def Select(self, x: Callable[[R], Result]) -> _itsb_FADLStream[Result]:
-        ...
+
+    def Select(self, x: Callable[[R], Result]) -> _itsb_FADLStream[Result]: ...  # noqa: E704
 
 
 class _itsb_MyTrack:
-    def pt(self) -> float:
-        ...
+
+    def pt(self) -> float: ...  # noqa: E704
 
 
 def test_shortcut_nested_with_iterable_subclass():
@@ -334,15 +320,15 @@ def test_shortcut_nested_with_iterable_subclass():
     inside the method are called"""
 
     class MyEvent:
-        def MyTracks(self) -> _itsb_FADLStream[_itsb_MyTrack]:
-            ...
+
+        def MyTracks(self) -> _itsb_FADLStream[_itsb_MyTrack]: ...  # noqa: E704
 
     s = ast_lambda(
         "ds.Select(lambda e: e.MyTracks()).Select(lambda ts: ts.Select(lambda t: t.pt()))"
     )
     objs = ObjectStream[Iterable[MyEvent]](ast.Name(id="ds", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "ds", Iterable[MyEvent], s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"ds": Iterable[MyEvent]}, s)
 
     assert ast.dump(new_s) == ast.dump(
         ast_lambda(
@@ -360,7 +346,7 @@ def test_method_on_collection():
     s = ast_lambda("e.MET().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'pxy stuff'})"))
@@ -372,7 +358,7 @@ def test_method_callback():
     s = ast_lambda("e.MET().custom()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().custom()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(
@@ -386,7 +372,7 @@ def test_method_on_collection_bool():
     s = ast_lambda("e.MET().isGood()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    _, _, expr_type = remap_by_types(objs, "e", Event, s)
+    _, _, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == bool
 
@@ -396,7 +382,7 @@ def test_method_on_method_on_collection():
     s = ast_lambda("e.MET().metobj().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET().metobj().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(
@@ -410,7 +396,7 @@ def test_method_modify_ast():
     s = ast_lambda("e.EventNumber()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.EventNumber(20)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -423,7 +409,7 @@ def test_method_with_no_return_type(caplog):
     s = ast_lambda("e.MET_noreturntype().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_noreturntype().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -437,7 +423,7 @@ def test_method_with_no_prototype(caplog):
     s = ast_lambda("e.MET_bogus().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_bogus().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -451,7 +437,7 @@ def test_method_with_no_inital_type(caplog):
     s = ast_lambda("e.MET_bogus().pxy()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Any, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Any}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.MET_bogus().pxy()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -464,7 +450,7 @@ def test_bogus_method():
     s = ast_lambda("e.Jetsss('default')")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jetsss('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -476,7 +462,7 @@ def test_plain_object_method():
     s = ast_lambda("j.pt()")
     objs = ObjectStream[Jet](ast.Name(id="j", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "j", Jet, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"j": Jet}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("j.pt()"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("j"))
@@ -491,13 +477,12 @@ def test_function_with_processor():
         return new_s, a
 
     @func_adl_callable(MySqrtProcessor)
-    def MySqrt(x: float) -> float:
-        ...
+    def MySqrt(x: float) -> float: ...  # noqa: E704
 
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), item_type=Event)
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'func_stuff'})"))
@@ -509,13 +494,12 @@ def test_function_with_simple():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float) -> float:
-        ...
+    def MySqrt(x: float) -> float: ...  # noqa: E704
 
     s = ast_lambda("MySqrt(2)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(2)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -526,14 +510,13 @@ def test_function_with_missing_arg():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(my_x: float) -> float:
-        ...
+    def MySqrt(my_x: float) -> float: ...  # noqa: E704
 
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     with pytest.raises(ValueError) as e:
-        remap_by_types(objs, "e", Event, s)
+        remap_by_types(objs, {"e": Event}, s)
 
     assert "my_x" in str(e)
 
@@ -542,13 +525,12 @@ def test_function_with_default():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float:
-        ...
+    def MySqrt(x: float = 20) -> float: ...  # noqa: E704
 
     s = ast_lambda("MySqrt()")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(20)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -559,13 +541,12 @@ def test_function_with_keyword():
     "Define a function we can use"
 
     @func_adl_callable()
-    def MySqrt(x: float = 20) -> float:
-        ...
+    def MySqrt(x: float = 20) -> float: ...  # noqa: E704
 
     s = ast_lambda("MySqrt(x=15)")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
-    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+    new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("MySqrt(15)"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("e"))
@@ -577,7 +558,7 @@ def test_remap_lambda_helper():
     s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()), item_type=Event)
 
-    new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
+    new_objs, new_s, rtn_type = remap_from_lambda(objs, s, {})
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
@@ -595,7 +576,7 @@ def test_remap_lambda_subclass():
     s = cast(ast.Lambda, ast_lambda("lambda e: e.Jets('default')"))
     objs = MyStream[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
-    new_objs, new_s, rtn_type = remap_from_lambda(objs, s)
+    new_objs, new_s, rtn_type = remap_from_lambda(objs, s, {})
 
     assert ast.dump(new_s) == ast.dump(ast_lambda("lambda e: e.Jets('default')"))
     assert ast.dump(new_objs.query_ast) == ast.dump(ast_lambda("MetaData(e, {'j': 'stuff'})"))
