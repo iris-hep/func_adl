@@ -453,7 +453,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
                 f" {len(v.elts)} values long."
             )
 
-        return v.elts[n]
+        return copy.deepcopy(v.elts[n])
 
     def visit_Subscript_List(self, v: ast.List, s: ast.Constant):
         """
