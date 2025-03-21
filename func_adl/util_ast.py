@@ -293,7 +293,7 @@ class _rewrite_captured_vars(ast.NodeTransformer):
             new_value = getattr(value.value, node.attr)
             # When 3.10 is not supported, replace with EnumType
             if isinstance(value.value, Enum.__class__):
-                new_value = new_value.value
+                return node
             return ast.Constant(value=new_value)
 
         # If we fail, then just move on.

@@ -292,9 +292,8 @@ def test_parse_lambda_class_enum():
             VALUE = 20
 
     r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
-    r_true = parse_as_ast(lambda x: x > 20)
 
-    assert ast.unparse(r) == ast.unparse(r_true)
+    assert "VALUE" in ast.unparse(r)
 
 
 def test_parse_lambda_class_constant_in_module():
