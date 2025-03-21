@@ -107,6 +107,7 @@ class ObjectStream(Generic[T]):
 
             func:   The function that should be applied to this stream's objects to return
                     an iterable. Each item of the iterable is now the stream of objects.
+            known_types: Internal use only - for passing captured variables from above in.
 
         Returns:
             A new ObjectStream of the type of the elements.
@@ -137,6 +138,7 @@ class ObjectStream(Generic[T]):
         Arguments:
 
             f:      selection function (lambda)
+            known_types: Internal use only - for passing captured variables from above in.
 
         Returns:
 
@@ -166,6 +168,7 @@ class ObjectStream(Generic[T]):
         Arguments:
 
             filter      A filter lambda that returns True/False.
+            known_types: Internal use only - for passing captured variables from above in.
 
         Returns:
 
