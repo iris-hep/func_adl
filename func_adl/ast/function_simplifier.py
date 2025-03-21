@@ -485,7 +485,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         for index, value in enumerate(v.keys):
             assert isinstance(value, ast.Constant)
             if value.value == s:
-                return v.values[index]
+                return copy.deepcopy(v.values[index])
 
         return ast.Subscript(v, s, ast.Load())  # type: ignore
 
