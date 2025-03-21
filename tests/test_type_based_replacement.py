@@ -532,6 +532,20 @@ def test_collection_Select_const_types_param(caplog, select_value, expected_type
     assert len(caplog.text) == 0
 
 
+def test_collection_Select_const_calc(caplog):
+    "A simple collection"
+    caplog.set_level(logging.WARNING)
+
+    s = ast_lambda("e.Jets().Select(lambda j: len(e.Jets()))")
+    objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
+
+    new_objs, new_s, expr_type = remap_by_types(objs, "e", Event, s)
+
+    assert expr_type == Iterable[int]
+
+    assert len(caplog.text) == 0
+
+
 def test_dictionary():
     "Make sure that dictionaries turn into named types"
 
