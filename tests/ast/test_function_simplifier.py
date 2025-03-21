@@ -1,6 +1,9 @@
 import ast
+import copy
+from typing import cast
 
 from astunparse import unparse
+
 from func_adl.ast.function_simplifier import FuncADLIndexError, simplify_chained_calls
 from tests.util_debug_ast import normalize_ast
 
@@ -18,10 +21,14 @@ def util_process(ast_in, ast_out):
     a_updated_raw = simplify_chained_calls().visit(a_source)
 
     s_updated = ast.dump(
-        normalize_ast().visit(a_updated_raw), annotate_fields=False, include_attributes=False
+        normalize_ast().visit(copy.deepcopy(a_updated_raw)),
+        annotate_fields=False,
+        include_attributes=False,
     )
     s_expected = ast.dump(
-        normalize_ast().visit(a_expected), annotate_fields=False, include_attributes=False
+        normalize_ast().visit(copy.deepcopy(a_expected)),
+        annotate_fields=False,
+        include_attributes=False,
     )
 
     print(s_updated)
@@ -183,9 +190,25 @@ def test_tuple_select():
     util_process("(t1,t2)[0]", "t1")
 
 
+def test_tuple_select_copy_made():
+    # (t1, t2)[0] should be t1.
+    root = ast.parse("(t1,t2)[0]")
+    orig = root.body[0].value.value.elts[0]  # type: ignore
+    r1 = util_process(root, "t1")
+    assert r1.body[0].value != orig
+
+
 def test_list_select():
     # [t1, t2][0] should be t1.
     util_process("[t1,t2][0]", "t1")
+
+
+def test_list_select_copy_made():
+    # [t1, t2][0] should be t1.
+    root = ast.parse("[t1,t2][0]")
+    orig = root.body[0].value.value.elts[0]  # type: ignore
+    r1 = util_process(root, "t1")
+    assert r1.body[0].value != orig
 
 
 def test_tuple_select_past_end():
@@ -260,3 +283,21 @@ def test_dict_around_first():
         'Select(events, lambda e: First(Select(e.jets, lambda j: {"j": j, "e": e})).j)',
         "Select(events, lambda e: First(e.jets))",
     )
+
+
+def test_dict_is_different_attrib():
+    "Make sure we are returning different ast's that have the same content"
+    root = cast(ast.expr, ast.parse('{"n1": t1, "n2": t2}.n1'))
+    orig_name = root.body[0].value.value.values[0]  # type: ignore
+    r1 = util_process(root, "t1")
+
+    assert r1.body[0].value != orig_name
+
+
+def test_dict_is_different():
+    "Make sure we are returning different ast's that have the same content"
+    root = cast(ast.expr, ast.parse('{"n1": t1, "n2": t2}["n1"]'))
+    orig_name = root.body[0].value.value.values[0]  # type: ignore
+    r1 = util_process(root, "t1")
+
+    assert r1.body[0].value != orig_name

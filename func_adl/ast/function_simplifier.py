@@ -453,7 +453,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
                 f" {len(v.elts)} values long."
             )
 
-        return v.elts[n]
+        return copy.deepcopy(v.elts[n])
 
     def visit_Subscript_List(self, v: ast.List, s: ast.Constant):
         """
@@ -470,7 +470,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
                 f" only {len(v.elts)} values long."
             )
 
-        return v.elts[n]
+        return copy.deepcopy(v.elts[n])
 
     def visit_Subscript_Dict(self, v: ast.Dict, s: ast.Constant):
         """
@@ -485,7 +485,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         for index, value in enumerate(v.keys):
             assert isinstance(value, ast.Constant)
             if value.value == s:
-                return v.values[index]
+                return copy.deepcopy(v.values[index])
 
         return ast.Subscript(v, s, ast.Load())  # type: ignore
 
