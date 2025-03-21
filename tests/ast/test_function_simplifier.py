@@ -195,6 +195,14 @@ def test_list_select():
     util_process("[t1,t2][0]", "t1")
 
 
+def test_list_select_copy_made():
+    # [t1, t2][0] should be t1.
+    root = ast.parse("[t1,t2][0]")
+    orig = root.body[0].value.value.elts[0]  # type: ignore
+    r1 = util_process(root, "t1")
+    assert r1.body[0].value != orig
+
+
 def test_tuple_select_past_end():
     # This should cause a crash!
     try:
