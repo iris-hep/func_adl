@@ -45,6 +45,7 @@
         "sourcelines",
         "syntatic",
         "Topo",
+        "treename",
         "unittests",
         "unparse",
         "url's",
