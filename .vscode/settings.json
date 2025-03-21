@@ -45,6 +45,7 @@
         "sourcelines",
         "syntatic",
         "Topo",
+        "treename",
         "unittests",
         "unparse",
         "url's",
@@ -62,17 +63,9 @@
     ],
     "editor.formatOnSave": true,
     "python.analysis.typeCheckingMode": "basic",
-    "python.testing.pytestArgs": [
-        "--no-cov"
-    ],
     "[python]": {
         "editor.codeActionsOnSave": {
             "source.organizeImports": "explicit"
         }
     },
-    "python.formatting.provider": "black",
-    "python.linting.flake8Args": [
-        "--config=.flake8"
-    ],
-    "cmake.configureOnOpen": false
 }

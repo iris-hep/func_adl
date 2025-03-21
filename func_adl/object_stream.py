@@ -94,7 +94,9 @@ class ObjectStream(Generic[T]):
         return clone  # type: ignore
 
     def SelectMany(
-        self, func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]]
+        self,
+        func: Union[str, ast.Lambda, Callable[[T], Iterable[S]]],
+        known_types: Dict[str, Any] = {},
     ) -> ObjectStream[S]:
         r"""
         Given the current stream's object type is an array or other iterable, return
@@ -105,6 +107,7 @@ class ObjectStream(Generic[T]):
 
             func:   The function that should be applied to this stream's objects to return
                     an iterable. Each item of the iterable is now the stream of objects.
+            known_types: Internal use only - for passing captured variables from above in.
 
         Returns:
             A new ObjectStream of the type of the elements.
@@ -116,7 +119,7 @@ class ObjectStream(Generic[T]):
         from func_adl.type_based_replacement import remap_from_lambda
 
         n_stream, n_ast, rtn_type = remap_from_lambda(
-            self, _local_simplification(parse_as_ast(func, "SelectMany"))
+            self, _local_simplification(parse_as_ast(func, "SelectMany")), known_types
         )
         check_ast(n_ast)
 
@@ -125,7 +128,9 @@ class ObjectStream(Generic[T]):
             unwrap_iterable(rtn_type),
         )
 
-    def Select(self, f: Union[str, ast.Lambda, Callable[[T], S]]) -> ObjectStream[S]:
+    def Select(
+        self, f: Union[str, ast.Lambda, Callable[[T], S]], known_types: Dict[str, Any] = {}
+    ) -> ObjectStream[S]:
         r"""
         Apply a transformation function to each object in the stream, yielding a new type of
         object. There is a one-to-one correspondence between the input objects and output objects.
@@ -133,6 +138,7 @@ class ObjectStream(Generic[T]):
         Arguments:
 
             f:      selection function (lambda)
+            known_types: Internal use only - for passing captured variables from above in.
 
         Returns:
 
@@ -145,7 +151,7 @@ class ObjectStream(Generic[T]):
         from func_adl.type_based_replacement import remap_from_lambda
 
         n_stream, n_ast, rtn_type = remap_from_lambda(
-            self, _local_simplification(parse_as_ast(f, "Select"))
+            self, _local_simplification(parse_as_ast(f, "Select")), known_types
         )
         check_ast(n_ast)
         return self.clone_with_new_ast(
@@ -153,13 +159,16 @@ class ObjectStream(Generic[T]):
             rtn_type,
         )
 
-    def Where(self, filter: Union[str, ast.Lambda, Callable[[T], bool]]) -> ObjectStream[T]:
+    def Where(
+        self, filter: Union[str, ast.Lambda, Callable[[T], bool]], known_types: Dict[str, Any] = {}
+    ) -> ObjectStream[T]:
         r"""
         Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
         Arguments:
 
             filter      A filter lambda that returns True/False.
+            known_types: Internal use only - for passing captured variables from above in.
 
         Returns:
 
@@ -172,7 +181,7 @@ class ObjectStream(Generic[T]):
         from func_adl.type_based_replacement import remap_from_lambda
 
         n_stream, n_ast, rtn_type = remap_from_lambda(
-            self, _local_simplification(parse_as_ast(filter, "Where"))
+            self, _local_simplification(parse_as_ast(filter, "Where")), known_types
         )
         check_ast(n_ast)
         if rtn_type != bool:

@@ -443,7 +443,7 @@ T = TypeVar("T")
 
 
 def remap_by_types(
-    o_stream: ObjectStream[T], var_name: str, var_type: Any, a: ast.AST
+    o_stream: ObjectStream[T], var_type_mapping: Dict[str, Any], a: ast.AST
 ) -> Tuple[ObjectStream[T], ast.AST, Type]:
     """Remap a call by a type. Given the type of `var_name` it will do its best
     to follow the objects types through the expression.
@@ -466,7 +466,7 @@ def remap_by_types(
     class type_transformer(ast.NodeTransformer, Generic[S]):
         def __init__(self, o_stream: ObjectStream[S]):
             self._stream = o_stream
-            self._found_types: Dict[Union[str, object], Union[type, object]] = {var_name: var_type}
+            self._found_types: Dict[Union[str, Any], Union[type, Any]] = dict(var_type_mapping)
 
         @property
         def stream(self) -> ObjectStream[S]:
@@ -521,7 +521,7 @@ def remap_by_types(
             if len(call_node.args) == 0:
                 r = call_method()
             elif len(call_node.args) == 1:
-                r = call_method(call_node.args[0])
+                r = call_method(call_node.args[0], known_types=self._found_types)
             else:
                 return None
 
@@ -950,7 +950,7 @@ def remap_by_types(
 
 
 def remap_from_lambda(
-    o_stream: ObjectStream[T], l_func: ast.Lambda
+    o_stream: ObjectStream[T], l_func: ast.Lambda, known_types: Dict[str, Any]
 ) -> Tuple[ObjectStream[T], ast.Lambda, Type]:
     """Helper function that will translate the contents of lambda
     function with inline methods and special functions.
@@ -963,7 +963,9 @@ def remap_from_lambda(
     assert len(l_func.args.args) == 1
     orig_type = o_stream.item_type
     var_name = l_func.args.args[0].arg
-    stream, new_body, return_type = remap_by_types(o_stream, var_name, orig_type, l_func.body)
+    stream, new_body, return_type = remap_by_types(
+        o_stream, {var_name: orig_type} | known_types, l_func.body
+    )
     return stream, ast.Lambda(l_func.args, new_body), return_type  # type: ignore
 
 

@@ -54,9 +54,9 @@ jobs:
           pip list
       - name: Test with pytest
         run: |
-          python -m pytest -r sx
+          python -m pytest -r sx --cov=func_adl --cov-report=term-missing --cov-report=term-missing --cov-report xml
       - name: Report coverage with Codecov
-        if: github.event_name == 'push' && matrix.python-version == 3.9 && matrix.os == 'ubuntu-latest'
+        if: (github.event_name == 'push' || github.event_name == 'pull_request') && matrix.python-version == 3.12 && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
