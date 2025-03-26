@@ -293,15 +293,29 @@ class _rewrite_captured_vars(ast.NodeTransformer):
             new_value = getattr(value.value, node.attr)
             # When 3.10 is not supported, replace with EnumType
             if isinstance(value.value, Enum.__class__):
+                # Sometimes we need to prepend a namespace. We look
+                # for secret info here, and then prepend if necessary.
+                # But no one else knows about this, so  we need to mark this
+                # as "ignore".
                 import importlib
 
                 enum_mod = importlib.import_module(new_value.__module__)
                 additional_ns = getattr(enum_mod, "_object_cpp_as_py_namespace", "")
                 if len(additional_ns) == 0:
                     return node
-                return (
-                    ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0].value  # type: ignore
-                )
+                ns_node = cast(
+                    ast.Expr, ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0]
+                ).value
+
+                class mark_ignore(ast.NodeTransformer):
+                    def visit_Name(self, node: ast.Name) -> Any:
+                        if node.id == additional_ns:
+                            new_node = cast(ast.Expr, ast.parse(node.id).body[0]).value
+                            new_node._ignore = True  # type: ignore
+                            return new_node
+                        return node
+
+                return mark_ignore().visit(ns_node)
             return ast.Constant(value=new_value)
 
         # If we fail, then just move on.

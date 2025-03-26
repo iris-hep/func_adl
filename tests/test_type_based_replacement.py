@@ -128,8 +128,8 @@ class Event:
     def MyLambdaCallback(self, cb: Callable) -> int: ...  # noqa
 
 
-def return_type_test(expr: str, arg_type: type, expected_type: type):
-    s = ast_lambda(expr)
+def return_type_test(expr: str | ast.expr, arg_type: type, expected_type: type):
+    s = expr if isinstance(expr, ast.expr) else ast_lambda(expr)
     objs = ObjectStream(ast.Name(id="e", ctx=ast.Load()), arg_type)
 
     _, _, expr_type = remap_by_types(objs, {"e": arg_type}, s)
@@ -249,6 +249,17 @@ def test_subscript():
 
 def test_subscript_any():
     return_type_test("e[0]", Any, Any)  # type: ignore
+
+
+def test_ast_marked_ignore(caplog):
+    "Make sure that a ast marked ignore does not generate a warning"
+    a = ast.parse("donttalk").body[0].value  # type: ignore
+    a._ignore = True
+
+    with caplog.at_level(logging.WARNING):
+        return_type_test(a, Any, Any)  # type: ignore
+
+    assert len(caplog.messages) == 0
 
 
 def test_collection():

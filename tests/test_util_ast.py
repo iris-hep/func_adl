@@ -311,6 +311,20 @@ def test_parse_lambda_with_implied_ns():
         r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
 
         assert "aweful.forkit.MyEnum.VALUE" in ast.unparse(r)
+
+        found_it = False
+
+        class check_it(ast.NodeVisitor):
+            def visit_Name(self, node: ast.Name):
+                nonlocal found_it
+                if node.id == "aweful":
+                    found_it = True
+                    assert hasattr(node, "_ignore")
+                    assert node._ignore  # type: ignore
+
+        check_it().visit(r)
+        assert found_it
+
     finally:
         # Remove the attribute from the module
         del _object_cpp_as_py_namespace
