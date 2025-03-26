@@ -1,13 +1,13 @@
-from __future__ import annotations
-
 import ast
+import copy
+import importlib
 import inspect
 import tokenize
 from collections import defaultdict
 from dataclasses import is_dataclass
 from enum import Enum
 from types import ModuleType
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 
 def as_literal(p: Union[str, int, float, bool, None]) -> ast.Constant:
@@ -252,6 +252,13 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
     return ast.Lambda(args, ret.value)  # type: ignore
 
 
+class _mark_ignore_name(ast.NodeTransformer):
+    def visit_Name(self, node: ast.Name) -> Any:
+        new_node = cast(ast.Expr, ast.parse(node.id).body[0]).value
+        new_node._ignore = True  # type: ignore
+        return new_node
+
+
 class _rewrite_captured_vars(ast.NodeTransformer):
     def __init__(self, cv: inspect.ClosureVars):
         self._lookup_dict: Dict[str, Any] = dict(cv.nonlocals)
@@ -297,25 +304,19 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 # for secret info here, and then prepend if necessary.
                 # But no one else knows about this, so  we need to mark this
                 # as "ignore".
-                import importlib
-
                 enum_mod = importlib.import_module(new_value.__module__)
-                additional_ns = getattr(enum_mod, "_object_cpp_as_py_namespace", "")
-                if len(additional_ns) == 0:
+                additional_ns = getattr(enum_mod, "_object_cpp_as_py_namespace", None)
+                if additional_ns is None:
                     return node
-                ns_node = cast(
-                    ast.Expr, ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0]
-                ).value
 
-                class mark_ignore(ast.NodeTransformer):
-                    def visit_Name(self, node: ast.Name) -> Any:
-                        if node.id == additional_ns:
-                            new_node = cast(ast.Expr, ast.parse(node.id).body[0]).value
-                            new_node._ignore = True  # type: ignore
-                            return new_node
-                        return node
+                if len(additional_ns) > 0:
+                    ns_node = cast(
+                        ast.Expr, ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0]
+                    ).value
+                else:
+                    ns_node = copy.copy(node)
 
-                return mark_ignore().visit(ns_node)
+                return _mark_ignore_name().visit(ns_node)
             return ast.Constant(value=new_value)
 
         # If we fail, then just move on.
@@ -470,9 +471,7 @@ class _token_runner:
                 break
         return None, None
 
-    def tokens_till(
-        self, stop_condition: Dict[int, List[str]]
-    ) -> Generator[tokenize.Token, None, None]:  # type: ignore
+    def tokens_till(self, stop_condition: Dict[int, List[str]]):
         """Yield tokens until we find a stop condition.
 
         * Properly tracks parentheses, etc.
