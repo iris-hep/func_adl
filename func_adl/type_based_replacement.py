@@ -906,7 +906,8 @@ def remap_by_types(
             elif node.id in _global_functions:
                 self._found_types[node] = Callable
             else:
-                logging.getLogger(__name__).warning(f"Unknown type for name {node.id}")
+                if not getattr(node, "_ignore", False):
+                    logging.getLogger(__name__).warning(f"Unknown type for name {node.id}")
                 self._found_types[node] = Any
             return node
 

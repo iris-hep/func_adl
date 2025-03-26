@@ -292,9 +292,76 @@ def test_parse_lambda_class_enum():
             VALUE = 20
 
     r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
-    r_true = parse_as_ast(lambda x: x > 20)
 
-    assert ast.unparse(r) == ast.unparse(r_true)
+    assert "VALUE" in ast.unparse(r)
+
+
+def test_parse_lambda_with_implied_ns():
+    "Test adding the special attribute to the module to prefix a namespace"
+    # Add the attribute to the module
+    global _object_cpp_as_py_namespace
+    _object_cpp_as_py_namespace = "aweful"
+
+    try:
+
+        class forkit:
+            class MyEnum(Enum):
+                VALUE = 20
+
+        r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
+
+        assert "aweful.forkit.MyEnum.VALUE" in ast.unparse(r)
+
+        found_it = False
+
+        class check_it(ast.NodeVisitor):
+            def visit_Name(self, node: ast.Name):
+                nonlocal found_it
+                if node.id == "aweful":
+                    found_it = True
+                    assert hasattr(node, "_ignore")
+                    assert node._ignore  # type: ignore
+
+        check_it().visit(r)
+        assert found_it
+
+    finally:
+        # Remove the attribute from the module
+        del _object_cpp_as_py_namespace
+
+
+def test_parse_lambda_with_implied_ns_empty():
+    "Test adding the special attribute to the module to prefix a namespace"
+    # Add the attribute to the module
+    global _object_cpp_as_py_namespace
+    _object_cpp_as_py_namespace = ""
+
+    try:
+
+        class forkit:
+            class MyEnum(Enum):
+                VALUE = 20
+
+        r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
+
+        assert "forkit.MyEnum.VALUE" in ast.unparse(r)
+
+        found_it = False
+
+        class check_it(ast.NodeVisitor):
+            def visit_Name(self, node: ast.Name):
+                nonlocal found_it
+                if node.id == "forkit":
+                    found_it = True
+                    assert hasattr(node, "_ignore")
+                    assert node._ignore  # type: ignore
+
+        check_it().visit(r)
+        assert found_it
+
+    finally:
+        # Remove the attribute from the module
+        del _object_cpp_as_py_namespace
 
 
 def test_parse_lambda_class_constant_in_module():
