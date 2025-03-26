@@ -299,7 +299,9 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 additional_ns = getattr(enum_mod, "_object_cpp_as_py_namespace", "")
                 if len(additional_ns) == 0:
                     return node
-                return ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0].value
+                return (
+                    ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0].value  # type: ignore
+                )
             return ast.Constant(value=new_value)
 
         # If we fail, then just move on.
