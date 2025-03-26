@@ -3,7 +3,7 @@ import copy
 import inspect
 import logging
 from inspect import isclass
-from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, Union, cast
 
 import pytest
 
@@ -128,7 +128,7 @@ class Event:
     def MyLambdaCallback(self, cb: Callable) -> int: ...  # noqa
 
 
-def return_type_test(expr: str | ast.expr, arg_type: type, expected_type: type):
+def return_type_test(expr: Union[str, ast.expr], arg_type: type, expected_type: type):
     s = expr if isinstance(expr, ast.expr) else ast_lambda(expr)
     objs = ObjectStream(ast.Name(id="e", ctx=ast.Load()), arg_type)
 
