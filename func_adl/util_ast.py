@@ -293,7 +293,13 @@ class _rewrite_captured_vars(ast.NodeTransformer):
             new_value = getattr(value.value, node.attr)
             # When 3.10 is not supported, replace with EnumType
             if isinstance(value.value, Enum.__class__):
-                return node
+                import importlib
+
+                enum_mod = importlib.import_module(new_value.__module__)
+                additional_ns = getattr(enum_mod, "_object_cpp_as_py_namespace", "")
+                if len(additional_ns) == 0:
+                    return node
+                return ast.parse(f"{additional_ns}.{ast.unparse(node)}").body[0].value
             return ast.Constant(value=new_value)
 
         # If we fail, then just move on.

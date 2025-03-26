@@ -296,6 +296,26 @@ def test_parse_lambda_class_enum():
     assert "VALUE" in ast.unparse(r)
 
 
+def test_parse_lambda_with_implied_ns():
+    "Test adding the special attribute to the module to prefix a namespace"
+    # Add the attribute to the module
+    global _object_cpp_as_py_namespace
+    _object_cpp_as_py_namespace = "aweful"
+
+    try:
+
+        class forkit:
+            class MyEnum(Enum):
+                VALUE = 20
+
+        r = parse_as_ast(lambda x: x > forkit.MyEnum.VALUE)
+
+        assert "aweful.forkit.MyEnum.VALUE" in ast.unparse(r)
+    finally:
+        # Remove the attribute from the module
+        del _object_cpp_as_py_namespace
+
+
 def test_parse_lambda_class_constant_in_module():
     from . import xAOD
 
