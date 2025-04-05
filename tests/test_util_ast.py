@@ -9,6 +9,7 @@ import pytest
 
 from func_adl.util_ast import (
     _realign_indent,
+    _resolve_called_lambdas,
     as_ast,
     check_ast,
     function_call,
@@ -216,6 +217,45 @@ def test_rewrite_noret():
     assert "return" in str(e.value)
 
 
+def test_resolve_called_lambdas():
+    "Check simple lambda gets resolved"
+    r = _resolve_called_lambdas().visit(ast.parse("(lambda x: x + 1)(y)"))
+    assert ast.unparse(r) == "y + 1"
+
+
+def test_resolve_called_lambdas_arg_replacement():
+    "Check simple lambda gets resolved"
+    r = _resolve_called_lambdas().visit(ast.parse("(lambda x: x + 1)(y+1)"))
+    assert ast.unparse(r) == "y + 1 + 1"
+
+
+def test_resolve_called_lambdas_same_arg():
+    "Check simple lambda gets resolved"
+    r = _resolve_called_lambdas().visit(ast.parse("(lambda x: x + 1)(x)"))
+    assert ast.unparse(r) == "x + 1"
+
+
+def test_resolve_called_lambdas_nested1():
+    "Check simple lambda gets resolved"
+    r = _resolve_called_lambdas().visit(ast.parse("(lambda x: (lambda x: x + 2)(x) + 1)(x)"))
+    assert ast.unparse(r) == "x + 2 + 1"
+
+
+def test_resolve_called_lambdas_nested2():
+    "Check simple lambda gets resolved"
+    r = _resolve_called_lambdas().visit(ast.parse("(lambda x: (lambda x: x + 3)(x+2) + 4)(x+1)"))
+    assert ast.unparse(r) == "x + 1 + 2 + 3 + 4"
+
+
+def test_resolve_called_lambdas_captured():
+    "Check simple lambda gets resolved"
+    r = _resolve_called_lambdas().visit(ast.parse("(lambda x: (lambda y: x + y)(x+2) + 4)(x+1)"))
+    # (lambda x: (lambda y: x + y)(x+2) + 4)(x+1)
+    # (lambda y: x+1 + y)(x+1+2) + 4
+    # x+1+x+1+2+4
+    assert ast.unparse(r) == "x + 1 + (x + 1 + 2) + 4"
+
+
 def test_parse_as_ast_lambda():
     ln = lambda_unwrap(ast.parse("lambda x: x + 1"))
     r = parse_as_ast(ln)
@@ -230,12 +270,6 @@ def test_parse_as_str():
 def test_parse_as_callable_simple():
     r = parse_as_ast(lambda x: x + 1)
     assert isinstance(r, ast.Lambda)
-
-
-def test_parse_nested_lambda():
-    r = parse_as_ast(lambda x: (lambda y: y + 1)(x))
-    assert isinstance(r, ast.Lambda)
-    assert isinstance(r.body, ast.Call)
 
 
 def test_parse_lambda_capture():
@@ -439,7 +473,7 @@ def test_parse_nested_func():
 
     f = parse_as_ast(func_2)
 
-    assert ast.unparse(f) == "lambda x: (lambda x: x + 1)(x) + 2"
+    assert ast.unparse(f) == "lambda x: x + 1 + 2"
 
 
 def test_parse_nested_empty_func():
