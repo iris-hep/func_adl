@@ -36,6 +36,19 @@ good_met = good_met_expr.value()
 
 The cut will be applied at 40, because that was the value of `met_cut` when the `Where` function was called. This will also work for variables captured inside functions.
 
+## Captured Functions
+
+It is possible to capture _simple_ functions as well.
+
+```python
+def good_jet(jet):
+    return jet.pt() > 40.0
+
+good_met_expr = ds_of_jets.Where(lambda jet: good_jet(jet))
+```
+
+Simple means that you must restrict the function to a single `return` statement. No multi-statement functions are currently possible, even if they reduce to a single statement! Also, a recursive function will give you undefined (and likely ugly) behavior.
+
 ## Syntatic Sugar
 
 There are several python expressions and idioms that are translated behind your back to `func_adl`. Note that these must occur inside one of the `ObjectStream` method's `lambda` functions like `Select`, `SelectMany`, or `Where`.
