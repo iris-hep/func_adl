@@ -269,6 +269,12 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         if self.is_arg(node.id):
             return node
 
+        def safe_parse_wrapper(x: Callable) -> Optional[ast.Lambda]:
+            try:
+                return _parse_source_for_lambda(x, None)
+            except Exception:
+                return None
+
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
             if isinstance(v, type) or isinstance(v, ModuleType):
@@ -277,6 +283,8 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 # If it is something we know how to make into a literal, we just send it down
                 # like that.
                 return as_literal(v)
+            elif callable(v) and ((lm := safe_parse_wrapper(v)) is not None):
+                return lm
             else:
                 # If it is a local function, we need to parse it as an AST
                 return node
