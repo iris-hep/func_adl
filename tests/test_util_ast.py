@@ -414,6 +414,50 @@ def test_parse_simple_func():
     assert isinstance(f.body, ast.BinOp)
 
 
+def test_parse_nested_func():
+    "A oneline function defined at local scope"
+
+    def func_1(x):
+        return x + 1
+
+    def func_2(x):
+        return func_1(x) + 2
+
+    f = parse_as_ast(func_2)
+
+    assert ast.unparse(f) == "lambda x: (lambda x: x + 1)(x) + 2"
+
+
+def test_parse_nested_empty_func():
+    "A oneline function defined at local scope"
+
+    def func_1(x) -> int:
+        ...
+
+    def func_2(x) -> int:
+        return func_1(x) + 2
+
+    f = parse_as_ast(func_2)
+
+    assert ast.unparse(f) == "lambda x: func_1(x) + 2"
+
+
+def test_parse_nested_complex_func():
+    "A oneline function defined at local scope"
+
+    def func_1(x) -> int:
+        if x > 10:
+            return 5
+        return 20
+
+    def func_2(x) -> int:
+        return func_1(x) + 2
+
+    f = parse_as_ast(func_2)
+
+    assert ast.unparse(f) == "lambda x: func_1(x) + 2"
+
+
 def global_doit(x):
     return x + 1
 
