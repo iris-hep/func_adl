@@ -237,18 +237,21 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
         - It is assumed that the ast passed in won't be altered in place - no deep copy is
           done of the statement or args - they are just re-used.
     """
-    if len(f.body) != 1:
+    interesting_body = [
+        b for b in f.body if not (isinstance(b, ast.Expr) and isinstance(b.value, ast.Constant))
+    ]
+    if len(interesting_body) != 1:
         raise ValueError(
             f'Can handle simple functions of only one line - "{f.name}"' f" has {len(f.body)}."
         )
-    if not isinstance(f.body[0], ast.Return):
+    if not isinstance(interesting_body[0], ast.Return):
         raise ValueError(
             f'Simple function must use return statement - "{f.name}" does ' "not seem to."
         )
 
     # the arguments
     args = f.args
-    ret = cast(ast.Return, f.body[0])
+    ret = cast(ast.Return, interesting_body[0])
     return ast.Lambda(args, ret.value)  # type: ignore
 
 
@@ -269,6 +272,12 @@ class _rewrite_captured_vars(ast.NodeTransformer):
         if self.is_arg(node.id):
             return node
 
+        def safe_parse_wrapper(x: Callable) -> Optional[ast.Lambda]:
+            try:
+                return _parse_source_for_lambda(x, None)
+            except Exception:
+                return None
+
         if node.id in self._lookup_dict:
             v = self._lookup_dict[node.id]
             if isinstance(v, type) or isinstance(v, ModuleType):
@@ -277,6 +286,8 @@ class _rewrite_captured_vars(ast.NodeTransformer):
                 # If it is something we know how to make into a literal, we just send it down
                 # like that.
                 return as_literal(v)
+            elif callable(v) and ((lm := safe_parse_wrapper(v)) is not None):
+                return lm
             else:
                 # If it is a local function, we need to parse it as an AST
                 return node
@@ -343,6 +354,40 @@ class _rewrite_captured_vars(ast.NodeTransformer):
     def is_arg(self, a_name: str) -> bool:
         "If the arg is on the stack, then return true"
         return any([a == a_name for frames in self._ignore_stack for a in frames])
+
+
+class _resolve_called_lambdas(ast.NodeTransformer):
+    "Resolve any `(lambda x: x + 1)(y)` calls into just `y + 1`."
+
+    def __init__(self):
+        self._arg_map_list = []
+
+    def visit_Call(self, node: ast.Call) -> Any:
+        # Check if the function being called is a lambda
+        if isinstance(node.func, ast.Lambda):
+            lambda_node = node.func
+
+            # Ensure the lambda has arguments and a body
+            if len(lambda_node.args.args) == len(node.args):
+                arg_map = {
+                    lambda_node.args.args[i].arg: self.visit(node.args[i])
+                    for i in range(len(lambda_node.args.args))
+                }
+                self._arg_map_list.append(arg_map)
+
+                result = self.generic_visit(lambda_node.body)
+                self._arg_map_list.pop()
+                return result
+        else:
+            return self.generic_visit(node)
+        return node
+
+    def visit_Name(self, node: ast.Name) -> Any:
+        "Look through the arg map to see if it is a argument"
+        for arg_map in reversed(self._arg_map_list):
+            if node.id in arg_map:
+                return arg_map[node.id]
+        return node
 
 
 def global_getclosurevars(f: Callable) -> inspect.ClosureVars:
@@ -688,7 +733,7 @@ def parse_as_ast(
 
         # Since this is a function in python, we can look for lambda capture.
         call_args = global_getclosurevars(ast_source)
-        return _rewrite_captured_vars(call_args).visit(src_ast)
+        return _resolve_called_lambdas().visit(_rewrite_captured_vars(call_args).visit(src_ast))
 
     elif isinstance(ast_source, str):
         a = ast.parse(ast_source.strip())  # type: ignore
