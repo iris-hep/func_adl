@@ -185,7 +185,10 @@ class ObjectStream(Generic[T]):
         )
         check_ast(n_ast)
         if rtn_type != bool:
-            raise ValueError(f"The Where filter must return a boolean (not {rtn_type})")
+            raise ValueError(
+                f"The Where filter must return a boolean (not {rtn_type}) for expression "
+                f"{ast.unparse(n_ast)}"
+            )
         return self.clone_with_new_ast(
             function_call("Where", [n_stream.query_ast, n_ast]),
             self.item_type,
