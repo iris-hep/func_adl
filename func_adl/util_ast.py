@@ -237,18 +237,21 @@ def rewrite_func_as_lambda(f: ast.FunctionDef) -> ast.Lambda:
         - It is assumed that the ast passed in won't be altered in place - no deep copy is
           done of the statement or args - they are just re-used.
     """
-    if len(f.body) != 1:
+    interesting_body = [
+        b for b in f.body if not (isinstance(b, ast.Expr) and isinstance(b.value, ast.Constant))
+    ]
+    if len(interesting_body) != 1:
         raise ValueError(
             f'Can handle simple functions of only one line - "{f.name}"' f" has {len(f.body)}."
         )
-    if not isinstance(f.body[0], ast.Return):
+    if not isinstance(interesting_body[0], ast.Return):
         raise ValueError(
             f'Simple function must use return statement - "{f.name}" does ' "not seem to."
         )
 
     # the arguments
     args = f.args
-    ret = cast(ast.Return, f.body[0])
+    ret = cast(ast.Return, interesting_body[0])
     return ast.Lambda(args, ret.value)  # type: ignore
 
 

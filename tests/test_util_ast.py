@@ -414,6 +414,20 @@ def test_parse_simple_func():
     assert isinstance(f.body, ast.BinOp)
 
 
+def test_parse_simple_func_with_info():
+    "A oneline function defined at local scope"
+
+    def doit(x: int) -> int:
+        "Add one to the arg"
+        return x + 1
+
+    f = parse_as_ast(doit)
+
+    assert isinstance(f, ast.Lambda)
+    assert len(f.args.args) == 1
+    assert isinstance(f.body, ast.BinOp)
+
+
 def test_parse_nested_func():
     "A oneline function defined at local scope"
 
@@ -431,8 +445,7 @@ def test_parse_nested_func():
 def test_parse_nested_empty_func():
     "A oneline function defined at local scope"
 
-    def func_1(x) -> int:
-        ...
+    def func_1(x) -> int: ...
 
     def func_2(x) -> int:
         return func_1(x) + 2
