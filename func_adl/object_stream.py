@@ -88,7 +88,7 @@ class ObjectStream(Generic[T]):
         return self._q_ast
 
     def clone_with_new_ast(self, new_ast: ast.AST, new_type: type[S]) -> ObjectStream[S]:
-        clone = copy.deepcopy(self)
+        clone = copy.copy(self)
         clone._q_ast = new_ast
         clone._item_type = new_type
         return clone  # type: ignore
