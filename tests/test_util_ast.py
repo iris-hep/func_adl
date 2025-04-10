@@ -1091,3 +1091,17 @@ def test_check_ast_bad():
         check_ast(a)
 
     assert "my_type" in str(e)
+
+
+def test_Select_inline():
+    "Make sure nothing funny happens to Select"
+    r = parse_as_ast(lambda jets: jets.Select(lambda j: j.pt()))
+    assert "function_call" not in ast.unparse(r)
+
+
+def test_Range_inline():
+    "Make sure nothing funny happens to Range"
+    from func_adl import Range
+
+    r = parse_as_ast(lambda jets: Range(1, 10).Select(lambda j: j + 1))
+    assert "function_call" not in ast.unparse(r)
