@@ -1,5 +1,5 @@
 import ast
-from typing import Union, cast
+from typing import Union
 
 from .object_stream import ObjectStream
 from .util_ast import as_ast, function_call
@@ -7,7 +7,7 @@ from .util_ast import as_ast, function_call
 
 def Range(
     lower_bound: Union[str, int, ast.AST], upper_bound: Union[str, int, ast.AST]
-) -> ObjectStream:
+) -> ObjectStream[int]:
     r"""
     Given the lower and upper bound return an object with the range of numbers, similar to python
     range
@@ -23,8 +23,4 @@ def Range(
 
     """
 
-    return ObjectStream(
-        function_call(
-            "Range", [cast(ast.AST, as_ast(lower_bound)), cast(ast.AST, as_ast(upper_bound))]
-        )
-    )
+    return ObjectStream(function_call("Range", [as_ast(lower_bound), as_ast(upper_bound)]))
