@@ -2,7 +2,6 @@ import ast
 from typing import Union
 
 from .object_stream import ObjectStream
-from .util_ast import as_ast, function_call
 
 
 def Range(
@@ -20,7 +19,5 @@ def Range(
     Return:
 
         A new ObjectStream that contains the range of numbers
-
     """
-
-    return ObjectStream(function_call("Range", [as_ast(lower_bound), as_ast(upper_bound)]))
+    ...
