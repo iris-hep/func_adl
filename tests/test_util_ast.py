@@ -1105,3 +1105,27 @@ def test_Range_inline():
 
     r = parse_as_ast(lambda jets: Range(1, 10).Select(lambda j: j + 1))
     assert "function_call" not in ast.unparse(r)
+
+
+def test_parse_lambda_multiline_dictionary():
+    """Multi-line lambda returning a dictionary should parse"""
+
+    pdgid = 13
+
+    found = []
+
+    class my_obj:
+        def Select(self, f: Callable):
+            found.append(parse_as_ast(f))
+            return self
+
+    my_obj().Select(
+        lambda particles: {
+            "good": particles.Where(lambda p: p.pdgId() == pdgid).Where(lambda p: p.hasDecayVtx()),
+            "none_count": particles.Where(lambda p: p.pdgId() == pdgid)
+            .Where(lambda p: not p.hasDecayVtx())
+            .Count(),
+        }
+    )
+
+    assert isinstance(found[0], ast.Lambda)
