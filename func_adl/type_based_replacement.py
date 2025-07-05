@@ -61,9 +61,11 @@ def _load_default_global_functions():
 
     def my_abs(x: float) -> float: ...  # noqa
     def my_len(x: Iterable) -> int: ...  # noqa
+    def my_sqrt(x: float) -> float: ...  # noqa
 
     _global_functions["abs"] = _FuncAdlFunction("abs", my_abs, None)
     _global_functions["len"] = _FuncAdlFunction("len", my_len, None)
+    _global_functions["sqrt"] = _FuncAdlFunction("sqrt", my_sqrt, None)
 
 
 _load_default_global_functions()

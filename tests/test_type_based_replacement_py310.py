@@ -212,6 +212,20 @@ def test_abs_function_float():
     return_type_test("abs(e)", float, float)
 
 
+def test_sqrt_function_float(caplog):
+    "A call to sqrt with a float"
+    caplog.set_level(logging.WARNING)
+    return_type_test("sqrt(e)", float, float)
+    assert len(caplog.text) == 0
+
+
+def test_sqrt_function_const(caplog):
+    "A call to sqrt with a constant"
+    caplog.set_level(logging.WARNING)
+    return_type_test("sqrt(4)", int, float)
+    assert len(caplog.text) == 0
+
+
 def test_ifexpr_onetype():
     "A ? expression"
     return_type_test("1 if True else 2", int, int)
