@@ -282,3 +282,78 @@ def test_resolve_compare_list_wrong_order():
     a = ast.parse("[31, 51] in p.absPdgId()")
     with pytest.raises(ValueError, match="Right side"):
         resolve_syntatic_sugar(a)
+
+
+def test_resolve_dict_star_merge():
+    """Dictionary unpacking should be flattened"""
+
+    a = ast.parse("{'n': e.EventNumber(), **{'m': e.EventNumber()}}").body[0].value  # type: ignore
+    a_resolved = resolve_syntatic_sugar(a)
+
+    expected = (
+        ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber()}").body[0].value  # type: ignore
+    )
+    assert ast.unparse(a_resolved) == ast.unparse(expected)
+
+
+def test_resolve_dict_star_ifexp_true():
+    """Conditional dictionary unpacking should resolve when condition is True"""
+
+    a = (
+        ast.parse("{'n': e.EventNumber(), **({'m': e.EventNumber()} if True else {})}")
+        .body[0]
+        .value  # type: ignore
+    )
+    a_resolved = resolve_syntatic_sugar(a)
+
+    expected = (
+        ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber()}").body[0].value  # type: ignore
+    )
+    assert ast.unparse(a_resolved) == ast.unparse(expected)
+
+
+def test_resolve_dict_star_ifexp_false():
+    """Conditional dictionary unpacking should resolve when condition is False"""
+
+    a = (
+        ast.parse("{'n': e.EventNumber(), **({'m': e.EventNumber()} if False else {})}")
+        .body[0]
+        .value  # type: ignore
+    )
+    a_resolved = resolve_syntatic_sugar(a)
+
+    expected = ast.parse("{'n': e.EventNumber()}").body[0].value  # type: ignore
+    assert ast.unparse(a_resolved) == ast.unparse(expected)
+
+
+def test_resolve_dict_star_ifexp_unknown():
+    """Unresolvable conditions should result in an error"""
+
+    a = (
+        ast.parse("{'n': e.EventNumber(), **({'m': e.EventNumber()} if cond else {})}")
+        .body[0]
+        .value  # type: ignore
+    )
+    with pytest.raises(ValueError, match="Conditional dictionary"):
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_dict_star_ifexp_nested():
+    """Nested conditional dictionary unpacking should resolve correctly"""
+
+    a = (
+        ast.parse(
+            "{'n': e.EventNumber(), **({'m': e.EventNumber(), **({'o': e.EventNumber()} "
+            "if True else {})} if True else {})}"
+        )
+        .body[0]
+        .value  # type: ignore
+    )
+    a_resolved = resolve_syntatic_sugar(a)
+
+    expected = (
+        ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber(), 'o': e.EventNumber()}")
+        .body[0]
+        .value  # type: ignore
+    )
+    assert ast.unparse(a_resolved) == ast.unparse(expected)

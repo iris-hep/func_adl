@@ -173,6 +173,60 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 values=arg_values,
             )
 
+        def _merge_into(self, target: ast.expr, add: ast.Dict) -> ast.expr:
+            """Merge ``add`` dictionary into ``target`` which may itself be a
+            dictionary or an if-expression containing dictionaries."""
+
+            if isinstance(target, ast.Dict):
+                return ast.Dict(keys=target.keys + add.keys, values=target.values + add.values)
+            else:
+                return target
+
+        def visit_Dict(self, node: ast.Dict) -> Any:
+            """Flatten ``**`` expansions in dictionary literals.
+
+            If the starred expression is a dictionary it is merged directly.  If
+            the expression is an ``if`` with both branches being dictionaries and
+            the test is a constant, it is resolved at transformation time.  If
+            the test is not resolvable, an error is raised as the back end cannot
+            translate it."""
+
+            a = self.generic_visit(node)
+            assert isinstance(a, ast.Dict)
+
+            base_keys: List[Optional[ast.expr]] = []
+            base_values: List[ast.expr] = []
+            expansions: List[ast.expr] = []
+            for k, v in zip(a.keys, a.values):
+                if k is None:
+                    expansions.append(v)
+                else:
+                    base_keys.append(k)
+                    base_values.append(v)
+
+            result: ast.AST = ast.Dict(keys=base_keys, values=base_values)
+
+            for e in expansions:
+                if isinstance(e, ast.Dict):
+                    result = self._merge_into(result, e)
+                elif (
+                    isinstance(e, ast.IfExp)
+                    and isinstance(e.body, ast.Dict)
+                    and isinstance(e.orelse, ast.Dict)
+                ):
+                    if isinstance(e.test, ast.Constant):
+                        branch = e.body if bool(e.test.value) else e.orelse
+                        result = self._merge_into(result, branch)
+                    else:
+                        raise ValueError(
+                            "Conditional dictionary expansion requires a constant test"
+                            f" - {ast.unparse(e)}"
+                        )
+                else:
+                    return a
+
+            return result
+
         def visit_Call(self, node: ast.Call) -> Any:
             """
             This method checks if the call is to a dataclass or a named tuple and converts
