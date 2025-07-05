@@ -1119,13 +1119,19 @@ def test_parse_lambda_multiline_dictionary():
             found.append(parse_as_ast(f))
             return self
 
+    # fmt: off
     my_obj().Select(
+        lambda e: e
+    ).Select(
         lambda particles: {
-            "good": particles.Where(lambda p: p.pdgId() == pdgid).Where(lambda p: p.hasDecayVtx()),
+            "good": particles.Where(lambda p: p.pdgId() == pdgid).Where(
+                lambda p: p.hasDecayVtx()
+            ),
             "none_count": particles.Where(lambda p: p.pdgId() == pdgid)
             .Where(lambda p: not p.hasDecayVtx())
             .Count(),
         }
     )
+    # fmt: on
 
     assert isinstance(found[0], ast.Lambda)
