@@ -2,7 +2,7 @@ import ast
 import copy
 import inspect
 from dataclasses import is_dataclass
-from typing import Any, List
+from typing import Any, List, Optional
 
 from func_adl.util_ast import lambda_build
 
@@ -105,7 +105,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             left = a.left
             right = a.comparators[0]
 
-            def const_list(t: ast.AST) -> List[ast.Constant] | None:
+            def const_list(t: ast.AST) -> Optional[List[ast.Constant]]:
                 if isinstance(t, (ast.List, ast.Tuple)):
                     if all(isinstance(e, ast.Constant) for e in t.elts):
                         return list(t.elts)  # type: ignore
