@@ -89,13 +89,9 @@ def test_query_metadata_burried():
 
 
 def test_query_metadata_updated():
-    '''This is testing code in QMetaData, but we need lookup_query_metadata which we are
-    testing in this file'''
-    r = (
-        my_event()
-        .QMetaData({"one": "two"})
-        .QMetaData({"one": "three"})
-    )
+    """This is testing code in QMetaData, but we need lookup_query_metadata which we are
+    testing in this file"""
+    r = my_event().QMetaData({"one": "two"}).QMetaData({"one": "three"})
 
     assert lookup_query_metadata(r, "one") == "three"
 

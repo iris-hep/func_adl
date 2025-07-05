@@ -226,6 +226,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     else:
                         raise ValueError(
                             "Conditional dictionary expansion requires a constant test"
+                            f" - {ast.unparse(e)}"
                         )
                 else:
                     return a
