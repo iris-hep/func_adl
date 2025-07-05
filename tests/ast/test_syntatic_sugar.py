@@ -290,7 +290,9 @@ def test_resolve_dict_star_merge():
     a = ast.parse("{'n': e.EventNumber(), **{'m': e.EventNumber()}}").body[0].value  # type: ignore
     a_resolved = resolve_syntatic_sugar(a)
 
-    expected = ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber()}").body[0].value  # type: ignore
+    expected = (
+        ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber()}").body[0].value  # type: ignore
+    )
     assert ast.unparse(a_resolved) == ast.unparse(expected)
 
 
@@ -304,7 +306,9 @@ def test_resolve_dict_star_ifexp_true():
     )
     a_resolved = resolve_syntatic_sugar(a)
 
-    expected = ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber()}").body[0].value  # type: ignore
+    expected = (
+        ast.parse("{'n': e.EventNumber(), 'm': e.EventNumber()}").body[0].value  # type: ignore
+    )
     assert ast.unparse(a_resolved) == ast.unparse(expected)
 
 
