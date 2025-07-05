@@ -590,6 +590,18 @@ def _get_lambda_in_stream(
         if t.type == tokenize.NEWLINE or t.string == "\n":
             saw_new_line = True
 
+    # Some versions of python (3.10 and 3.11) will leave a stray NEWLINE or
+    # DEDENT token at the end of the lambda when pulling tokens out of the
+    # tokenizer. These can cause ``tokenize.untokenize`` to crash as the
+    # indentation levels will not match. Strip them off before converting back
+    # into source code.
+    while accumulated_tokens and accumulated_tokens[-1].type in (
+        tokenize.NEWLINE,
+        tokenize.NL,
+        tokenize.DEDENT,
+    ):
+        accumulated_tokens.pop()
+
     function_source = "(" + tokenize.untokenize(accumulated_tokens).lstrip() + ")"
     a_module = ast.parse(function_source)
     lda = next(
