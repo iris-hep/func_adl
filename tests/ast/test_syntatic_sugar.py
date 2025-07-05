@@ -254,3 +254,31 @@ def test_resolve_random_class():
     a_resolved = resolve_syntatic_sugar(a)
 
     assert "nt_1(" in ast.unparse(a_resolved)
+
+
+def test_resolve_compare_list_in():
+    a = ast.parse("p.absPdgId() in [35, 51]")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("p.absPdgId() == 35 or p.absPdgId() == 51")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_compare_tuple_in():
+    a = ast.parse("p.absPdgId() in (35, 51)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("p.absPdgId() == 35 or p.absPdgId() == 51")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_compare_list_non_constant():
+    a = ast.parse("p.absPdgId() in [x, 51]")
+    with pytest.raises(ValueError, match="All elements"):
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_compare_list_wrong_order():
+    a = ast.parse("[31, 51] in p.absPdgId()")
+    with pytest.raises(ValueError, match="Right side"):
+        resolve_syntatic_sugar(a)
