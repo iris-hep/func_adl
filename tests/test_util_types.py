@@ -314,7 +314,7 @@ def test_get_method_and_class_inherrited_template():
 
     class bogus_1(Generic[T]):
         def fork(self) -> T:
-            ...
+            pass
 
     class bogus_2(bogus_1[int]):
         pass
@@ -325,7 +325,7 @@ def test_get_method_and_class_inherrited_template():
 def test_get_method_and_class_iterable():
     class bogus:
         def fork(self):
-            ...
+            pass
 
     assert get_method_and_class(Iterable[bogus], "fork") is None
 
