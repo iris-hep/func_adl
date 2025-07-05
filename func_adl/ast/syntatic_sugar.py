@@ -1,4 +1,5 @@
 import ast
+import copy
 import inspect
 from dataclasses import is_dataclass
 from typing import Any, List
@@ -85,6 +86,54 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 a = self.resolve_generator(a.elt, a.generators, node)
 
             return a
+
+        def visit_Compare(self, node: ast.Compare) -> Any:
+            """Expand membership tests of an expression against a constant list
+            or tuple into a series of ``or`` comparisons.
+
+            ``x in [1, 2]`` becomes ``x == 1 or x == 2``.
+            """
+
+            a = self.generic_visit(node)
+
+            if not isinstance(a, ast.Compare):
+                return a
+
+            if len(a.ops) != 1 or not isinstance(a.ops[0], ast.In):
+                return a
+
+            left = a.left
+            right = a.comparators[0]
+
+            def const_list(t: ast.AST) -> List[ast.Constant] | None:
+                if isinstance(t, (ast.List, ast.Tuple)):
+                    if all(isinstance(e, ast.Constant) for e in t.elts):
+                        return list(t.elts)  # type: ignore
+                    raise ValueError(
+                        "All elements in comparison list/tuple must be constants"
+                        f" - {ast.unparse(t)}"
+                    )
+                return None
+
+            elements = const_list(right)
+            expr = left
+            if elements is None:
+                elements = const_list(left)
+                expr = right
+            if elements is None:
+                return a
+
+            return ast.BoolOp(
+                op=ast.Or(),
+                values=[
+                    ast.Compare(
+                        left=copy.deepcopy(expr),
+                        ops=[ast.Eq()],
+                        comparators=[copy.deepcopy(e)],
+                    )
+                    for e in elements
+                ],
+            )
 
         def convert_call_to_dict(
             self, a: ast.Call, node: ast.AST, sig_arg_names: List[str]
