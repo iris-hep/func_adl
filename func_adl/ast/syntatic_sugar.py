@@ -1,7 +1,6 @@
 import ast
 import copy
 import inspect
-import copy
 from dataclasses import is_dataclass
 from typing import Any, List, Optional
 
@@ -174,7 +173,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 values=arg_values,
             )
 
-        def _merge_into(self, target: ast.AST, add: ast.Dict) -> ast.AST:
+        def _merge_into(self, target: ast.expr, add: ast.Dict) -> ast.expr:
             """Merge ``add`` dictionary into ``target`` which may itself be a
             dictionary or an if-expression containing dictionaries."""
 
@@ -201,9 +200,9 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             a = self.generic_visit(node)
             assert isinstance(a, ast.Dict)
 
-            base_keys: List[ast.AST] = []
-            base_values: List[ast.AST] = []
-            expansions: List[ast.AST] = []
+            base_keys: List[Optional[ast.expr]] = []
+            base_values: List[ast.expr] = []
+            expansions: List[ast.expr] = []
             for k, v in zip(a.keys, a.values):
                 if k is None:
                     expansions.append(v)
