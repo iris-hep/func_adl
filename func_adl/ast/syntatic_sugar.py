@@ -179,12 +179,6 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
             if isinstance(target, ast.Dict):
                 return ast.Dict(keys=target.keys + add.keys, values=target.values + add.values)
-            elif isinstance(target, ast.IfExp):
-                return ast.IfExp(
-                    target.test,
-                    self._merge_into(target.body, add),
-                    self._merge_into(target.orelse, add),
-                )
             else:
                 return target
 
