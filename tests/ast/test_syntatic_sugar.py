@@ -276,3 +276,9 @@ def test_resolve_compare_list_non_constant():
     a = ast.parse("p.absPdgId() in [x, 51]")
     with pytest.raises(ValueError, match="All elements"):
         resolve_syntatic_sugar(a)
+
+
+def test_resolve_compare_list_wrong_order():
+    a = ast.parse("[31, 51] in p.absPdgId()")
+    with pytest.raises(ValueError, match="Right side"):
+        resolve_syntatic_sugar(a)

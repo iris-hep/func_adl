@@ -118,10 +118,9 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             elements = const_list(right)
             expr = left
             if elements is None:
-                elements = const_list(left)
-                expr = right
-            if elements is None:
-                return a
+                raise ValueError(
+                    f"Right side of 'in' must be a list or tuple - {ast.unparse(node)}"
+                )
 
             return ast.BoolOp(
                 op=ast.Or(),
