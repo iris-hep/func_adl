@@ -32,7 +32,7 @@ This documentation has four main sections:
    :caption: xAOD FuncADL:
 
    xAOD/getting_setup
-   xAOD/samples
+   xAOD/getting_started
    xAOD/calibrated_collections/index
    xAOD/uncalibrated_collections/index
 
