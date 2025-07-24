@@ -15,5 +15,7 @@ jobs:
       pages: write
       id-token: write
     steps:
+    - name: Install Furo theme
+        run: pip install furo
     - id: deployment
       uses: sphinx-notes/pages@v3
