@@ -33,12 +33,12 @@ Now that we have a datatype setup to make it easier to define samples, we can cr
     from servicex import dataset as servicex_dataset
 
     _samples = {
-        "physlite": sample(
+        "ds_physlite": sample(
             name="physlite",
             ds = servicex_dataset.FileList(["root://eospublic.cern.ch//eos/opendata/atlas/rucio/mc20_13TeV/DAOD_PHYSLITE.37622528._000013.pool.root.1"]),
             codegen="atlasr25"
         ),
-        "phys": sample(
+        "ds_phys": sample(
             name="phys",
             ds = servicex_dataset.Rucio("mc23_13p6TeV:mc23_13p6TeV.902046.QBHPy8EG_QBH_photonjet_n1_Mth7000.deriv.DAOD_PHYS.e8557_e8528_s4162_s4114_r14622_r14663_p6026_tid37642334_00"),
             codegen="atlasr25",
@@ -49,8 +49,8 @@ Then we can map these to variables to make it easier to reference them in our an
 
 .. code-block:: python
 
-    physlite = _samples["physlite"]
-    phys = _samples["phys"]
+    ds_physlite = _samples["ds_physlite"]
+    ds_phys = _samples["ds_phys"]
 
 Getting Data from ServiceX
 ----------------------------
