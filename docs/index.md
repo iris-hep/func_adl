@@ -22,7 +22,7 @@ This documentation has four main sections:
 :caption: Generic FuncADL
 
 generic/query_operators
-generic/example_query
+generic/query_structure
 
 ```
 

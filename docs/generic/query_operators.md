@@ -1,17 +1,14 @@
-Query Operators
-=====================
+# Query Operators
 
 FuncADL is inspired by functional languages and C#’s LINQ. If you would like to learn more about LINQ, you can refer to the following resources:
 
 https://en.wikipedia.org/wiki/Language_Integrated_Query
 
-FuncADL Query Operators
------------------------------
+## FuncADL Query Operators
 
 In order to use FuncADL it is helpful to understand the query operators that are available. 
 
-SelectMany
-^^^^^^^^^^^^^
+### SelectMany
 
 Given the current stream's object type is an array or other iterable, return
 the items in this objects type, one-by-one. This has the effect of flattening a nested array.
@@ -24,11 +21,10 @@ the items in this objects type, one-by-one. This has the effect of flattening a 
         A new ObjectStream of the type of the elements.
 
     Notes:
-        - The function can be a ``lambda``, the name of a one-line function, a string that
-            contains a lambda definition, or a python ``ast`` of type ``ast.Lambda``.
+        - The function can be a `lambda`, the name of a one-line function, a string that
+            contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
-Select
-^^^^^^^^^^^^^
+### Select
 
 Apply a transformation function to each object in the stream, yielding a new type of
 object. There is a one-to-one correspondence between the input objects and output objects.
@@ -43,13 +39,11 @@ object. There is a one-to-one correspondence between the input objects and outpu
     - The function can be a `lambda`, the name of a one-line function, a string that
     contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
-SelectMany vs Select
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+### SelectMany vs Select
 
 To help illustrate the difference between `Select` and `SelectMany`, consider the following example:
 
-Where
-^^^^^^^^^^^^^
+### Where
 
 Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
@@ -63,8 +57,7 @@ Filter the object stream, allowing only items for which `filter` evaluates as tr
     - The function can be a `lambda`, the name of a one-line function, a string that
     contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
-MetaData
-^^^^^^^^^^^^^
+### MetaData
 
 Add metadata to the current object stream. The metadata is an arbitrary set of string key-value pairs. The backend must be able to properly interpret the metadata.
 
