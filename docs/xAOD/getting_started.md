@@ -1,5 +1,4 @@
-Getting Started with xAOD
-=======================================
+# Getting Started with xAOD
 
 This section of the FuncADL documentation will cover:
 
@@ -14,8 +13,7 @@ This section assumes you have the following prerequisites:
 
 For more information on the ServiceX, see the documentation linked in the navigation bar.
 
-FuncADL xAOD Releases
-----------------------------
+## FuncADL xAOD Releases
 
 Depending on what ATLAS release you are using, you will need to install and import different libraries. The libraries are:
 
@@ -23,8 +21,7 @@ Depending on what ATLAS release you are using, you will need to install and impo
 - ``func_adl_servicex_xaodr22``
 - ``func_adl_servicex_xaodr25``
 
-Other Tools
-----------------------------
+## Other Tools
 
 In the examples we will be building we will be using various other tools. These should be pip installed to follow the examples present:
 
@@ -36,6 +33,8 @@ In the examples we will be building we will be using various other tools. These 
 
 To install the tools, run:
 
-.. code-block:: bash
+```bash
 
    pip install servicex servicex_analysis_utils awkward matplotlib numpy
+
+```

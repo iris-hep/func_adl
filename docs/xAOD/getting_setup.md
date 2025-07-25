@@ -1,16 +1,14 @@
-Setting up for xAOD
-=====================
+# Setting up for xAOD
 
 Now that you have all the important libraries installed we can setup some helpful classes and functions that will make you analysis easier.
 First we will want to setup a datatype for passing samples to the ServiceX frontend.
 
-Setting up Samples
-----------------------------
+## Setting up Samples
 
 When passing samples to the ServiceX frontend, we will want to use a simple data structure that contains the name of the sample, the dataset location, 
 and the codegen to use. This will allow us to easily manage and reference our samples in our analysis.
 
-.. code-block:: python
+```python
 
     from dataclasses import dataclass
     from typing import List, Union
@@ -26,9 +24,11 @@ and the codegen to use. This will allow us to easily manage and reference our sa
         # Codegen
         codegen: str
 
+```
+
 Now that we have a datatype setup to make it easier to define samples, we can create a list of samples that we will use in our analysis:
 
-.. code-block:: python
+```python
 
     from servicex import dataset as servicex_dataset
 
@@ -45,20 +45,23 @@ Now that we have a datatype setup to make it easier to define samples, we can cr
         ),
     }
 
+```
+
 Then we can map these to variables to make it easier to reference them in our analysis:
 
-.. code-block:: python
+``` python
 
     ds_physlite = _samples["ds_physlite"]
     ds_phys = _samples["ds_phys"]
+    
+```
 
-Getting Data from ServiceX
-----------------------------
+## Getting Data from ServiceX
 
 Now that we have defined our samples we can use ServiceX deliver() to get the files from the ServiceX backend. To make it easier later we can define a 
 function that will take a sample and return the data:
 
-.. code-block:: python
+```python
 
     from servicex_analysis_utils import to_awk
     from servicex import deliver
@@ -92,5 +95,7 @@ function that will take a sample and return the data:
 
         # For these examples we are only using one sample, so we return just the array, not the dictionary.
         return data[s.name]
+
+```
 
 A note about this function is that we are using the `servicex_analysis_utils.to_awk` function to convert the files returned from ServiceX into an Awkward Array.
