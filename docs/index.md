@@ -31,8 +31,8 @@ generic/query_structure
 
 xAOD/getting_started
 xAOD/getting_setup
-xAOD/calibrated_collections/index
-xAOD/uncalibrated_collections/index
+xAOD/select
+xAOD/where
 
 ```
 
