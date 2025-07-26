@@ -16,12 +16,6 @@ release = '0.1'
 
 extensions = [
     'myst_parser',
-    'sphinx.ext.mathjax',
-]
-
-myst_enable_extensions = [
-    "dollarmath",
-    "amsmath",
 ]
 
 #templates_path = ['_templates']
