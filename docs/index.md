@@ -31,6 +31,7 @@ generic/query_structure
 
 xAOD/getting_started
 xAOD/getting_setup
+xAOD/calibration
 xAOD/select
 xAOD/where
 
