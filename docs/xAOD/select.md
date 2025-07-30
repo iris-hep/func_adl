@@ -61,9 +61,9 @@ data = get_data(jets_muons_per_event, physlite_ds)
 
 While using a dictionary in the query to store our objects is less complex upfront as when the queries are more complex adding a custom object can simplify code downstream in the analysis. This is emphasized by the need for the naming used in the pt dictionary. In an analysis that requires more field this can become difficult to manage.
 
-## Selecting Moments Using .getAttribute[]()
+## Selecting Moments Using .getAttribute\[\]\(\)
 
-Sometimes it is required to select more than the basic properties of the physics object being looked at. Objects moments can be selected using the .getAttribute[]() function. In order to use this function the data type of the attribute being selected must be specified. These data types need to be important to python like this:
+Sometimes it is required to select more than the basic properties of the physics object being looked at. Objects moments can be selected using the .getAttribute\[\]\(\) function. In order to use this function the data type of the attribute being selected must be specified. These data types need to be important to python like this:
 
 ```python
 from func_adl_servicex_xaodr25 import cpp_float, cpp_vfloat
