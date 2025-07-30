@@ -9,7 +9,7 @@
 project = 'FuncADL'
 copyright = '2025 Institute for Research and Innovation in Software for High Energy Physics (IRIS-HEP)'
 author = 'Institute for Research and Innovation in Software for High Energy Physics (IRIS-HEP)'
-release = '0.1'
+release = '3.5.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
