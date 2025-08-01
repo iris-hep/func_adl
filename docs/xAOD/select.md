@@ -1,6 +1,6 @@
 # Using .Select()
 
-The foundation to building any query is the .Select() function. Without it no data will be returned! The examples on this page are designed showcase all the different uses and quirk of the .Select() function.
+The foundation to building any query is the .Select() function. Without it no data will be returned! The examples on this page are designed showcase all the different uses of the .Select() function.
 
 ## Objects that can be selection
 
@@ -41,7 +41,7 @@ It is useful provide additional context to the general Query Structure page by l
 
 ## Selecting Multiple Physics Objects
 
-Most analyses require more than one physics object to be selected and manipulated. To build a query with multiple objects addition structure is required in the code. In this example a dictionary will be used, but for more complex examples custom objects could the right answer. This example will select pt for both jets and muons.
+Most analyses require more than one physics object to be selected and manipulated. To build a query with multiple objects additional structure is required in the code. In this example a dictionary will be used but for more complex examples custom objects could the right answer. This example will select pt for both jets and muons.
 
 ```python
 query = FuncADLQueryPHYSLITE()
@@ -63,15 +63,23 @@ While using a dictionary in the query to store our objects is less complex upfro
 
 ## Selecting Moments Using .getAttribute\[\]\(\)
 
-Sometimes it is required to select more than the basic properties of the physics object being looked at. Objects moments can be selected using the .getAttribute\[\]\(\) function. In order to use this function the data type of the attribute being selected must be specified. These data types need to be important to python like this:
+Sometimes it is required to select more than the basic properties of the physics object being looked at. An object's moments can be selected using the .getAttribute\[\]\(\) function. In order to use this function the data type of the attribute being selected must be specified. These data types need to be important to python like this:
 
 ```python
 from func_adl_servicex_xaodr25 import cpp_float, cpp_vfloat
 ```
 
-Here the type float and vector float are imported. There are many types that can be imported the list is:
+Here the type `float` and `vector<float>` are imported. There are many types that can be imported:
 
-TODO: Add type list here.
+```python
+cpp_float
+cpp_int
+cpp_double
+cpp_string
+cpp_vfloat
+cpp_vint
+cpp_vdouble
+```
 
 Once the type of the attribute is imported then the attribute can be selected as shown in the example below:
 
@@ -86,10 +94,6 @@ jets_per_event = (query
 
 moments_data = get_data(jets_per_event, sx_f)
 ```
-
-Understanding what attributes are able to be selected from data is important and there is a utilities library associated with ServiceX that allows for this to be done easily.
-
-TODO: Add serviceX utils example here, if you can do this with it right now.
 
 ## Selecting from Specific Container
 
@@ -107,18 +111,21 @@ jets_per_event = (query
 data = get_data(jets_per_event, physlite_ds)
 ```
 
-The list of all default configurations are listed on the calibration page. Please see here for specific defaults.
+The list of all default configurations are listed on the calibration page along with more examples on how to the configuration of your query. Please see here for specific defaults.
 
 ## Using .SelectMany()
 
-As described in the query_operators section, .SelectMany() is similar to .Select(), but is flattens the data. This allows for simplifying some queries. For example getting jet constituents. Here is an example using .Select():
+As described in the query_operators section, .SelectMany() is similar to .Select(), but is flattens the data. This allows for the simplification of some queries. For example getting jet constituents. Here is an example of using `.SelectMany()`
+
+<!-- TODO: Add an example of to get the jet constituents without .SelectMany() to show how they differ. -->
 
 ```python
-TODO: Example using only select for jet constituents
-```
+query = FuncADLQueryPHYS()
+jets_con_per_event = (query
+                    .SelectMany(lambda e: e.Jets())
+                    .SelectMany(lambda j: j.getConstituents())
+                    .Select(lambda tc: tc.pt())
+                 )
 
-A query that provides the same result, but is much simpler can be created using .SelectMany():
-
-```python
-TODO: Add example for select many of jet constituents
+topo_clusters = get_data(jets_con_per_event,sx_f)
 ```
