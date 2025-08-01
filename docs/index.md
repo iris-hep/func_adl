@@ -1,9 +1,9 @@
 # FuncADL documentation
 
-FuncADL is an Analysis Description Language inspired by functional languages and C#’s LINQ. Sophisticated filtering and computation of new values can be expressed by chaining a series of simple functions.  
-Because FuncADL is written independently of the underlying data libraries, it can run on many data formats.
+FuncADL is an Analysis Description Language inspired by functional languages and C#’s LINQ. Sophisticated filtering and computation of new values can be expressed by chaining a series of simple functions. Because FuncADL is written independently of the underlying data libraries, it can run on many data formats.
 
 This documentation provides an overview of the core concepts behind FuncADL, including its generic query operators and the philosophy of functional analysis.  
+
 It then explores the two primary backends supported by FuncADL:
 
 - **xAOD FuncADL:** Enables analysis of ATLAS xAOD data formats, providing tools for working with both calibrated and uncalibrated collections.
