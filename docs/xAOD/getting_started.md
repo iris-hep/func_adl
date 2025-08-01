@@ -2,10 +2,10 @@
 
 This section of the FuncADL documentation will cover:
 
-- How to set up your environment to access xAOD data in ATLAS
+- How to set up the environment to access xAOD data in ATLAS
 - Access methods, attributes, and decorations on the xAOD Event Data Model (EDM).
 
-This section assumes you have the following prerequisites:
+This section assumes you have the following prerequisite knowledge:
 
 - Access to an ATLAS xAOD ServiceX backend
 - Basic knowledge of the ATLAS xAOD data model (at the level of a standard ATLAS tutorial)
@@ -15,7 +15,7 @@ For more information on the ServiceX, see the documentation linked in the naviga
 
 ## FuncADL xAOD Releases
 
-Depending on what ATLAS release you are using, you will need to install and import different libraries. The libraries are:
+Depending on what ATLAS release is needed, it is required to install and import different libraries. The libraries are:
 
 - ``func_adl_servicex_xaodr21``
 - ``func_adl_servicex_xaodr22``
@@ -23,7 +23,7 @@ Depending on what ATLAS release you are using, you will need to install and impo
 
 ## Other Tools
 
-In the examples we will be building we will be using various other tools. These should be pip installed to follow the examples present:
+The examples in this documentation will use various tools. These should be pip installed to follow the examples present:
 
 - ``servicex``
 - ``servicex_analysis_utils``

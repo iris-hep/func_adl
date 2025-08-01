@@ -1,12 +1,10 @@
 # Setting up for xAOD
 
-Now that you have all the important libraries installed we can setup some helpful classes and functions that will make you analysis easier.
-First we will want to setup a datatype for passing samples to the ServiceX frontend.
+To use FuncADL with Atlas xAOD the dataset/sample being used needs to be specified. To do this it is useful to setup a datatype for passing samples to the ServiceX frontend.
 
 ## Setting up Samples
 
-When passing samples to the ServiceX frontend, we will want to use a simple data structure that contains the name of the sample, the dataset location, 
-and the codegen to use. This will allow us to easily manage and reference our samples in our analysis.
+When passing samples to the ServiceX frontend, it is convenient to use a simple data structure that contains the name of the sample, the dataset location, and the codegen to use. This will allows easy management and reference of the samples in the analysis.
 
 ```python
 
@@ -26,7 +24,7 @@ and the codegen to use. This will allow us to easily manage and reference our sa
 
 ```
 
-Now that we have a datatype setup to make it easier to define samples, we can create a list of samples that we will use in our analysis:
+Now that a datatype is setup to make it easier to define samples a list of samples that is used in the analysis can be created:
 
 ```python
 
@@ -47,7 +45,7 @@ Now that we have a datatype setup to make it easier to define samples, we can cr
 
 ```
 
-Then we can map these to variables to make it easier to reference them in our analysis:
+Then these can be mapped to variables to make it easier to reference them later:
 
 ``` python
 
@@ -58,8 +56,7 @@ Then we can map these to variables to make it easier to reference them in our an
 
 ## Getting Data from ServiceX
 
-Now that we have defined our samples we can use ServiceX deliver() to get the files from the ServiceX backend. To make it easier later we can define a 
-function that will take a sample and return the data:
+Not that the samples have been defined they are ready to be passed to ServiceX deliver() to get the files from the ServiceX backend. To make it easier later a function can be defined that will take a sample and return the data:
 
 ```python
 
@@ -98,4 +95,4 @@ function that will take a sample and return the data:
 
 ```
 
-A note about this function is that we are using the `servicex_analysis_utils.to_awk` function to convert the files returned from ServiceX into an Awkward Array.
+This example uses the to_awk() function from `servicex_analysis_utils.to_awk`. This takes the list of files that are from ServiceX and returns an awkward array.

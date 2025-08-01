@@ -4,6 +4,8 @@ FuncADL is inspired by functional languages and C#’s LINQ. If you would like t
 
 https://en.wikipedia.org/wiki/Language_Integrated_Query
 
+<!-- TODO: Add full API reference page for the functions in FuncADL -->
+
 ## FuncADL Query Operators
 
 In order to use FuncADL it is helpful to understand the query operators that are available. 
@@ -39,9 +41,11 @@ object. There is a one-to-one correspondence between the input objects and outpu
     - The function can be a `lambda`, the name of a one-line function, a string that
     contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
-### SelectMany vs Select
+<!-- ### SelectMany vs Select
 
-To help illustrate the difference between `Select` and `SelectMany`, consider the following example:
+    TODO: Add an example that illustrates the difference between these two things.
+
+To help illustrate the difference between `Select` and `SelectMany`, consider the following example: -->
 
 ### Where
 
