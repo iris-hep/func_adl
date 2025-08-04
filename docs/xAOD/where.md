@@ -19,21 +19,22 @@ The following code applies the pt cut before any of the values are selected from
 
 .. testcode::
 
-   query = FuncADLQueryPHYSLITE()
-   jets_per_event = (query
-       .Select(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 30)))
-       .Select(lambda jets: {
-           'pt': jets.Select(lambda j: j.pt() / 1000),
-           'eta': jets.Select(lambda j: j.eta()),
-           'phi': jets.Select(lambda j: j.phi()),
-       }))
+    query = FuncADLQueryPHYSLITE()
+    jets_per_event = (query
+        .Select(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 30)))
+        .Select(lambda jets: {
+            'pt': jets.Select(lambda j: j.pt() / 1000),
+            'eta': jets.Select(lambda j: j.eta()),
+            'phi': jets.Select(lambda j: j.phi()),
+        })
+    )
 
 .. testcode::
-   :hide:
+    :hide:
 
-   with contextlib.redirect_stdout(io.StringIO()):
-       data = get_data(jets_per_event, physlite_ds)
-   assert data.pt[0][0] == 99.4445390625
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.pt[0][0] == 99.4445390625
 
 ```
 
@@ -41,18 +42,32 @@ The following code applies the pt cut before any of the values are selected from
 
 The following code applies the pt cut only before the pt .Select() operator. This means that only pt values will be from only cut jets, eta and phi will be from all jets.
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                    .Select(lambda e: e.Jets())
-                    .Select(lambda jets: {
-                            'pt': jets.Where(lambda j: (j.pt() / 1000 > 30)).Select(lambda j: j.pt() / 1000),
-                            'eta': jets.Select(lambda j: j.eta()),
-                            'phi': jets.Select(lambda j: j.phi()),
-                        })
-                 )
+```{eval-rst}
+.. testsetup::
 
-jet_data_only_pt = get_data(jets_per_event, physlite_ds)
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE
+   import io, contextlib
+
+.. testcode::
+
+    query = FuncADLQueryPHYSLITE()
+    jets_per_event = (query
+        .Select(lambda e: e.Jets())
+        .Select(lambda jets: {
+                'pt': jets.Where(lambda j: (j.pt() / 1000 > 30)).Select(lambda j: j.pt() / 1000),
+                'eta': jets.Select(lambda j: j.eta()),
+                'phi': jets.Select(lambda j: j.phi()),
+        })
+    )
+
+.. testcode::
+    :hide:
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.pt[0][0] == 99.4445390625
+
 ```
 
 ### Comparison
@@ -78,6 +93,33 @@ The eta plot above shows that the Jet eta does not match using both methods. The
 ## Skimming Events
 
 To skim events .Where() needs to be used on the event level of the query. This takes place before the first .Select(). To demonstrate this this example builds a query where jets with pt > 30 GeV are selected from events where there is at least 1 jet of 100 GeV.
+
+```{eval-rst}
+.. testsetup::
+
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE
+   import io, contextlib
+
+.. testcode::
+
+    query = FuncADLQueryPHYSLITE()
+    jets_per_event = (query
+        .Where(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 100)).Count() > 0)
+        .Select(lambda e: e.Jets())
+        .Select(lambda jets: {
+                'pt': jets.Where(lambda j: j.pt() / 1000 > 30).Select(lambda j: j.pt() / 1000),
+        })
+    )
+
+.. testcode::
+    :hide:
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.pt[0][0] == 118.1983671875
+
+```
 
 ```python
 query = FuncADLQueryPHYSLITE()
