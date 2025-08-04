@@ -21,18 +21,32 @@ e.CaloClusters()
 
 The simplest query that can be made is selecting a single object and getting multiple values from it. The following example selects pt, eta, and phi from all jets in the dataset. It also converts jet pt to GeV by dividing by 1000. A useful feature of FuncADL is that it can do simple mathematic operations right in the query!
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                    .Select(lambda e: e.Jets()) # This select loops over the events and specifies which containers we pass to the next loop
-                    .Select(lambda jets: { # This select opens those containers
-                            'pt': jets.Select(lambda j: j.pt() / 1000), # This .Select() loops over each object in the container and provides to data specified.
-                            'eta': jets.Select(lambda j: j.eta()),
-                            'phi': jets.Select(lambda j: j.phi()),
-                        })
-                 )
+```{eval-rst}
+.. testsetup::
 
-jet_data = get_data(jets_per_event, physlite_ds)
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE
+   import io, contextlib
+
+.. testcode::
+
+    query = FuncADLQueryPHYSLITE()
+    jets_per_event = (query
+        .Select(lambda e: e.Jets()) # This select loops over the events and specifies which containers we pass to the next loop
+        .Select(lambda jets: { # This select opens those containers
+                'pt': jets.Select(lambda j: j.pt() / 1000), # This .Select() loops over each object in the container and provides to data specified.
+                'eta': jets.Select(lambda j: j.eta()),
+                'phi': jets.Select(lambda j: j.phi()),
+        })
+    )
+
+.. testcode::
+    :hide:
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.pt[0][0] == 99.4445390625
+
 ```
 
 ### Query Structure
@@ -43,20 +57,34 @@ It is useful provide additional context to the general Query Structure page by l
 
 Most analyses require more than one physics object to be selected and manipulated. To build a query with multiple objects additional structure is required in the code. In this example a dictionary will be used but for more complex examples custom objects could the right answer. This example will select pt for both jets and muons.
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_muons_per_event = (query
-                    .Select(lambda e: {
-                        'jets': e.Jets(),
-                        'muons': e.Muons(),
-                    })
-                    .Select(lambda po: {
-                        'jet_pt': po['jets'].Select(lambda j: j.pt() / 1000),
-                        'muon_pt': po['muons'].Select(lambda m: m.pt() / 1000),
-                    })
-                 )
+```{eval-rst}
+.. testsetup::
 
-data = get_data(jets_muons_per_event, physlite_ds)
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE
+   import io, contextlib
+
+.. testcode::
+
+    query = FuncADLQueryPHYSLITE()
+    jets_muons_per_event = (query
+        .Select(lambda e: {
+            'jets': e.Jets(),
+            'muons': e.Muons(),
+        })
+        .Select(lambda po: {
+            'jet_pt': po['jets'].Select(lambda j: j.pt() / 1000),
+            'muon_pt': po['muons'].Select(lambda m: m.pt() / 1000),
+        })
+    )
+
+.. testcode::
+    :hide:
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.pt[0][0] == 99.4445390625
+
 ```
 
 While using a dictionary in the query to store our objects is less complex upfront as when the queries are more complex adding a custom object can simplify code downstream in the analysis. This is emphasized by the need for the naming used in the pt dictionary. In an analysis that requires more field this can become difficult to manage.
@@ -83,32 +111,58 @@ cpp_vdouble
 
 Once the type of the attribute is imported then the attribute can be selected as shown in the example below:
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                  .Select(lambda e: e.Jets())
-                  .Select(lambda jets: {
-                        'emf': jets.Select(lambda j: j.getAttribute[cpp_float]('EMFrac')),
-                     })
-                 )
 
-moments_data = get_data(jets_per_event, sx_f)
+```{eval-rst}
+.. testsetup::
+
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE, cpp_float
+   import io, contextlib
+
+.. testcode::
+
+    query = FuncADLQueryPHYSLITE()
+    jets_per_event = (query
+        .Select(lambda e: e.Jets())
+        .Select(lambda jets: {
+            'emf': jets.Select(lambda j: j.getAttribute[cpp_float]('EMFrac')),
+        })
+    )
+
+.. testcode::
+    :hide:
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.emf[0][0] == 0.93529713
 ```
 
 ## Selecting from Specific Container
 
 By default FuncADL selects the most common containers used for each object. This however is not always what is needed when building a query. To specify a container outside of the default container a query can be created like this:
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                    .Select(lambda e: e.Jets("AntiKt10UFOCSSKJets")
-                    .Select(lambda jets: {
-                            'pt': jets.Select(lambda j: j.pt() / 1000),
-                        })
-                 )
+```{eval-rst}
+.. testsetup::
 
-data = get_data(jets_per_event, physlite_ds)
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE, cpp_float
+   import io, contextlib
+
+.. testcode::
+
+    jets_per_event = (query
+        .Select(lambda e: e.Jets("AntiKt10UFOCSSKJets"))
+        .Select(lambda jets: {
+                'pt': jets.Select(lambda j: j.pt() / 1000),
+        })
+    )
+
+.. testcode::
+    :hide:
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        data = get_data(jets_per_event, physlite_ds)
+    assert data.pt[0][0] == 84.1220703125
 ```
 
 The list of all default configurations are listed on the calibration page along with more examples on how to the configuration of your query. Please see here for specific defaults.
@@ -118,14 +172,15 @@ The list of all default configurations are listed on the calibration page along 
 As described in the query_operators section, .SelectMany() is similar to .Select(), but is flattens the data. This allows for the simplification of some queries. For example getting jet constituents. Here is an example of using `.SelectMany()`
 
 <!-- TODO: Add an example of to get the jet constituents without .SelectMany() to show how they differ. -->
+<!-- TODO: Find the right dataset to turn this example into something that can be tested. -->
 
 ```python
 query = FuncADLQueryPHYS()
 jets_con_per_event = (query
-                    .SelectMany(lambda e: e.Jets())
-                    .SelectMany(lambda j: j.getConstituents())
-                    .Select(lambda tc: tc.pt())
-                 )
+    .SelectMany(lambda e: e.Jets())
+    .SelectMany(lambda j: j.getConstituents())
+    .Select(lambda tc: tc.pt())
+)
 
 topo_clusters = get_data(jets_con_per_event,sx_f)
 ```
