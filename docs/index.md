@@ -36,11 +36,3 @@ xAOD/select
 xAOD/where
 
 ```
-
-```{toctree}
-:caption: Uproot FuncADL
-
-uproot/configuration
-uproot/samples
-
-```
