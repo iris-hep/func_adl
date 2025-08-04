@@ -88,7 +88,7 @@ query = FuncADLQueryPHYSLITE()
 jets_per_event = (query
                   .Select(lambda e: e.Jets())
                   .Select(lambda jets: {
-                        'emf': jets..Select(lambda j: j.getAttribute[cpp_float]('EMFrac')),
+                        'emf': jets.Select(lambda j: j.getAttribute[cpp_float]('EMFrac')),
                      })
                  )
 
