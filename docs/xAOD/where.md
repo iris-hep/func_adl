@@ -10,18 +10,31 @@ There are multiple places .Where() can be called to apply a pt cut. The location
 
 The following code applies the pt cut before any of the values are selected from the jets. This means that pt, eta, and phi all will only be from jets with 30 GeV or higher.
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                    .Select(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 30)))
-                    .Select(lambda jets: {
-                            'pt': jets.Select(lambda j: j.pt() / 1000),
-                            'eta': jets.Select(lambda j: j.eta()),
-                            'phi': jets.Select(lambda j: j.phi()),
-                        })
-                 )
+```{eval-rst}
+.. testsetup::
 
-jet_data_all = get_data(jets_per_event, physlite_ds)
+   from config import get_data, physlite_ds
+   from func_adl_servicex_xaodr25 import FuncADLQueryPHYSLITE
+   import io, contextlib
+
+.. testcode::
+
+   query = FuncADLQueryPHYSLITE()
+   jets_per_event = (query
+       .Select(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 30)))
+       .Select(lambda jets: {
+           'pt': jets.Select(lambda j: j.pt() / 1000),
+           'eta': jets.Select(lambda j: j.eta()),
+           'phi': jets.Select(lambda j: j.phi()),
+       }))
+
+.. testcode::
+   :hide:
+
+   with contextlib.redirect_stdout(io.StringIO()):
+       data = get_data(jets_per_event, physlite_ds)
+   assert data.pt[0][0] == 99.4445390625
+
 ```
 
 ### Apply only to pt Values
