@@ -2,7 +2,7 @@
 
 FuncADL is inspired by functional languages and C#’s LINQ. If you would like to learn more about LINQ, you can refer to the following resources:
 
-https://en.wikipedia.org/wiki/Language_Integrated_Query
+[See Wikipedia](https://en.wikipedia.org/wiki/Language_Integrated_Query)
 
 <!-- TODO: Add full API reference page for the functions in FuncADL -->
 
@@ -12,12 +12,12 @@ In order to use FuncADL it is helpful to understand the query operators that are
 
 ### SelectMany
 
-Given the current stream's object type is an array or other iterable, return
-the items in this objects type, one-by-one. This has the effect of flattening a nested array.
+Given that the current stream's object type is an array or other iterable, 
+this both transforms and flattens it by returning the contained items one by one.
 
     Arguments:
         func:   The function that should be applied to this stream's objects to return
-            an iterable. Each item of the iterable is now the stream of objects.
+            a transformed object. Each item of the iterable is now the stream of objects.
 
     Returns:
         A new ObjectStream of the type of the elements.
@@ -32,14 +32,14 @@ Apply a transformation function to each object in the stream, yielding a new typ
 object. There is a one-to-one correspondence between the input objects and output objects.
 
     Arguments:
-    f: selection function (lambda)
+        f: selection function (lambda)
 
     Returns:
-    A new ObjectStream of the transformed elements.
+        A new ObjectStream of the transformed elements.
 
     Notes:
-    - The function can be a `lambda`, the name of a one-line function, a string that
-    contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+        - The function can be a `lambda`, the name of a one-line function, a string that
+        contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
 <!-- ### SelectMany vs Select
 
@@ -52,14 +52,16 @@ To help illustrate the difference between `Select` and `SelectMany`, consider th
 Filter the object stream, allowing only items for which `filter` evaluates as true through.
 
     Arguments:
-    filter: A filter lambda that returns True/False.
+        filter: A filter lambda that returns True/False.
 
     Returns:
-    A new ObjectStream that contains only elements that pass the filter function
+        A new ObjectStream that contains only elements that pass the filter function
 
     Notes:
-    - The function can be a `lambda`, the name of a one-line function, a string that
-    contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+        - The function can be a `lambda`, the name of a one-line function, a string that
+        contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+
+## Advanced Query Operators
 
 ### MetaData
 
@@ -67,3 +69,18 @@ Add metadata to the current object stream. The metadata is an arbitrary set of s
 
     Returns:
         ObjectStream: A new stream, of the same type and contents, but with metadata added.
+
+### QMetaData
+
+Add query metadata to the current object stream.
+
+- Metadata is never transmitted to any back end
+- Metadata is per-query, not per sample.
+
+Warnings are issued if metadata is overwriting metadata.
+
+    Args:
+        metadata (Dict[str, Any]): Metadata to be used later
+
+    Returns:
+        ObjectStream[T]: The object stream, with metadata attached
