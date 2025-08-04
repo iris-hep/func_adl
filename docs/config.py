@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List, Union
 
 import awkward as ak
 import numpy as np
@@ -27,7 +26,8 @@ _samples = {
         name="sx_f",
         ds=servicex_dataset.FileList(
             [
-                "root://eospublic.cern.ch//eos/opendata/atlas/rucio/mc20_13TeV/DAOD_PHYSLITE.37622528._000013.pool.root.1"
+                "root://eospublic.cern.ch//eos/opendata/atlas/rucio/"
+                "mc20_13TeV/DAOD_PHYSLITE.37622528._000013.pool.root.1"
             ]
         ),
         codegen="atlasr25",
@@ -35,20 +35,23 @@ _samples = {
     "sx_f_phys": sample(
         name="sx_f_phys",
         ds=servicex_dataset.Rucio(
-            "mc23_13p6TeV:mc23_13p6TeV.902046.QBHPy8EG_QBH_photonjet_n1_Mth7000.deriv.DAOD_PHYS.e8557_e8528_s4162_s4114_r14622_r14663_p6026_tid37642334_00"
+            "mc23_13p6TeV:mc23_13p6TeV.902046.QBHPy8EG_QBH_photonjet_n1_"
+            "Mth7000.deriv.DAOD_PHYS.e8557_e8528_s4162_s4114_r14622_r14663_p6026_tid37642334_00"
         ),
         codegen="atlasr25",
     ),
     "sx_f_zee": sample(
         name="sx_f_zee",
         ds=servicex_dataset.Rucio(
-            "mc16_13TeV:mc16_13TeV.361022.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2W.deriv.DAOD_EXOT15.e3668_s3126_r9364_r9315_p4696"
+            "mc16_13TeV:mc16_13TeV.361022.Pythia8EvtGen_A14NNPDF23LO_"
+            "jetjet_JZ2W.deriv.DAOD_EXOT15.e3668_s3126_r9364_r9315_p4696"
         ),
         codegen="atlasr25",
     ),
 }
 
-# sx_f means servicex-frontend documentation dataset, need to find a better name for this, will update after I learn how to find ds names
+# sx_f means servicex-frontend documentation dataset, need to
+# find a better name for this, will update after I learn how to find ds names
 physlite_ds = _samples["sx_f"]
 phys_ds = _samples["sx_f_phys"]
 sx_f_zee = _samples["sx_f_zee"]
@@ -83,7 +86,8 @@ def get_data(query, s: sample):
     # Get the data into an akward array
     data = to_awk(files)
 
-    # For these examples we are only using one sample, so we return just the array, not the dictionary.
+    # For these examples we are only using one sample,
+    #  so we return just the array, not the dictionary.
     return data[s.name]
 
 
