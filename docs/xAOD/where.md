@@ -92,7 +92,7 @@ jets_per_event = (query
 jet_data = get_data(jets_per_event, physlite_ds)
 ```
 
-Comparing the results from the first set of examples it can see that there are much less jets, which is expected from looking at less events.
+Comparing the results from the first set of examples, it can be seen that there are much fewer jets, which is expected from looking at fewer events.
 
 ```{figure} img/where_3.png
 :alt: Plot of Jet pt, Shows event skimming

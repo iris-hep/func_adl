@@ -2,7 +2,7 @@
 
 The foundation to building any query is the .Select() function. Without it no data will be returned! The examples on this page are designed showcase all the different uses of the .Select() function.
 
-## Objects that can be selection
+## Objects that can be selected
 
 In any query many physics objects can be selected. Here is a list of many, but not all of them:
 

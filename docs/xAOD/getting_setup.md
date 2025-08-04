@@ -56,7 +56,7 @@ Then these can be mapped to variables to make it easier to reference them later:
 
 ## Getting Data from ServiceX
 
-Not that the samples have been defined they are ready to be passed to ServiceX deliver() to get the files from the ServiceX backend. To make it easier later a function can be defined that will take a sample and return the data:
+Now that the samples have been defined they are ready to be passed to ServiceX deliver() to get the files from the ServiceX backend. To make it easier later a function can be defined that will take a sample and return the data:
 
 ```python
 
@@ -87,7 +87,7 @@ Not that the samples have been defined they are ready to be passed to ServiceX d
         files = deliver(spec, servicex_name="servicex-release-prod")
         assert files is not None, "No files returned from deliver! Internal error"
 
-        # Get the data into an akward array
+        # Get the data into an awkward array
         data = to_awk(files)
 
         # For these examples we are only using one sample, so we return just the array, not the dictionary.

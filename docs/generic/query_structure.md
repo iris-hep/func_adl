@@ -1,6 +1,6 @@
 # Query Structure
 
-The information on this page is agnostic to the specific file structure and backend that you are using. To keep agnostic, the arguments used when the operators are called will be barebones. To understand fully how to implement these ideas datatype specific examples can be found later in the documentaion.
+The information on this page is agnostic to the specific file structure and backend that you are using. To keep agnostic, the arguments used when the operators are called will be barebones. To understand fully how to implement these ideas datatype specific examples can be found later in the documentation.
 
 When building a query it is helpful to think of .Select() as adding a loop to the query and .Where() as adding an if statement to the query. Each .Select() allows for accessing data another level deeper into the data structure.
 
