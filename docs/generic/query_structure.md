@@ -12,7 +12,7 @@ query = placeholderQueryFunction()
 
 To learn what the functions are that will replace placeholderQueryFunction() please see the xAOD or Uproot parts of the documentation.
 
-With this query object any operator can be applied to make modifications at the event level. For example, if a .Select() is added the events in the data are now accessable.
+With this query object any operator can be applied to make modifications at the event level. For example, if a .Select() is added the events in the data are now accessible.
 
 ```python
 query.Select(lambda event: {})

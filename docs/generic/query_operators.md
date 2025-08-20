@@ -16,8 +16,7 @@ Given that the current stream's object type is an array or other iterable,
 this both transforms and flattens it by returning the contained items one by one.
 
     Arguments:
-        func:   The function that should be applied to this stream's objects to return
-            a transformed object. Each item of the iterable is now the stream of objects.
+        func:   The function that should be applied to each of this stream's objects, returning a transformed object. Each item of the iterable is now the stream of objects.
 
     Returns:
         A new ObjectStream of the type of the elements.
