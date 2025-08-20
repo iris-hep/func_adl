@@ -4,11 +4,13 @@ This section explains the concepts without assuming a specific backend or file s
 
 When building a query it is helpful to think of .Select() as adding a loop to the query and .Where() as adding an if statement to the query. Each .Select() allows for accessing data another level deeper into the data structure.
 
-The query object is what the FuncADL operators build upon when called and an udpated version of the query gets return back ready for another operator or to be passed to ServiceX. The query object is created using a function specific to the datatype, but it generically looks like this:
+The query object is what the FuncADL operators build upon when called and an updated version of the query gets return back ready for another operator or to be passed to ServiceX. The query object is created using a function specific to the datatype, but it generically looks like this:
 
 ```python
 query = placeholderQueryFunction()
 ```
+
+To learn what the functions are that will replace placeholderQueryFunction() please see the xAOD or Uproot parts of the documentation.
 
 With this query object any operator can be applied to make modifications at the event level. For example, if a .Select() is added the events in the data are now accessable.
 
@@ -16,7 +18,7 @@ With this query object any operator can be applied to make modifications at the 
 query.Select(lambda event: {})
 ```
 
-Effectivley this is a loop over all the events in the data. The .Where() operator can also be applied on the event level, this will skim events based on the critera specified. Here is an example of selecting all events after a cut is made.
+Effectively this is a loop over all the events in the data. The .Where() operator can also be applied on the event level, this will skim events based on the criteria specified. Here is an example of selecting all events after a cut is made.
 
 ```python
 query.Where(lambda event: {}).Select(lambda event: {})
