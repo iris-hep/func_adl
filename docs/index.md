@@ -34,5 +34,6 @@ xAOD/getting_setup
 xAOD/calibration
 xAOD/select
 xAOD/where
+xAOD/metadata
 
 ```
