@@ -296,7 +296,10 @@ def test_required_arg():
     with pytest.raises(ValueError) as e:
         remap_by_types(objs, {"e": Event}, s)
 
-    assert "bank_required" in str(e)
+    message = str(e.value)
+    assert "Argument 'bank_required' is required" in message
+    assert "Event.Jets_req" in message
+    assert "e.Jets_req()" in message
 
 
 def test_collection_with_default():
