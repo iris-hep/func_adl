@@ -25,7 +25,7 @@ jobs:
           echo "__version__=\"$version\"" > func_adl/version.txt
           hatch build
       - name: Publish a func_adl to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.3.1
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           user: __token__
           password: ${{ secrets.pypi_password_func_adl }}
