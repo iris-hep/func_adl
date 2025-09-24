@@ -353,7 +353,12 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
                     a = as_literal(param.default)
                     arg_array.append(a)
                 else:
-                    raise ValueError(f"Argument {param.name} is required")
+                    func_name: str = getattr(func, "__qualname__", repr(func))
+                    call_source: str = ast.unparse(call)
+                    raise ValueError(
+                        f"Argument '{param.name}' is required when calling "
+                        f"{func_name} via '{call_source}'"
+                    )
 
     # If we are making a change to the call, put in a reference back to the
     # original call.
