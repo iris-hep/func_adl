@@ -11,8 +11,6 @@ Some values in an analysis are unable to be acquired using the functional style 
 - An example of this is when the value needed is returned by reference/pointer and not returned by the function. This is a time that the .MetaData() operator is needed.
 - Adding a selection tool
 
-TODO: Get more instances from Gordon
-
 ## Adding a Basic C++ Function
 
 This example demonstrates how to use FuncADL to inject and run C++ code by implementing a simple function that squares input values. Although squaring a number can easily be done with the .Select() operator, this example uses it to illustrate the basic process of executing C++ code within FuncADL.
