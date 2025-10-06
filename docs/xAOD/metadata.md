@@ -4,6 +4,15 @@ Some analyses require more complex logic than what .Select() and .Where() can pr
 
 This section is not intended for a first pass through the documentation.
 
+## When to Use .MetaData()
+
+Some values in an analysis are unable to be acquired using the functional style of FuncADL. Some of these cases are as follows:
+
+- An example of this is when the value needed is returned by reference/pointer and not returned by the function. This is a time that the .MetaData() operator is needed.
+- A specific tool is needed to be used
+
+TODO: Get more instances from Gordon
+
 ## Adding a Basic C++ Function
 
 This example demonstrates how to use FuncADL to inject and run C++ code by implementing a simple function that squares input values. Although squaring a number can easily be done with the .Select() operator, this example uses it to illustrate the basic process of executing C++ code within FuncADL.
@@ -89,9 +98,11 @@ type: 1410 * {
 
 ## Adding a C++ Function from an Analysis
 
-In the analysis used in this example track summary values are required. The summaryValue() function returns a true/false if the value exists, and provides the value by passing it by reference to an argument. This is not a functional design pattern because the value that is wanted is not returned directly by the function. This means that it cannot be used by FuncADL directly and a C++ function using .MetaData() is required to get this information.
+The code implemented using the .MetaData() operator is analysis-specific and is therefore not detailed in this documentation. However, an example from an analysis can illustrate how similar code might be structured.
 
-The code that is used to setup the function that will be called in the FuncADL query is as follows:
+In the example analysis, track summary values are required. The summaryValue() function returns a boolean indicating whether the value exists and provides the value via a reference argument. Because the function does not return the value directly, it cannot be used by FuncADL on its own. A C++ function using .MetaData() is required to access this information.
+
+The following code sets up the function that will be called in the FuncADL query:
 
 ```python
 
@@ -144,15 +155,14 @@ def track_summary_value(trk: TrackParticle_v1, value_selector: xAOD.SummaryType)
         trk (TrackParticle_v1): The track we are operating against
         value_selector (int): Which value (pixel holes, etc.)
 
-    NOTE: This is a dummy function that injects C++ into the object stream to do the
-    actual work.
-
     Returns:
         int: Value requested or -1 if not available.
     """
     ...
 
 ```
+
+The code to then run this example is as follows:
 
 ```python
 track_values = (query
