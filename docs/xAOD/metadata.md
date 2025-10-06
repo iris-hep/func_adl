@@ -1,29 +1,53 @@
 # Using .MetaData()
 
-Some analyses require more complex code to be run than what .Select() and .Where() are able to generate. This is where the .MetaData() operator comes in. Through the use of .MetaData() C++ code can directly be injected into the query and run as if the C++ was written in the EventLoop code.
+Some analyses require more complex logic than what .Select() and .Where() can provide. In such cases, the .MetaData() operator allows C++ code to be injected directly into the query, executing as if it were written natively in the EventLoop code. Use of .MetaData() and the following examples is recommended only when specific analysis tasks cannot be achieved with .Select() or .Where(). 
+
+This section is not intended for a first pass through the documentation.
 
 ## Adding a Basic C++ Function
 
-To best illustrate the basics of how to run C++ code with FuncADL this example demonstrates how to implement a C++ function that squares the input values. While squaring a number is something can can be easily done using the .Select() operator, it is a simply operation used to showcase the process of running C++ code.
+This example demonstrates how to use FuncADL to inject and run C++ code by implementing a simple function that squares input values. Although squaring a number can easily be done with the .Select() operator, this example uses it to illustrate the basic process of executing C++ code within FuncADL.
 
-To use this functionality there are some additional imports:
+The added complexity of injecting a C++ function arises because the .MetaData() operator cannot be used inline like .Select() or .Where() in previous examples. This is due to the need to create a callable function that can be invoked within the FuncADL query. Showing the end result can help illustrate this process:
+
+```python
+squared_numbers = (query
+    .Select(lambda e: {
+        "squared": square(2)
+    })
+)
+```
+
+In this example, the function square() must exist in Python for the query to run without errors. To achieve this, a dummy function is created and linked to a function containing the .MetaData() operator. Both functions must be set up before creating the query.
+
+The first step to setting up these functions is that several additional imports are required, and a type is defined for later use.
 
 ```python
 import ast
 from func_adl import ObjectStream, func_adl_callable
 from typing import Tuple, TypeVar
-```
-
-A new type is also created to be used in the creation of the functions:
-
-```python
 T = TypeVar("T")
 ```
 
-Now the function that setups the C++ code can be setup. Here the function square_callback is create. The reason for the _callback in the function name will be explained later.
+Next, the dummy function is created and linked to the function that injects .MetaData() into the query using the `@func_adl_callable` decorator. The `square_callable` function will be defined in the following part.
 
 ```python
+@func_adl_callable(square_callable)
+def square(x: int) -> int:
+    """Take an input number and return that value squared.
 
+    Args:
+        x (int): The value to square
+
+    Returns:
+        int: result of squaring the input
+    """
+    ...
+```
+
+Next, a function is defined to add the C++ function to the query. This must be done inside a function rather than directly in the query so that Python can recognize the previously defined function. The function takes the ObjectStream to which .MetaData() is applied, along with an ast.Call object, which is passed through unchanged.
+
+```python
 def square_callable(
     s: ObjectStream[T], a: ast.Call
 ) -> Tuple[ObjectStream[T], ast.Call]:
@@ -41,45 +65,15 @@ def square_callable(
         }
     )
     return new_s, a
-
 ```
 
-First the function is defined with the arguments of type ObjectStream[T] and ast.Call. The ObjectStream is what is being passed into and out of each of the operators that are called. The ast.Call is used to facilitate the callable that is setup shortly.
+Next, the .MetaData() operator is called on the current ObjectStream, adding the metadata to the stream. In this case, the metadata being added is the C++ function. When adding a C++ function, the function name, code body, arguments, and return type must be specified.
 
-Next, the .MetaData() operator is called on the current ObjectStream. This adds the metadata into the ObjectStream. Here the metadata being added is the C++ Function. When adding a C++ function the function name, code body, arguments, and return types must be defined.
+In this example, the input integer is named x. It is multiplied by itself to produce the squared value, which is assigned to the variable result. The metadata sets result as the output, with a return type of int. It is essential that the dummy function and the C++ function share the same name; otherwise, an error will occur.
 
-Here the input integer is called x. Then x is multiplied with itself to square it, the int result is assigned that value. In the metadata result is setup to be the result variable. The return type is also set to an int.
+With these two functions defined, the target query can now be executed.
 
-To setup to actually be able to call this function in the FuncADL query a dummy function that is call must be setup.
-
-```python
-    @func_adl_callable(square_callable)
-    def square(x: int) -> int:
-        """Take an input number and return that value squared.
-
-        Args:
-            x (int): The value to square
-
-        NOTE: This is a dummy function that injects C++ into the object stream to do the
-        actual work.
-
-        Returns:
-            int: result of squaring the input
-        """
-        ...
-```
-
-Here the @func_adl_callable decorator is used to link the dummy function to the callable function that is setup above. This dummy function is what is called in the FuncADL query.
-
-```python
-squared_numbers = (query
-    .Select(lambda e: {
-        "squared": square(2)
-    })
-)
-```
-
-This simple query will square the number 2 for each event. While not a very useful call it does a good job of simply showing how to call the function that was setup. This call gives this result for a dataset with 1410 events:
+This call gives this result for a dataset with 1410 events:
 
 ```python
 [{squared: 4},
@@ -92,8 +86,6 @@ type: 1410 * {
     squared: int32
 }
 ```
-
-Note: It is important that the dummy function and the C++ function share the same name or there will be an error.
 
 ## Adding a C++ Function from an Analysis
 
