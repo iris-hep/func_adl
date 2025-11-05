@@ -84,7 +84,7 @@ Now that the samples have been defined they are ready to be passed to ServiceX d
         }
 
         # Get the files from the ServiceX backend
-        files = deliver(spec, servicex_name="servicex-release-prod")
+        files = deliver(spec, servicex_name="servicex")
         assert files is not None, "No files returned from deliver! Internal error"
 
         # Get the data into an awkward array
