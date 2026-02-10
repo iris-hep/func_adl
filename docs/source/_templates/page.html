@@ -1,0 +1,48 @@
+{% extends "!page.html" %}
+{% block body %}
+<script>
+
+    fetch('https://raw.githubusercontent.com/ssl-hep/ServiceX_Website/main/site/navbar.html')
+        .then(res => res.text())
+        .then(html => {
+            document.getElementById('navbar').innerHTML = html;
+
+            // Initialize dropdown hover behavior after navbar is loaded
+            const dropdowns = document.querySelectorAll('.navbar .dropdown');
+
+            dropdowns.forEach(dropdown => {
+                dropdown.addEventListener('mouseenter', function () {
+                    const toggle = this.querySelector('.dropdown-toggle');
+                    const menu = this.querySelector('.dropdown-menu');
+
+                    if (window.innerWidth > 992) { // Only on desktop (lg breakpoint)
+                        menu.classList.add('show');
+                        toggle.setAttribute('aria-expanded', 'true');
+                    }
+                });
+
+                dropdown.addEventListener('mouseleave', function () {
+                    const toggle = this.querySelector('.dropdown-toggle');
+                    const menu = this.querySelector('.dropdown-menu');
+
+                    menu.classList.remove('show');
+                    toggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+
+            // Still initialize Bootstrap for click/mobile
+            if (typeof bootstrap !== 'undefined') {
+                var dropdownElementList = document.querySelectorAll('.dropdown-toggle');
+                var dropdownList = Array.from(dropdownElementList).map(function (dropdownToggleEl) {
+                    return new bootstrap.Dropdown(dropdownToggleEl);
+                });
+            }
+        });
+</script>
+
+<div id="navbar"></div>
+
+<div id="wrapper">
+    {{ super() }}
+</div>
+{% endblock %}
