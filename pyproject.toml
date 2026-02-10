@@ -51,6 +51,16 @@ test = [
     "hatch",
 ]
 
+docs = [
+    "sphinx",
+    "furo",
+    "myst_parser",
+    "awkward",
+    "numpy",
+    "servicex_analysis_utils",
+    "servicex",
+]
+
 [project.scripts]
 # No scripts defined in setup.py
 
