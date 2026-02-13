@@ -421,3 +421,24 @@ def test_resolve_any_generator_from_literal_capture():
 
     a_expected = ast.parse("lambda e: (1 > 1 and not (2 > 1)) or (3 > 1 and not (4 > 1))")
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_nested_captured_function_in_list_comp():
+    bib_triggers = [(1, 2), (3, 4)]
+
+    def tmt_match_object(trig: int, jet: int) -> bool:
+        return trig > jet
+
+    def is_trigger_jet(jet: int) -> bool:
+        return any(tmt_match_object(trig, jet) for trig, _ in bib_triggers)
+
+    a = parse_as_ast(lambda e: {"jet_is_trigger": [is_trigger_jet(j) for j in e.jets]})
+    a_resolved = resolve_syntatic_sugar(a)
+    all_name_ids = {n.id for n in ast.walk(a_resolved) if isinstance(n, ast.Name)}
+
+    # Ensure helper calls and captures are fully inlined, so type inference
+    # does not see unresolved names like `any`, `trig`, `_`, or `bib_triggers`.
+    assert "any" not in all_name_ids
+    assert "trig" not in all_name_ids
+    assert "_" not in all_name_ids
+    assert "bib_triggers" not in all_name_ids
