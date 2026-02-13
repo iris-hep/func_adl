@@ -25,7 +25,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
         def _resolve_any_all_call(
             self, call_node: ast.Call, source_node: ast.AST
         ) -> Optional[ast.AST]:
-            """Translate ``any``/``all`` on list or tuple literals into boolean operations."""
+            """Translate `any`/`all` on list or tuple literals into boolean operations."""
 
             func_name: Optional[str] = None
             if isinstance(call_node.func, ast.Name):
