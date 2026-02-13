@@ -30,6 +30,13 @@ def test_resolve_generator():
     assert ast.dump(ast.parse("jets.Select(lambda j: j.pt())")) == ast.dump(a_new)
 
 
+def test_resolve_literal_list_comp():
+    a = ast.parse("[i for i in [1, 2, 3]]")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(ast.parse("[1, 2, 3]")) == ast.dump(a_new)
+
+
 def test_resolve_listcomp_if():
     a = ast.parse("[j.pt() for j in jets if j.pt() > 100]")
     a_new = resolve_syntatic_sugar(a)
@@ -62,11 +69,11 @@ def test_resolve_2generator():
 
 def test_resolve_bad_iterator():
     a = ast.parse("[j.pt() for idx,j in enumerate(jets)]")
+    a_new = resolve_syntatic_sugar(a)
 
-    with pytest.raises(ValueError) as e:
-        resolve_syntatic_sugar(a)
-
-    assert "name" in str(e)
+    # Unsupported lowering (tuple target with non-literal source) should be
+    # preserved for downstream processing.
+    assert ast.unparse(a_new) == ast.unparse(a)
 
 
 def test_resolve_no_async():
@@ -396,3 +403,21 @@ def test_resolve_any_requires_literal_sequence():
 
     with pytest.raises(ValueError, match="list or tuple literal"):
         resolve_syntatic_sugar(a)
+
+
+def test_resolve_any_generator_from_literal_capture():
+    bib_triggers = [(1, 2), (3, 4)]
+
+    def tdt_chain_fired(chain: int) -> bool:
+        return chain > 1
+
+    a = parse_as_ast(
+        lambda e: any(
+            tdt_chain_fired(incl_trig) and not tdt_chain_fired(bib_trig)
+            for incl_trig, bib_trig in bib_triggers
+        )
+    )
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("lambda e: (1 > 1 and not (2 > 1)) or (3 > 1 and not (4 > 1))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)

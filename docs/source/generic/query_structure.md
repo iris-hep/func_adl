@@ -34,3 +34,15 @@ This can be continued to deeper and deeper levels within the data. For example, 
 
 Due to the flexible nature of FuncADL there are multiple ways to structure each query. Throughout this documentation different structures will be used for the sake of demonstration.
 
+## Syntatic Sugar
+
+Inside query lambdas, FuncADL also rewrites a few common Python forms into query-friendly
+expressions:
+
+- List/generator comprehensions over streams are lowered to `.Where(...)`/`.Select(...)`.
+- List comprehensions over literal iterables are expanded directly. For example,
+  `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
+- `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
+
+This means patterns like `any(expr(x) for x in LITERAL_LIST)` can be simplified in-query,
+as long as the iterable is a literal (or a captured literal constant).
