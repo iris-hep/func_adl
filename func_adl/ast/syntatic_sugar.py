@@ -22,6 +22,42 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
     """
 
     class syntax_transformer(ast.NodeTransformer):
+        def _resolve_any_all_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate `any`/`all` on list or tuple literals into boolean operations."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value in [any, all]:
+                    func_name = call_node.func.value.__name__
+
+            if func_name not in ["any", "all"]:
+                return None
+
+            if len(call_node.args) != 1 or len(call_node.keywords) > 0:
+                raise ValueError(
+                    f"{func_name} requires exactly one positional argument"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            sequence = call_node.args[0]
+            if not isinstance(sequence, (ast.List, ast.Tuple)):
+                raise ValueError(
+                    f"{func_name} requires a list or tuple literal argument"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            if len(sequence.elts) == 0:
+                return ast.Constant(value=(func_name == "all"))
+
+            return ast.BoolOp(
+                op=ast.Or() if func_name == "any" else ast.And(),
+                values=sequence.elts,
+            )
+
         def resolve_generator(
             self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
@@ -254,6 +290,11 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     arg_names = [n for n in a.func.value._fields]
 
                     return self.convert_call_to_dict(a, node, arg_names)
+
+            if isinstance(a, ast.Call):
+                any_all_call = self._resolve_any_all_call(a, node)
+                if any_all_call is not None:
+                    return any_all_call
             return a
 
     return syntax_transformer().visit(a)

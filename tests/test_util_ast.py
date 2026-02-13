@@ -626,7 +626,6 @@ def test_lambda_method_differentiation():
 #         def do_it(self, x: Callable):
 #             found.append(parse_as_ast(x))
 #             return self
-
 #     # fmt: off
 #     my_obj().do_it(lambda x: x + 1) \
 #         .do_it(lambda x: x * 2)
