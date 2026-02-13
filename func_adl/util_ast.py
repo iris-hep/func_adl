@@ -274,7 +274,16 @@ class _rewrite_captured_vars(ast.NodeTransformer):
 
         def safe_parse_wrapper(x: Callable) -> Optional[ast.Lambda]:
             try:
-                return _parse_source_for_lambda(x, None)
+                # If the captured value is itself a function, parse it and then
+                # resolve *its* captures as well so nested helper functions can
+                # be fully reduced before type inference.
+                parsed_lambda = _parse_source_for_lambda(x, None)
+                if parsed_lambda is None:
+                    return None
+
+                nested_call_args = global_getclosurevars(x)
+                rewritten_lambda = _rewrite_captured_vars(nested_call_args).visit(parsed_lambda)
+                return cast(ast.Lambda, _resolve_called_lambdas().visit(rewritten_lambda))
             except Exception:
                 return None
 

@@ -2,9 +2,10 @@ import ast
 import copy
 import inspect
 from dataclasses import is_dataclass
-from typing import Any, List, Optional
+from itertools import product
+from typing import Any, Dict, List, Optional, Tuple
 
-from func_adl.util_ast import lambda_build
+from func_adl.util_ast import as_ast, lambda_build
 
 
 def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
@@ -22,6 +23,118 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
     """
 
     class syntax_transformer(ast.NodeTransformer):
+        def _extract_literal_iterable(self, node: ast.AST) -> Optional[List[ast.expr]]:
+            """Return literal iterable elements if ``node`` is a list/tuple literal."""
+
+            if isinstance(node, (ast.List, ast.Tuple)):
+                return list(node.elts)
+            if isinstance(node, ast.Constant) and isinstance(node.value, (list, tuple)):
+                return [as_ast(v) for v in node.value]
+            return None
+
+        def _target_bindings(
+            self, target: ast.AST, value: ast.AST, node: ast.AST
+        ) -> Optional[Dict[str, ast.expr]]:
+            """Build loop-variable bindings for a single comprehension iteration.
+
+            Returns ``None`` when destructuring cannot be applied for this ``value``.
+            """
+
+            if isinstance(target, ast.Name):
+                return {target.id: copy.deepcopy(value)}
+
+            if isinstance(target, (ast.Tuple, ast.List)):
+                if not isinstance(value, (ast.Tuple, ast.List)):
+                    return None
+                if len(target.elts) != len(value.elts):
+                    raise ValueError(
+                        "Comprehension unpacking length mismatch" f" - {ast.unparse(node)}"
+                    )
+
+                bindings: Dict[str, ast.expr] = {}
+                for target_elt, value_elt in zip(target.elts, value.elts):
+                    child_bindings = self._target_bindings(target_elt, value_elt, node)
+                    if child_bindings is None:
+                        return None
+                    bindings.update(child_bindings)
+                return bindings
+
+            raise ValueError(
+                f"Comprehension variable must be a name or tuple/list, but found {target}"
+                f" - {ast.unparse(node)}"
+            )
+
+        def _substitute_names(self, expr: ast.expr, bindings: Dict[str, ast.expr]) -> ast.expr:
+            class _name_replacer(ast.NodeTransformer):
+                def __init__(self, loop_bindings: Dict[str, ast.expr]):
+                    self._loop_bindings = loop_bindings
+
+                def visit_Name(self, replace_node: ast.Name) -> Any:
+                    if (
+                        isinstance(replace_node.ctx, ast.Load)
+                        and replace_node.id in self._loop_bindings
+                    ):
+                        return copy.deepcopy(self._loop_bindings[replace_node.id])
+                    return replace_node
+
+            return _name_replacer(bindings).visit(copy.deepcopy(expr))
+
+        def _inline_literal_comprehension(
+            self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
+        ) -> Optional[List[ast.expr]]:
+            """Expand comprehensions over literal iterables into literal expressions."""
+
+            literal_values: List[List[Tuple[Dict[str, ast.expr], List[ast.expr]]]] = []
+            for generator in generators:
+                if generator.is_async:
+                    raise ValueError(f"Comprehension can't be async - {ast.unparse(node)}.")
+
+                iter_values = self._extract_literal_iterable(generator.iter)
+                if iter_values is None:
+                    return None
+
+                generator_values: List[Tuple[Dict[str, ast.expr], List[ast.expr]]] = []
+                for iter_value in iter_values:
+                    bindings = self._target_bindings(generator.target, iter_value, node)
+                    if bindings is None:
+                        return None
+                    generator_values.append((bindings, generator.ifs))
+                literal_values.append(generator_values)
+
+            if len(literal_values) == 0:
+                return []
+
+            expanded: List[ast.expr] = []
+            for combo in product(*literal_values):
+                merged_bindings: Dict[str, ast.expr] = {}
+                all_ifs: List[ast.expr] = []
+                for c_bindings, c_ifs in combo:
+                    merged_bindings.update(c_bindings)
+                    all_ifs.extend(c_ifs)
+
+                include_item = True
+                for if_clause in all_ifs:
+                    rendered_if = self.visit(self._substitute_names(if_clause, merged_bindings))
+                    if not isinstance(rendered_if, ast.Constant) or not isinstance(
+                        rendered_if.value, bool
+                    ):
+                        raise ValueError(
+                            "Literal comprehension if-clause must resolve to a bool constant"
+                            f" - {ast.unparse(if_clause)}"
+                        )
+                    if not rendered_if.value:
+                        include_item = False
+                        break
+
+                if include_item:
+                    rendered_item = self.visit(
+                        self._substitute_names(lambda_body, merged_bindings)
+                    )
+                    assert isinstance(rendered_item, ast.expr)
+                    expanded.append(rendered_item)
+
+            return expanded
+
         def _resolve_any_all_call(
             self, call_node: ast.Call, source_node: ast.AST
         ) -> Optional[ast.AST]:
@@ -44,6 +157,8 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 )
 
             sequence = call_node.args[0]
+            if isinstance(sequence, (ast.ListComp, ast.GeneratorExp)):
+                return None
             if not isinstance(sequence, (ast.List, ast.Tuple)):
                 raise ValueError(
                     f"{func_name} requires a list or tuple literal argument"
@@ -77,10 +192,8 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             for c in reversed(generators):
                 target = c.target
                 if not isinstance(target, ast.Name):
-                    raise ValueError(
-                        f"Comprehension variable must be a name, but found {target}"
-                        f" - {ast.unparse(node)}."
-                    )
+                    # Keep original comprehension for unsupported lowering cases.
+                    return node
                 if c.is_async:
                     raise ValueError(f"Comprehension can't be async - {ast.unparse(node)}.")
                 source_collection = c.iter
@@ -110,6 +223,10 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             a = self.generic_visit(node)
 
             if isinstance(a, ast.ListComp):
+                if (
+                    expanded := self._inline_literal_comprehension(a.elt, a.generators, node)
+                ) is not None:
+                    return ast.List(elts=expanded, ctx=ast.Load())
                 a = self.resolve_generator(a.elt, a.generators, node)
 
             return a
@@ -119,6 +236,10 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             a = self.generic_visit(node)
 
             if isinstance(a, ast.GeneratorExp):
+                if (
+                    expanded := self._inline_literal_comprehension(a.elt, a.generators, node)
+                ) is not None:
+                    return ast.List(elts=expanded, ctx=ast.Load())
                 a = self.resolve_generator(a.elt, a.generators, node)
 
             return a
