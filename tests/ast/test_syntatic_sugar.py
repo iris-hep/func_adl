@@ -357,3 +357,42 @@ def test_resolve_dict_star_ifexp_nested():
         .value  # type: ignore
     )
     assert ast.unparse(a_resolved) == ast.unparse(expected)
+
+
+def test_resolve_any_list():
+    a = ast.parse("any([e.pt() > 10, e.eta() < 2.4])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.pt() > 10 or e.eta() < 2.4")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_all_tuple():
+    a = ast.parse("all((e.pt() > 10, e.eta() < 2.4))")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.pt() > 10 and e.eta() < 2.4")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_any_empty_is_false():
+    a = ast.parse("any([])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("False")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_all_empty_is_true():
+    a = ast.parse("all([])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("True")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_any_requires_literal_sequence():
+    a = ast.parse("any(items)")
+
+    with pytest.raises(ValueError, match="list or tuple literal"):
+        resolve_syntatic_sugar(a)
