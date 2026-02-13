@@ -60,6 +60,7 @@ There are several python expressions and idioms that are translated behind your 
 | Data Classes<br>(typed) | `@dataclass`<br>`class my_data:`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 | Named Tuple<br>(typed) | `class my_data(NamedTuple):`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 |List Membership|`p.absPdgId() in [35, 51]`|`p.absPdgId() == 35 or p.absPdgId() == 51`|
+| `any`/`all` | `any(e.pt()>10, abs(e.eta()) < 2.5` | `e.pt() > 10 | abs(e.eta()) < 2.5` |
 
 Note: Everything that goes for a list comprehension also goes for a generator expression.
 
