@@ -65,6 +65,7 @@ There are several python expressions and idioms that are translated behind your 
 | `filter` | `filter(lambda j: j.pt() > 30, jets)` | `jets.Where(lambda j: j.pt() > 30)` |
 | `map` | `map(lambda j: j.pt(), jets)` | `jets.Select(lambda j: j.pt())` |
 | `sum` over comprehension | `sum(j.pt() for j in jets)` | `Sum(jets.Select(lambda j: j.pt()))` |
+| `min`/`max` | `max(j.pt() for j in jets if abs(j.eta()) < 2.4)` | `Max(jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt()))` |
 
 Note: Everything that goes for a list comprehension also goes for a generator expression.
 
@@ -79,6 +80,10 @@ contextual error message so the unsupported expression is easy to identify.
 `sum` with a single list/generator comprehension argument is rewritten to `Sum(...)`
 after the comprehension is lowered to `Select(...)`, e.g.
 `sum(j.pt() for j in jets)` becomes `Sum(jets.Select(lambda j: j.pt()))`.
+
+For `min`/`max`, when the single argument is a list/generator comprehension, FuncADL first
+lowers that comprehension to query operators and then wraps the result in `Min(...)`/`Max(...)`
+so aggregate simplification can process it.
 
 ## Extensibility
 

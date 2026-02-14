@@ -46,9 +46,8 @@ expressions:
 - builtin `filter(func, seq)` and `map(func, seq)` are lowered to
   `seq.Where(func)` and `seq.Select(func)`.
 - `sum` with a single list/generator comprehension argument is lowered to `Sum(Select(...))`.
- - builtin `filter(func, seq)` and `map(func, seq)` are lowered to
-   `seq.Where(func)` and `seq.Select(func)`.
- - `sum` with a single list/generator comprehension argument is lowered to `Sum(Select(...))`.
+- `min`/`max` with a single list/generator-comprehension argument are lowered to
+  `Min(...)`/`Max(...)` after the comprehension itself is lowered.
 
 This means patterns like `any(expr(x) for x in LITERAL_LIST)` can be simplified in-query,
 as long as the iterable is a literal (or a captured literal constant). Likewise,
@@ -57,4 +56,6 @@ written in query lambdas and translated to the corresponding query operators.
 
 Similarly, aggregate expressions such as `sum(j.pt() for j in jets)` are translated into
 query-style aggregate calls (`Sum(jets.Select(lambda j: j.pt()))`) that downstream
-aggregate lowering can process.
+aggregate lowering can process. The same applies to `min`/`max`: expressions like
+`max(expr(x) for x in stream if pred(x))` are rewritten to the aggregate form
+`Max(stream.Where(lambda x: pred(x)).Select(lambda x: expr(x)))`.

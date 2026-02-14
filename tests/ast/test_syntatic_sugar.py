@@ -563,6 +563,36 @@ def test_resolve_any_call_keeps_nested_sum_rewrite():
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
 
 
+def test_resolve_min_generator_to_min_call():
+    a = ast.parse("min(j.pt() for j in e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Min(e.jets.Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_max_list_comprehension_to_max_call():
+    a = ast.parse("max([j.pt() for j in e.jets if j.eta() < 2.4])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Max(e.jets.Where(lambda j: j.eta() < 2.4).Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_min_comprehension_invalid_signature():
+    a = ast.parse("min((j.pt() for j in e.jets), default=0)")
+
+    with pytest.raises(ValueError, match="requires exactly one positional argument"):
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_max_comprehension_invalid_signature_extra_positional():
+    a = ast.parse("max((j.pt() for j in e.jets), 0)")
+
+    with pytest.raises(ValueError, match="requires exactly one positional argument"):
+        resolve_syntatic_sugar(a)
+
+
 def test_resolve_nested_captured_function_in_list_comp():
     bib_triggers = [(1, 2), (3, 4)]
 
