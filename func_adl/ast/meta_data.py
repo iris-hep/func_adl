@@ -1,5 +1,5 @@
 import ast
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from func_adl.ast.func_adl_ast_utils import FuncADLNodeTransformer
 from func_adl.object_stream import ObjectStream
@@ -77,6 +77,62 @@ def remove_empty_metadata(a: ast.AST) -> ast.AST:
                     d = ast.literal_eval(n.args[1])
                     if isinstance(d, dict) and len(d) == 0:
                         return n.args[0]
+            return n
+
+    return _cleaner().visit(a)
+
+
+def remove_duplicate_metadata(a: ast.AST) -> ast.AST:
+    """Returns a new AST with duplicate ``MetaData`` payloads removed.
+
+    Duplicate metadata entries are identified by payload content, independent of dict
+    insertion order. The first metadata payload encountered during traversal is
+    preserved, and subsequent matching payloads are removed.
+
+    Args:
+        a (ast.AST): The AST of the query to clean up.
+
+    Returns:
+        ast.AST: The cleaned up AST.
+    """
+
+    def _payload_to_key(payload: Any) -> Tuple[Any, ...]:
+        """Convert metadata payload to a canonical key.
+
+        The conversion is recursive so semantically identical dictionaries with
+        different key ordering map to the same key.
+        """
+
+        if isinstance(payload, dict):
+            return (
+                "dict",
+                tuple(
+                    sorted((_payload_to_key(k), _payload_to_key(v)) for k, v in payload.items())
+                ),
+            )
+        if isinstance(payload, list):
+            return ("list", tuple(_payload_to_key(v) for v in payload))
+        if isinstance(payload, tuple):
+            return ("tuple", tuple(_payload_to_key(v) for v in payload))
+        if isinstance(payload, set):
+            return ("set", tuple(sorted(_payload_to_key(v) for v in payload)))
+        return ("value", type(payload).__name__, payload)
+
+    class _cleaner(ast.NodeTransformer):
+        def __init__(self) -> None:
+            super().__init__()
+            self._seen_payloads: Set[Tuple[Any, ...]] = set()
+
+        def visit_Call(self, node: ast.Call):
+            n = self.generic_visit(node)
+            assert isinstance(n, ast.Call)
+            if isinstance(n.func, ast.Name) and n.func.id == "MetaData":
+                if len(n.args) == 2:
+                    payload = ast.literal_eval(n.args[1])
+                    payload_key = _payload_to_key(payload)
+                    if payload_key in self._seen_payloads:
+                        return n.args[0]
+                    self._seen_payloads.add(payload_key)
             return n
 
     return _cleaner().visit(a)

@@ -87,6 +87,16 @@ class ObjectStream(Generic[T]):
         """
         return self._q_ast
 
+    def clean_ast(self) -> ast.AST:
+        """Return a cleaned copy of the query AST before execution."""
+        from func_adl.ast.meta_data import (
+            remove_duplicate_metadata,
+            remove_empty_metadata,
+        )
+
+        # Keep metadata cleanup in one place so all execution paths are consistent.
+        return remove_duplicate_metadata(remove_empty_metadata(self._q_ast))
+
     def clone_with_new_ast(self, new_ast: ast.AST, new_type: type[S]) -> ObjectStream[S]:
         clone = copy.copy(self)
         clone._q_ast = new_ast
@@ -428,8 +438,6 @@ class ObjectStream(Generic[T]):
         exe = self._get_executor(executor)
 
         # Run it
-        from func_adl.ast.meta_data import remove_empty_metadata
-
-        return await exe(remove_empty_metadata(self._q_ast), title)
+        return await exe(self.clean_ast(), title)
 
     value = make_sync(value_async)
