@@ -306,6 +306,48 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 keywords=[],
             )
 
+        def _resolve_min_max_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate built-in ``min``/``max`` calls on comprehensions to ``Min``/``Max``."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value in [min, max]:
+                    func_name = call_node.func.value.__name__
+
+            if func_name not in ["min", "max"]:
+                return None
+
+            if not isinstance(source_node, ast.Call):
+                return None
+
+            source_has_comprehension = any(
+                isinstance(arg, (ast.ListComp, ast.GeneratorExp)) for arg in source_node.args
+            )
+            if not source_has_comprehension:
+                return None
+
+            if len(call_node.args) != 1 or len(call_node.keywords) > 0:
+                raise ValueError(
+                    f"{func_name} requires exactly one positional argument when"
+                    f" called with a comprehension - {ast.unparse(source_node)}"
+                )
+
+            if not isinstance(source_node.args[0], (ast.ListComp, ast.GeneratorExp)):
+                raise ValueError(
+                    f"{func_name} comprehension argument must be first"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            return ast.Call(
+                func=ast.Name(id=func_name.capitalize(), ctx=ast.Load()),
+                args=[call_node.args[0]],
+                keywords=[],
+            )
+
         def resolve_generator(
             self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
@@ -557,9 +599,15 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 any_all_call = self._resolve_any_all_call(a, source_node)
                 if any_all_call is not None:
                     return any_all_call
+
                 sum_call = self._resolve_sum_call(a, source_node)
                 if sum_call is not None:
                     return sum_call
+
+                min_max_call = self._resolve_min_max_call(a, source_node)
+                if min_max_call is not None:
+                    return min_max_call
+
             return a
 
     return syntax_transformer().visit(a)
