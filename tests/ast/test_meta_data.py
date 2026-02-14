@@ -5,6 +5,7 @@ from func_adl import EventDataset
 from func_adl.ast.meta_data import (
     extract_metadata,
     lookup_query_metadata,
+    remove_duplicate_metadata,
     remove_empty_metadata,
 )
 
@@ -120,3 +121,27 @@ def test_remove_metadata_no_change_2_levels():
     remove_empty_metadata(orig.query_ast)
 
     assert "MetaData" in ast.dump(orig.query_ast)
+
+
+def test_remove_duplicate_metadata_nested_duplicate_calls():
+    orig = my_event().MetaData({"k": "v"}).MetaData({"k": "v"}).MetaData({"x": "y"})
+
+    r = remove_duplicate_metadata(orig.value())
+
+    assert ast.dump(r).count("MetaData") == 2
+    assert "'k': 'v'" in ast.unparse(r)
+    assert "'x': 'y'" in ast.unparse(r)
+
+
+def test_remove_duplicate_metadata_not_duplicate_payloads_retained():
+    r = remove_duplicate_metadata(my_event().MetaData({"k": "v"}).MetaData({"k": "vv"}).value())
+
+    assert ast.dump(r).count("MetaData") == 2
+
+
+def test_remove_empty_and_duplicate_metadata_together():
+    r = remove_duplicate_metadata(
+        remove_empty_metadata(my_event().MetaData({}).MetaData({}).value())
+    )
+
+    assert "MetaData" not in ast.dump(r)

@@ -258,6 +258,50 @@ def test_metadata():
     assert isinstance(r, ast.AST)
 
 
+def test_metadata_duplicate_removed_in_value_async():
+    r = my_event().MetaData({"one": "two"}).MetaData({"one": "two"}).Select("lambda e: e").value()
+
+    assert isinstance(r, ast.AST)
+    assert ast.dump(r).count("MetaData") == 1
+
+
+def test_metadata_duplicate_removed_from_type_replacement_and_user_metadata():
+    r = my_event_with_type().MetaData({"hi": "there"}).SelectMany(lambda e: e.Jets("jets")).value()
+
+    assert isinstance(r, ast.AST)
+    assert ast.dump(r).count("MetaData") == 1
+
+
+def test_metadata_non_duplicate_payloads_retained_in_value_async():
+    r = (
+        my_event()
+        .MetaData({"one": "two"})
+        .MetaData({"three": "four"})
+        .Select("lambda e: e")
+        .value()
+    )
+
+    assert isinstance(r, ast.AST)
+    assert ast.dump(r).count("MetaData") == 2
+
+
+def test_clean_ast_removes_empty_and_duplicate_metadata():
+    stream = my_event().MetaData({}).MetaData({"one": "two"}).MetaData({"one": "two"})
+
+    cleaned = stream.clean_ast()
+
+    assert isinstance(cleaned, ast.AST)
+    assert ast.dump(cleaned).count("MetaData") == 1
+
+
+def test_clean_ast_does_not_mutate_original_ast():
+    stream = my_event().MetaData({"one": "two"}).MetaData({"one": "two"})
+
+    _ = stream.clean_ast()
+
+    assert ast.dump(stream.query_ast).count("MetaData") == 2
+
+
 def test_query_metadata():
     r = (
         my_event()
