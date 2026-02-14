@@ -101,37 +101,6 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 f" - {ast.unparse(node)}"
             )
 
-        def _target_bindings_from_value(
-            self, target: ast.AST, value: ast.expr, node: ast.AST
-        ) -> Dict[str, ast.expr]:
-            """Build bindings for comprehension targets, using indexing for non-literals."""
-
-            # Reuse literal destructuring where possible to preserve exact tuple/list nodes.
-            literal_bindings = self._target_bindings(target, value, node)
-            if literal_bindings is not None:
-                return literal_bindings
-
-            if isinstance(target, ast.Name):
-                return {target.id: copy.deepcopy(value)}
-
-            if isinstance(target, (ast.Tuple, ast.List)):
-                bindings: Dict[str, ast.expr] = {}
-                for index, target_elt in enumerate(target.elts):
-                    element_value = ast.Subscript(
-                        value=copy.deepcopy(value),
-                        slice=ast.Constant(value=index),
-                        ctx=ast.Load(),
-                    )
-                    bindings.update(
-                        self._target_bindings_from_value(target_elt, element_value, node)
-                    )
-                return bindings
-
-            raise ValueError(
-                f"Comprehension variable must be a name or tuple/list, but found {target}"
-                f" - {ast.unparse(node)}"
-            )
-
         def _substitute_names(self, expr: ast.expr, bindings: Dict[str, ast.expr]) -> ast.expr:
             class _name_replacer(ast.NodeTransformer):
                 def __init__(self, loop_bindings: Dict[str, ast.expr]):
