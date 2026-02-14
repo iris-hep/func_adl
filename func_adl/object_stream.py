@@ -87,6 +87,16 @@ class ObjectStream(Generic[T]):
         """
         return self._q_ast
 
+    def clean_ast(self) -> ast.AST:
+        """Return a cleaned copy of the query AST before execution."""
+        from func_adl.ast.meta_data import (
+            remove_duplicate_metadata,
+            remove_empty_metadata,
+        )
+
+        # Keep metadata cleanup in one place so all execution paths are consistent.
+        return remove_duplicate_metadata(remove_empty_metadata(self._q_ast))
+
     def clone_with_new_ast(self, new_ast: ast.AST, new_type: type[S]) -> ObjectStream[S]:
         clone = copy.copy(self)
         clone._q_ast = new_ast
@@ -395,13 +405,6 @@ class ObjectStream(Generic[T]):
 
         # Extract the executor from this reference.
         return getattr(node, executor_attr_name)
-
-    def clean_ast(self) -> ast.AST:
-        """Return a cleaned copy of the query AST before execution."""
-        from func_adl.ast.meta_data import remove_duplicate_metadata, remove_empty_metadata
-
-        # Keep metadata cleanup in one place so all execution paths are consistent.
-        return remove_duplicate_metadata(remove_empty_metadata(self._q_ast))
 
     async def value_async(
         self,
