@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
 import ast
+from abc import ABC
 from typing import Any, Optional, Type, TypeVar
 
-from .object_stream import ObjectStream, executor_attr_name
+from .object_stream import ObjectStream
 from .util_ast import function_call
 
 T = TypeVar("T")
@@ -15,7 +15,7 @@ class EventDataset(ObjectStream[T], ABC):
     should never be created on its own.
     """
 
-    def __init__(self, item_type: Type = Any):
+    def __init__(self, item_type: Type = Any):  # type: ignore
         """
         Should not be called directly. Make sure to initialize this ctor
         or tracking information will be lost.
@@ -23,10 +23,6 @@ class EventDataset(ObjectStream[T], ABC):
 
         # Create the base AST node.
         ed_ast = function_call("EventDataset", [])
-
-        # Safely store a reference to our executor in the AST in an attribute not used by the
-        # the native Python ast module.
-        setattr(ed_ast, executor_attr_name, self.execute_result_async)
 
         # Safely store a reference to this object
         setattr(ed_ast, "_eds_object", self)
@@ -39,14 +35,6 @@ class EventDataset(ObjectStream[T], ABC):
 
     def __str__(self):
         return self.__class__.__name__
-
-    @abstractmethod
-    async def execute_result_async(self, a: ast.AST, title: Optional[str] = None) -> Any:
-        """
-        Override in your sub-class. The infrastructure will call this to render the result
-        "locally", or as requested by the AST.
-        """
-        pass  # pragma: no cover
 
 
 def find_EventDataset(a: ast.AST) -> ast.Call:

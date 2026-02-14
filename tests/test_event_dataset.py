@@ -3,14 +3,7 @@ from typing import Any, cast
 
 import pytest
 
-from func_adl import EventDataset, find_EventDataset
-from func_adl.object_stream import ObjectStream
-
-
-def test_cannot_create():
-    with pytest.raises(Exception):
-        # This should cause an abstract method error
-        EventDataset()  # type: ignore
+from func_adl import EventDataset, ObjectStream, find_EventDataset
 
 
 class my_event(EventDataset):

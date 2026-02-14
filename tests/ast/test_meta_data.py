@@ -98,12 +98,12 @@ def test_query_metadata_updated():
 
 
 def test_remove_empty_metadata_empty():
-    r = remove_empty_metadata(my_event().MetaData({}).value())
+    r = remove_empty_metadata(my_event().MetaData({}).query_ast)
     assert "MetaData" not in ast.dump(r)
 
 
 def test_remove_empty_metadata_not_empty():
-    r = remove_empty_metadata(my_event().MetaData({"hi": "there"}).value())
+    r = remove_empty_metadata(my_event().MetaData({"hi": "there"}).query_ast)
     assert "MetaData" in ast.dump(r)
 
 
@@ -126,7 +126,7 @@ def test_remove_metadata_no_change_2_levels():
 def test_remove_duplicate_metadata_nested_duplicate_calls():
     orig = my_event().MetaData({"k": "v"}).MetaData({"k": "v"}).MetaData({"x": "y"})
 
-    r = remove_duplicate_metadata(orig.value())
+    r = remove_duplicate_metadata(orig.query_ast)
 
     assert ast.dump(r).count("MetaData") == 2
     assert "'k': 'v'" in ast.unparse(r)
@@ -134,14 +134,14 @@ def test_remove_duplicate_metadata_nested_duplicate_calls():
 
 
 def test_remove_duplicate_metadata_not_duplicate_payloads_retained():
-    r = remove_duplicate_metadata(my_event().MetaData({"k": "v"}).MetaData({"k": "vv"}).value())
+    r = remove_duplicate_metadata(my_event().MetaData({"k": "v"}).MetaData({"k": "vv"}).query_ast)
 
     assert ast.dump(r).count("MetaData") == 2
 
 
 def test_remove_empty_and_duplicate_metadata_together():
     r = remove_duplicate_metadata(
-        remove_empty_metadata(my_event().MetaData({}).MetaData({}).value())
+        remove_empty_metadata(my_event().MetaData({}).MetaData({}).query_ast)
     )
 
     assert "MetaData" not in ast.dump(r)
