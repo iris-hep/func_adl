@@ -539,6 +539,30 @@ def test_resolve_any_all_generator_empty_sequence_semantics():
     assert ast.unparse(a_all_resolved) == ast.unparse(a_all_expected)
 
 
+def test_resolve_sum_generator_to_query_sum_call():
+    a = ast.parse("sum(j.pt() for j in jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Sum(jets.Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_sum_list_comprehension_to_query_sum_call():
+    a = ast.parse("sum([j.pt() for j in jets])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Sum(jets.Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_any_call_keeps_nested_sum_rewrite():
+    a = ast.parse("any([sum(j.pt() for j in jets) > 0, e.met() > 20])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Sum(jets.Select(lambda j: j.pt())) > 0 or e.met() > 20")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
 def test_resolve_nested_captured_function_in_list_comp():
     bib_triggers = [(1, 2), (3, 4)]
 

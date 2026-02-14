@@ -64,6 +64,7 @@ There are several python expressions and idioms that are translated behind your 
 | `any`/`all` | `any([e.pt() > 10, abs(e.eta()) < 2.5])` | `e.pt() > 10 or abs(e.eta()) < 2.5` |
 | `filter` | `filter(lambda j: j.pt() > 30, jets)` | `jets.Where(lambda j: j.pt() > 30)` |
 | `map` | `map(lambda j: j.pt(), jets)` | `jets.Select(lambda j: j.pt())` |
+| `sum` over comprehension | `sum(j.pt() for j in jets)` | `Sum(jets.Select(lambda j: j.pt()))` |
 
 Note: Everything that goes for a list comprehension also goes for a generator expression.
 
@@ -75,6 +76,9 @@ For `filter`/`map`, only the builtin two-argument form is supported in syntatic 
 `filter(func, seq)` and `map(func, seq)`. Keyword arguments are rejected with a
 contextual error message so the unsupported expression is easy to identify.
 
+`sum` with a single list/generator comprehension argument is rewritten to `Sum(...)`
+after the comprehension is lowered to `Select(...)`, e.g.
+`sum(j.pt() for j in jets)` becomes `Sum(jets.Select(lambda j: j.pt()))`.
 
 ## Extensibility
 

@@ -45,8 +45,16 @@ expressions:
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
 - builtin `filter(func, seq)` and `map(func, seq)` are lowered to
   `seq.Where(func)` and `seq.Select(func)`.
+- `sum` with a single list/generator comprehension argument is lowered to `Sum(Select(...))`.
+ - builtin `filter(func, seq)` and `map(func, seq)` are lowered to
+   `seq.Where(func)` and `seq.Select(func)`.
+ - `sum` with a single list/generator comprehension argument is lowered to `Sum(Select(...))`.
 
 This means patterns like `any(expr(x) for x in LITERAL_LIST)` can be simplified in-query,
 as long as the iterable is a literal (or a captured literal constant). Likewise,
 `filter(lambda j: j.pt() > 30, jets)` and `map(lambda j: j.pt(), jets)` can be
 written in query lambdas and translated to the corresponding query operators.
+
+Similarly, aggregate expressions such as `sum(j.pt() for j in jets)` are translated into
+query-style aggregate calls (`Sum(jets.Select(lambda j: j.pt()))`) that downstream
+aggregate lowering can process.
