@@ -90,13 +90,38 @@ def test_resolve_3generator_list_comp_flattened_shape():
     ) == ast.dump(a_new)
 
 
-def test_resolve_bad_iterator():
-    a = ast.parse("[j.pt() for idx,j in enumerate(jets)]")
+def test_resolve_tuple_target():
+    a = ast.parse("[a+b for a,b in pairs]")
     a_new = resolve_syntatic_sugar(a)
 
-    # Unsupported lowering (tuple target with non-literal source) should be
-    # preserved for downstream processing.
-    assert ast.unparse(a_new) == ast.unparse(a)
+    assert ast.dump(
+        ast.parse("pairs.Select(lambda __fa_tmp_0: __fa_tmp_0[0] + __fa_tmp_0[1])")
+    ) == ast.dump(a_new)
+
+
+def test_resolve_tuple_target_nested_with_if():
+    a = ast.parse("[a + c for (a, (b, c)) in triples if b > 0 if c < 10]")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse(
+            "triples.Where(lambda __fa_tmp_0: __fa_tmp_0[1][0] > 0)"
+            ".Where(lambda __fa_tmp_0: __fa_tmp_0[1][1] < 10)"
+            ".Select(lambda __fa_tmp_0: __fa_tmp_0[0] + __fa_tmp_0[1][1])"
+        )
+    ) == ast.dump(a_new)
+
+
+def test_resolve_tuple_target_from_enumerate_with_if():
+    a = ast.parse("[idx + j.pt() for idx, j in enumerate(jets) if idx > 0]")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse(
+            "enumerate(jets).Where(lambda __fa_tmp_0: __fa_tmp_0[0] > 0)"
+            ".Select(lambda __fa_tmp_0: __fa_tmp_0[0] + __fa_tmp_0[1].pt())"
+        )
+    ) == ast.dump(a_new)
 
 
 def test_resolve_no_async():

@@ -58,6 +58,7 @@ There are several python expressions and idioms that are translated behind your 
 |List Comprehension | `[j.pt() for j in jets]` | `jets.Select(lambda j: j.pt())` |
 |List Comprehension | `[j.pt() for j in jets if abs(j.eta()) < 2.4]` | `jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt())` |
 |Multi-generator comprehension|`[j.pt() + e.pt() for j in jets for e in electrons]`|`jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt() + e.pt()))`|
+|Destructuring List Comprehension|`[a+b for a,b in pairs]`|`pairs.Select(lambda tmp: tmp[0] + tmp[1])`|
 |Literal List Comprehension|`[i for i in [1, 2, 3]]`|`[1, 2, 3]`|
 | Data Classes<br>(typed) | `@dataclass`<br>`class my_data:`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 | Named Tuple<br>(typed) | `class my_data(NamedTuple):`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |

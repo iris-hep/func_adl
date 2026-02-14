@@ -70,6 +70,68 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 f" - {ast.unparse(node)}"
             )
 
+        def _target_bindings_from_value(
+            self, target: ast.AST, value: ast.expr, node: ast.AST
+        ) -> Dict[str, ast.expr]:
+            """Build bindings for comprehension targets, using indexing for non-literals."""
+
+            # Reuse literal destructuring where possible to preserve exact tuple/list nodes.
+            literal_bindings = self._target_bindings(target, value, node)
+            if literal_bindings is not None:
+                return literal_bindings
+
+            if isinstance(target, ast.Name):
+                return {target.id: copy.deepcopy(value)}
+
+            if isinstance(target, (ast.Tuple, ast.List)):
+                bindings: Dict[str, ast.expr] = {}
+                for index, target_elt in enumerate(target.elts):
+                    element_value = ast.Subscript(
+                        value=copy.deepcopy(value),
+                        slice=ast.Constant(value=index),
+                        ctx=ast.Load(),
+                    )
+                    bindings.update(
+                        self._target_bindings_from_value(target_elt, element_value, node)
+                    )
+                return bindings
+
+            raise ValueError(
+                f"Comprehension variable must be a name or tuple/list, but found {target}"
+                f" - {ast.unparse(node)}"
+            )
+
+        def _target_bindings_from_value(
+            self, target: ast.AST, value: ast.expr, node: ast.AST
+        ) -> Dict[str, ast.expr]:
+            """Build bindings for comprehension targets, using indexing for non-literals."""
+
+            # Reuse literal destructuring where possible to preserve exact tuple/list nodes.
+            literal_bindings = self._target_bindings(target, value, node)
+            if literal_bindings is not None:
+                return literal_bindings
+
+            if isinstance(target, ast.Name):
+                return {target.id: copy.deepcopy(value)}
+
+            if isinstance(target, (ast.Tuple, ast.List)):
+                bindings: Dict[str, ast.expr] = {}
+                for index, target_elt in enumerate(target.elts):
+                    element_value = ast.Subscript(
+                        value=copy.deepcopy(value),
+                        slice=ast.Constant(value=index),
+                        ctx=ast.Load(),
+                    )
+                    bindings.update(
+                        self._target_bindings_from_value(target_elt, element_value, node)
+                    )
+                return bindings
+
+            raise ValueError(
+                f"Comprehension variable must be a name or tuple/list, but found {target}"
+                f" - {ast.unparse(node)}"
+            )
+
         def _substitute_names(self, expr: ast.expr, bindings: Dict[str, ast.expr]) -> ast.expr:
             class _name_replacer(ast.NodeTransformer):
                 def __init__(self, loop_bindings: Dict[str, ast.expr]):
@@ -371,25 +433,42 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             """
             a = node
             generator_count: int = len(generators)
+            temp_counter = 0
             for index, c in enumerate(reversed(generators)):
                 target = c.target
-                if not isinstance(target, ast.Name):
-                    # Keep original comprehension for unsupported lowering cases.
-                    return node
                 if c.is_async:
                     raise ValueError(f"Comprehension can't be async - {ast.unparse(node)}.")
                 source_collection = c.iter
 
+                if isinstance(target, ast.Name):
+                    lambda_arg_name = target.id
+                elif isinstance(target, (ast.Tuple, ast.List)):
+                    lambda_arg_name = f"__fa_tmp_{temp_counter}"
+                    temp_counter += 1
+                else:
+                    raise ValueError(
+                        "Comprehension variable must be a name or tuple/list, "
+                        f"but found {target} - {ast.unparse(node)}"
+                    )
+
+                target_bindings = self._target_bindings_from_value(
+                    target,
+                    ast.Name(id=lambda_arg_name, ctx=ast.Load()),
+                    node,
+                )
+
                 # Turn the if clauses into Where statements
                 for a_if in c.ifs:
-                    where_function = lambda_build(target.id, a_if)
+                    where_body = self._substitute_names(a_if, target_bindings)
+                    where_function = lambda_build(lambda_arg_name, where_body)
                     source_collection = ast.Call(
                         func=ast.Attribute(attr="Where", value=source_collection, ctx=ast.Load()),
                         args=[where_function],
                         keywords=[],
                     )
 
-                lambda_function = lambda_build(target.id, lambda_body)
+                rewritten_lambda_body = self._substitute_names(lambda_body, target_bindings)
+                lambda_function = lambda_build(lambda_arg_name, rewritten_lambda_body)
                 use_select_many = generator_count > 1 and index > 0
                 a = ast.Call(
                     func=ast.Attribute(

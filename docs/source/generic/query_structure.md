@@ -42,6 +42,9 @@ expressions:
 - List/generator comprehensions over streams are lowered to query operators.
   Multi-generator forms (`for ... for ...`) flatten outer levels via `.SelectMany(...)`
   so the stream shape matches Python iteration semantics.
+- Comprehensions with tuple/list destructuring targets are supported. For non-literal
+  iterables, destructured names are rewritten as indexed access on an internal temporary
+  value (for example, `[a+b for a,b in pairs]` behaves like `pairs.Select(lambda tmp: tmp[0] + tmp[1])`).
 - List comprehensions over literal iterables are expanded directly. For example,
   `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
