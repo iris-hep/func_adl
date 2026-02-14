@@ -1,8 +1,9 @@
 # Test various things about the hash functions we use for ast's.
 import ast
 from typing import Optional
-from func_adl.ast import ast_hash
+
 from func_adl import EventDataset
+from func_adl.ast import ast_hash
 
 
 class my_event(EventDataset):
@@ -14,8 +15,7 @@ def build_ast() -> ast.AST:
     return (
         my_event()
         .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()')
-        .AsROOTTTree("dude.root", "analysis", "JetPt")
-        .value()
+        .query_ast
     )
 
 
@@ -23,17 +23,15 @@ def build_ast_array_1() -> ast.AST:
     return (
         my_event()
         .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()')
-        .AsROOTTTree("dude.root", "analysis", ["JetPt"])
-        .value()
+        .query_ast
     )
 
 
 def build_ast_array_2() -> ast.AST:
     return (
         my_event()
-        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTracks")).First()')
-        .AsROOTTTree("dude.root", "analysis", ["JetPt", "JetEta"])
-        .value()
+        .Select('lambda e: e.Jets("jets").SelectMany(lambda j: e.Tracks("InnerTrackss")).First()')
+        .query_ast
     )
 
 

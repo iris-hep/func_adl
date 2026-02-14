@@ -64,37 +64,19 @@ class my_event_boom(EventDataset):
 
 
 def test_simple_query():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value()
-    )
+    r = my_event().SelectMany("lambda e: e.jets()").Select("lambda j: j.pT()").query_ast
     assert isinstance(r, ast.AST)
 
 
 def test_simple_query_one_line():
     """Make sure we parse 2 functions on one line correctly"""
-    r = my_event().Select(lambda e: e.met).Where(lambda e: e > 10).value()
+    r = my_event().Select(lambda e: e.met).Where(lambda e: e > 10).query_ast
     assert isinstance(r, ast.AST)
 
 
 def test_two_simple_query():
-    r1 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value()
-    )
-    r2 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", ["jetPT"])
-        .value()
-    )
+    r1 = my_event().SelectMany("lambda e: e.jets()").Select("lambda j: j.pT()").query_ast
+    r2 = my_event().SelectMany("lambda e: e.jets()").Select("lambda j: j.pT()").query_ast
 
     assert ast.dump(r1) == ast.dump(r2)
 
@@ -107,144 +89,21 @@ def test_query_bad_variable():
     my_10 = my_type(10)
 
     with pytest.raises(ValueError) as e:
-        (
-            my_event()
-            .SelectMany(lambda e: e.jets())
-            .Select(lambda j: j.pT() > my_10)
-            .AsROOTTTree("junk.root", "analysis", "jetPT")
-            .value()
-        )
+        (my_event().SelectMany(lambda e: e.jets()).Select(lambda j: j.pT() > my_10).query_ast)
 
     assert "my_type" in str(e)
 
 
 def test_with_types():
     r1 = my_event_with_type().SelectMany(lambda e: e.Jets("jets"))
-    r = r1.Select(lambda j: j.eta()).value()
+    r = r1.Select(lambda j: j.eta()).query_ast
     assert isinstance(r, ast.AST)
     assert "there" in ast.dump(r)
 
 
-def test_simple_quer_with_title():
-    r = (
-        my_event_with_title()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value(title="onetwothree")
-    )
-    assert r[1] == "onetwothree"
-
-
 def test_simple_query_lambda():
-    r = (
-        my_event()
-        .SelectMany(lambda e: e.jets())
-        .Select(lambda j: j.pT())
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value()
-    )
+    r = my_event().SelectMany(lambda e: e.jets()).Select(lambda j: j.pT()).query_ast
     assert isinstance(r, ast.AST)
-
-
-def test_simple_query_parquet():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsParquetFiles("junk.root", "jetPT")
-        .value()
-    )
-    assert isinstance(r, ast.AST)
-
-
-def test_two_simple_query_parquet():
-    r1 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsParquetFiles("junk.root", "jetPT")
-        .value()
-    )
-    r2 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsParquetFiles("junk.root", ["jetPT"])
-        .value()
-    )
-
-    assert ast.dump(r1) == ast.dump(r2)
-
-
-def test_simple_query_panda():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsPandasDF(["analysis", "jetPT"])
-        .value()
-    )
-    assert isinstance(r, ast.AST)
-
-
-def test_two_imple_query_panda():
-    r1 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsPandasDF(["analysis"])
-        .value()
-    )
-    r2 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsPandasDF(["analysis"])
-        .value()
-    )
-    assert ast.dump(r1) == ast.dump(r2)
-
-
-def test_simple_query_awkward():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsAwkwardArray(["analysis", "jetPT"])
-        .value()
-    )
-    assert isinstance(r, ast.AST)
-
-
-def test_simple_query_as_awkward():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .as_awkward(["analysis", "jetPT"])
-        .value()
-    )
-    assert isinstance(r, ast.AST)
-
-
-def test_two_similar_query_awkward():
-    r1 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsAwkwardArray(["analysis"])
-        .value()
-    )
-    r2 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsAwkwardArray("analysis")
-        .value()
-    )
-
-    assert ast.dump(r1) == ast.dump(r2)
 
 
 def test_metadata():
@@ -253,20 +112,31 @@ def test_metadata():
         .MetaData({"one": "two", "two": "three"})
         .SelectMany("lambda e: e.jets()")
         .Select("lambda j: j.pT()")
-        .value()
+        .query_ast
     )
     assert isinstance(r, ast.AST)
 
 
 def test_metadata_duplicate_removed_in_value_async():
-    r = my_event().MetaData({"one": "two"}).MetaData({"one": "two"}).Select("lambda e: e").value()
+    r = (
+        my_event()
+        .MetaData({"one": "two"})
+        .MetaData({"one": "two"})
+        .Select("lambda e: e")
+        .clean_ast()
+    )
 
     assert isinstance(r, ast.AST)
     assert ast.dump(r).count("MetaData") == 1
 
 
 def test_metadata_duplicate_removed_from_type_replacement_and_user_metadata():
-    r = my_event_with_type().MetaData({"hi": "there"}).SelectMany(lambda e: e.Jets("jets")).value()
+    r = (
+        my_event_with_type()
+        .MetaData({"hi": "there"})
+        .SelectMany(lambda e: e.Jets("jets"))
+        .clean_ast()
+    )
 
     assert isinstance(r, ast.AST)
     assert ast.dump(r).count("MetaData") == 1
@@ -278,7 +148,7 @@ def test_metadata_non_duplicate_payloads_retained_in_value_async():
         .MetaData({"one": "two"})
         .MetaData({"three": "four"})
         .Select("lambda e: e")
-        .value()
+        .query_ast
     )
 
     assert isinstance(r, ast.AST)
@@ -308,7 +178,7 @@ def test_query_metadata():
         .QMetaData({"one": "two", "two": "three"})
         .SelectMany("lambda e: e.jets()")
         .Select("lambda j: j.pT()")
-        .value()
+        .query_ast
     )
     assert isinstance(r, ast.AST)
     assert "MetaData" not in ast.dump(r)
@@ -321,7 +191,7 @@ def test_query_metadata_dup(caplog):
         .QMetaData({"one": "two", "two": "three"})
         .SelectMany("lambda e: e.jets()")
         .Select("lambda j: j.pT()")
-        .value()
+        .query_ast
     )
     assert isinstance(r, ast.AST)
     assert len(caplog.text) == 0
@@ -335,8 +205,7 @@ def test_query_metadata_dup_update(caplog):
         .QMetaData({"one": "twoo", "two": "three"})
         .SelectMany("lambda e: e.jets()")
         .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value()
+        .query_ast
     )
     assert isinstance(r, ast.AST)
     assert "one" in caplog.text
@@ -384,8 +253,7 @@ def test_nested_query_rendered_correctly():
         my_event()
         .Where("lambda e: e.jets.Select(lambda j: j.pT()).Where(lambda j: j > 10).Count() > 0")
         .SelectMany("lambda e: e.jets()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value()
+        .query_ast
     )
     assert isinstance(r, ast.AST)
     assert "Select(source" not in ast.dump(r)
@@ -396,8 +264,7 @@ def test_query_with_comprehensions():
         my_event()
         .Where("lambda e: [j.pT()>10 for j in e.jets].Count() > 0")
         .SelectMany("lambda e: e.jets()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value()
+        .query_ast
     )
     assert isinstance(r, ast.AST)
     assert "ListComp" not in ast.dump(r)
@@ -408,7 +275,7 @@ def test_non_imported_function_call():
         my_event()
         .Select(lambda event: np.cos(event.MET_phi))  # type: ignore # noqa
         .Where(lambda p: p > 0.0)
-        .value()
+        .query_ast
     )  # NOQA
     assert isinstance(r, ast.AST)
     assert "Attribute(value=Name(id='np', ctx=Load()), attr='cos', ctx=Load())" in ast.dump(r)
@@ -417,95 +284,21 @@ def test_non_imported_function_call():
 def test_imported_function_call():
     import numpy as np
 
-    r = my_event().Select(lambda event: np.cos(event.MET_phi)).Where(lambda p: p > 0.0).value()
+    r = my_event().Select(lambda event: np.cos(event.MET_phi)).Where(lambda p: p > 0.0).query_ast
     assert isinstance(r, ast.AST)
     assert "Attribute(value=Name(id='np', ctx=Load()), attr='cos', ctx=Load())" in ast.dump(r)
 
 
 def test_bad_where():
     with pytest.raises(ValueError):
-        my_event().Where("lambda e: 10").SelectMany("lambda e: e.jets()").AsROOTTTree(
-            "junk.root", "analysis", "jetPT"
-        ).value()
-
-
-@pytest.mark.asyncio
-async def test_await_exe_from_coroutine_with_throw():
-    with pytest.raises(MyTestException):
-        r = (
-            my_event_boom()
-            .SelectMany("lambda e: e.jets()")
-            .Select("lambda j: j.pT()")
-            .AsROOTTTree("junk.root", "analysis", "jetPT")
-            .value_async()
-        )
-        await r
-
-
-@pytest.mark.asyncio
-async def test_await_exe_from_normal_function():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value_async()
-    )
-    assert isinstance(await r, ast.AST)
+        my_event().Where("lambda e: 10").SelectMany("lambda e: e.jets()").query_ast
 
 
 def test_ast_prop():
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-    )
+    r = my_event().SelectMany("lambda e: e.jets()").Select("lambda j: j.pT()")
 
     assert isinstance(r.query_ast, ast.AST)
     assert isinstance(r.query_ast, ast.Call)
-
-
-@pytest.mark.asyncio
-async def test_2await_exe_from_coroutine():
-    r1 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value_async()
-    )
-    r2 = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.eta()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value_async()
-    )
-    rpair = await asyncio.gather(r1, r2)
-    assert isinstance(rpair[0], ast.AST)
-    assert isinstance(rpair[1], ast.AST)
-
-
-@pytest.mark.asyncio
-async def test_passed_in_executor():
-    logged_ast: Optional[ast.AST] = None
-
-    async def my_exe(a: ast.AST, title: Optional[str]) -> Any:
-        nonlocal logged_ast
-        logged_ast = a
-        return 1
-
-    r = (
-        my_event()
-        .SelectMany("lambda e: e.jets()")
-        .Select("lambda j: j.pT()")
-        .AsROOTTTree("junk.root", "analysis", "jetPT")
-        .value_async(executor=my_exe)
-    )
-
-    assert (await r) == 1
-    assert logged_ast is not None
 
 
 def test_untyped():
