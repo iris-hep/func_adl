@@ -9,9 +9,6 @@ from func_adl.util_types import unwrap_iterable
 
 from .util_ast import as_ast, check_ast, function_call, parse_as_ast
 
-# Attribute that will be used to store the executor reference
-executor_attr_name = "_func_adl_executor"
-
 T = TypeVar("T")
 S = TypeVar("S")
 

@@ -888,6 +888,7 @@ def remap_by_types(
                         f"Slices must be indexable constants only - {ast.dump(_slice)} is not "
                         "valid."
                     )
+                assert isinstance(_slice.value, int)
                 index = _slice.value
                 if len(t_node.value.elts) <= index:
                     raise ValueError(f"Index {index} out of range for {ast.dump(node.value)}")

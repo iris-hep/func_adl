@@ -1,7 +1,6 @@
 import inspect
 import typing
-from typing import Any, Dict, Optional, Tuple, Type, TypeVar
-from typing import get_args, get_origin
+from typing import Any, Dict, Optional, Tuple, Type, TypeVar, get_args, get_origin
 
 
 def is_iterable(t: Type) -> bool:
@@ -127,7 +126,7 @@ def _resolve_type(t: Type, parameters: Dict[str, Type]) -> Optional[Type]:
         resolved_params = [_resolve_type(p, parameters) for p in template_params]
         if None in resolved_params:
             return None
-        return t[tuple(resolved_params)]
+        return t[tuple(resolved_params)]  # type: ignore
 
     # Non-parameterized types are easy
     return t

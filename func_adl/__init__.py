@@ -1,7 +1,7 @@
 # flake8: noqa
 
 # Dataset accessors
-from .event_dataset import EventDataset, find_EventDataset
+from .event_dataset import EventDataset
 
 # Extra LINQ-like functions
 from .functions import Range
