@@ -262,6 +262,50 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 keywords=[],
             )
 
+        def _resolve_sum_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate ``sum`` on list/generator comprehensions into ``Sum`` aggregate calls."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value is sum:
+                    func_name = call_node.func.value.__name__
+
+            if func_name != "sum":
+                return None
+
+            source_sequence: Optional[ast.expr] = None
+            if isinstance(source_node, ast.Call) and len(source_node.args) == 1:
+                source_sequence = source_node.args[0]
+
+            has_comprehension_source = isinstance(
+                source_sequence, (ast.ListComp, ast.GeneratorExp)
+            )
+            if not has_comprehension_source:
+                return None
+
+            if len(call_node.args) != 1 or len(call_node.keywords) > 0:
+                raise ValueError(
+                    "sum requires exactly one positional argument when used with a comprehension"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            lowered_sequence = call_node.args[0]
+            if isinstance(lowered_sequence, (ast.ListComp, ast.GeneratorExp)):
+                raise ValueError(
+                    "Unable to lower sum comprehension into a Select call"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            return ast.Call(
+                func=ast.Name(id="Sum", ctx=ast.Load()),
+                args=[lowered_sequence],
+                keywords=[],
+            )
+
         def resolve_generator(
             self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
@@ -513,6 +557,9 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 any_all_call = self._resolve_any_all_call(a, source_node)
                 if any_all_call is not None:
                     return any_all_call
+                sum_call = self._resolve_sum_call(a, source_node)
+                if sum_call is not None:
+                    return sum_call
             return a
 
     return syntax_transformer().visit(a)
