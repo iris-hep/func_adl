@@ -60,6 +60,9 @@ There are several python expressions and idioms that are translated behind your 
 |Multi-generator comprehension|`[j.pt() + e.pt() for j in jets for e in electrons]`|`jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt() + e.pt()))`|
 |Destructuring List Comprehension|`[a+b for a,b in pairs]`|`pairs.Select(lambda tmp: tmp[0] + tmp[1])`|
 |Literal List Comprehension|`[i for i in [1, 2, 3]]`|`[1, 2, 3]`|
+|Dictionary Comprehension|`{j.id(): j.pt() for j in jets}`|`jets.Select(lambda j: {'key': j.id(), 'value': j.pt()})`|
+|Dictionary Comprehension (with filter)|`{j.id(): j.pt() for j in jets if j.pt() > 100}`|`jets.Where(lambda j: j.pt() > 100).Select(lambda j: {'key': j.id(), 'value': j.pt()})`|
+|Literal Dictionary Comprehension|`{i: i * 2 for i in [1, 2, 3]}`|`{1: 1 * 2, 2: 2 * 2, 3: 3 * 2}`|
 | Data Classes<br>(typed) | `@dataclass`<br>`class my_data:`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 | Named Tuple<br>(typed) | `class my_data(NamedTuple):`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 |List Membership|`p.absPdgId() in [35, 51]`|`p.absPdgId() == 35 or p.absPdgId() == 51`|
