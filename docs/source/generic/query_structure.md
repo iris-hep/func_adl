@@ -47,6 +47,11 @@ expressions:
   value (for example, `[a+b for a,b in pairs]` behaves like `pairs.Select(lambda tmp: tmp[0] + tmp[1])`).
 - List comprehensions over literal iterables are expanded directly. For example,
   `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
+- Dictionary comprehensions over streams are lowered to `.Select(...)` of
+  key/value records (e.g. `{'key': ..., 'value': ...}`), including `.Where(...)`
+  when comprehension `if` filters are present.
+- Dictionary comprehensions over literal iterables are expanded directly into
+  dictionary literals.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
 - builtin `filter(func, seq)` and `map(func, seq)` are lowered to
   `seq.Where(func)` and `seq.Select(func)`.

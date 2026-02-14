@@ -30,6 +30,33 @@ def test_resolve_generator():
     assert ast.dump(ast.parse("jets.Select(lambda j: j.pt())")) == ast.dump(a_new)
 
 
+def test_resolve_dictcomp():
+    a = ast.parse("{j.id(): j.pt() for j in jets}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse("jets.Select(lambda j: {'key': j.id(), 'value': j.pt()})")
+    ) == ast.dump(a_new)
+
+
+def test_resolve_dictcomp_if():
+    a = ast.parse("{j.id(): j.pt() for j in jets if j.pt() > 100}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse(
+            "jets.Where(lambda j: j.pt() > 100).Select(lambda j: {'key': j.id(), 'value': j.pt()})"
+        )
+    ) == ast.dump(a_new)
+
+
+def test_resolve_literal_dict_comp():
+    a = ast.parse("{i: i * 2 for i in [1, 2, 3]}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(ast.parse("{1: 1 * 2, 2: 2 * 2, 3: 3 * 2}")) == ast.dump(a_new)
+
+
 def test_resolve_literal_list_comp():
     a = ast.parse("[i for i in [1, 2, 3]]")
     a_new = resolve_syntatic_sugar(a)

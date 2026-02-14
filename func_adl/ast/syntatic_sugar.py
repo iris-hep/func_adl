@@ -13,6 +13,8 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
     * List comprehensions are turned into `Select` statements
     * Generator expressions are turned into `Select` statements
+    * Dictionary comprehensions are turned into `Select` statements that
+      emit key/value records.
     * A data class is converted into a dictionary.
 
     Multi-generator comprehensions are lowered to a flattened stream shape to
@@ -476,6 +478,33 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 ) is not None:
                     return ast.List(elts=expanded, ctx=ast.Load())
                 a = self.resolve_generator(a.elt, a.generators, node)
+
+            return a
+
+        def visit_DictComp(self, node: ast.DictComp) -> Any:
+            """Translate a dictionary comprehension into a stream of key/value records.
+
+            Literal comprehensions are inlined to a literal dictionary when
+            possible.
+            """
+
+            a = self.generic_visit(node)
+
+            if isinstance(a, ast.DictComp):
+                if (
+                    expanded := self._inline_literal_comprehension(a.key, a.generators, node)
+                ) is not None:
+                    expanded_values = self._inline_literal_comprehension(
+                        a.value, a.generators, node
+                    )
+                    assert expanded_values is not None
+                    return ast.Dict(keys=expanded, values=expanded_values)
+
+                kv_record = ast.Dict(
+                    keys=[ast.Constant(value="key"), ast.Constant(value="value")],
+                    values=[a.key, a.value],
+                )
+                a = self.resolve_generator(kv_record, a.generators, node)
 
             return a
 
