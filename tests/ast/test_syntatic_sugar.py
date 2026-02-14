@@ -439,6 +439,37 @@ def test_resolve_any_generator_from_literal_capture():
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
 
 
+def test_resolve_any_generator_to_query_count_comparison():
+    a = ast.parse("any(j.pt() > 10 for j in e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Where(lambda j: j.pt() > 10).Count() > 0")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_all_generator_with_if_clause_to_query_count_comparison():
+    a = ast.parse("all(j.pt() > 10 for j in e.jets if j.eta() < 2.4)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse(
+        "e.jets.Where(lambda j: j.eta() < 2.4).Where(lambda j: not j.pt() > 10).Count() == 0"
+    )
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_any_all_generator_empty_sequence_semantics():
+    a_any = ast.parse("any(j.pt() > 10 for j in [])")
+    a_any_resolved = resolve_syntatic_sugar(a_any)
+    a_any_expected = ast.parse("False")
+
+    a_all = ast.parse("all(j.pt() > 10 for j in [])")
+    a_all_resolved = resolve_syntatic_sugar(a_all)
+    a_all_expected = ast.parse("True")
+
+    assert ast.unparse(a_any_resolved) == ast.unparse(a_any_expected)
+    assert ast.unparse(a_all_resolved) == ast.unparse(a_all_expected)
+
+
 def test_resolve_nested_captured_function_in_list_comp():
     bib_triggers = [(1, 2), (3, 4)]
 

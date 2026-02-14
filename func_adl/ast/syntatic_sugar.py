@@ -157,8 +157,53 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 )
 
             sequence = call_node.args[0]
-            if isinstance(sequence, (ast.ListComp, ast.GeneratorExp)):
-                return None
+            source_sequence: Optional[ast.expr] = None
+            if isinstance(source_node, ast.Call) and len(source_node.args) == 1:
+                source_sequence = source_node.args[0]
+
+            if isinstance(source_sequence, (ast.ListComp, ast.GeneratorExp)) and isinstance(
+                sequence, ast.Call
+            ):
+                lowered_generator = self.resolve_generator(
+                    source_sequence.elt, source_sequence.generators, source_sequence
+                )
+                if not (
+                    isinstance(lowered_generator, ast.Call)
+                    and isinstance(lowered_generator.func, ast.Attribute)
+                    and lowered_generator.func.attr == "Select"
+                    and len(lowered_generator.args) == 1
+                    and isinstance(lowered_generator.args[0], ast.Lambda)
+                ):
+                    raise ValueError(
+                        f"Unable to lower {func_name} generator expression"
+                        f" - {ast.unparse(source_node)}"
+                    )
+
+                predicate = lowered_generator.args[0]
+                if func_name == "all":
+                    predicate = ast.Lambda(
+                        args=copy.deepcopy(predicate.args),
+                        body=ast.UnaryOp(op=ast.Not(), operand=predicate.body),
+                    )
+
+                where_call = ast.Call(
+                    func=ast.Attribute(
+                        attr="Where", value=lowered_generator.func.value, ctx=ast.Load()
+                    ),
+                    args=[predicate],
+                    keywords=[],
+                )
+                count_call = ast.Call(
+                    func=ast.Attribute(attr="Count", value=where_call, ctx=ast.Load()),
+                    args=[],
+                    keywords=[],
+                )
+                return ast.Compare(
+                    left=count_call,
+                    ops=[ast.Gt() if func_name == "any" else ast.Eq()],
+                    comparators=[ast.Constant(value=0)],
+                )
+
             if not isinstance(sequence, (ast.List, ast.Tuple)):
                 raise ValueError(
                     f"{func_name} requires a list or tuple literal argument"
@@ -395,6 +440,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             Returns:
                 Any: The transformed node if it matches the criteria, otherwise the original node.
             """
+            source_node = copy.deepcopy(node)
             a = self.generic_visit(node)
 
             if isinstance(a, ast.Call) and isinstance(a.func, ast.Constant):
@@ -414,7 +460,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     return self.convert_call_to_dict(a, node, arg_names)
 
             if isinstance(a, ast.Call):
-                any_all_call = self._resolve_any_all_call(a, node)
+                any_all_call = self._resolve_any_all_call(a, source_node)
                 if any_all_call is not None:
                     return any_all_call
             return a
