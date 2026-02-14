@@ -90,6 +90,14 @@ class LocalJet:
         return 0.0
 
 
+def keep_high_pt(j: LocalJet) -> bool:
+    return j.pt() > 10
+
+
+def jet_pt(j: LocalJet) -> float:
+    return j.pt()
+
+
 def test_resolve_dataclass_no_args():
     "Make sure a dataclass becomes a dictionary"
 
@@ -445,6 +453,67 @@ def test_resolve_any_generator_to_query_count_comparison():
 
     a_expected = ast.parse("e.jets.Where(lambda j: j.pt() > 10).Count() > 0")
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_filter_lambda_to_where():
+    a = ast.parse("filter(lambda j: j.pt() > 10, e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Where(lambda j: j.pt() > 10)")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_map_lambda_to_select():
+    a = ast.parse("map(lambda j: j.pt(), e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_filter_captured_callable_to_where():
+    a = parse_as_ast(lambda e: filter(keep_high_pt, e.jets))
+    a_resolved = resolve_syntatic_sugar(a)
+
+    assert isinstance(a_resolved, ast.Lambda)
+    assert isinstance(a_resolved.body, ast.Call)
+    assert isinstance(a_resolved.body.func, ast.Attribute)
+    assert a_resolved.body.func.attr == "Where"
+    assert isinstance(a_resolved.body.args[0], ast.Lambda)
+    all_name_ids = {n.id for n in ast.walk(a_resolved) if isinstance(n, ast.Name)}
+    assert "keep_high_pt" not in all_name_ids
+
+
+def test_resolve_map_captured_callable_to_select():
+    a = parse_as_ast(lambda e: map(jet_pt, e.jets))
+    a_resolved = resolve_syntatic_sugar(a)
+
+    assert isinstance(a_resolved, ast.Lambda)
+    assert isinstance(a_resolved.body, ast.Call)
+    assert isinstance(a_resolved.body.func, ast.Attribute)
+    assert a_resolved.body.func.attr == "Select"
+    assert isinstance(a_resolved.body.args[0], ast.Lambda)
+    all_name_ids = {n.id for n in ast.walk(a_resolved) if isinstance(n, ast.Name)}
+    assert "jet_pt" not in all_name_ids
+
+
+def test_resolve_map_lambda_body_still_applies_any_all_sugar():
+    a = ast.parse("map(lambda j: any([j.pt() > 10, j.eta() < 2.4]), e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Select(lambda j: j.pt() > 10 or j.eta() < 2.4)")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_filter_map_rejects_invalid_signatures():
+    with pytest.raises(ValueError, match="filter requires exactly two arguments"):
+        resolve_syntatic_sugar(ast.parse("filter(lambda j: j.pt() > 10)"))
+
+    with pytest.raises(ValueError, match="map only supports positional arguments"):
+        resolve_syntatic_sugar(ast.parse("map(func=lambda j: j.pt(), seq=e.jets)"))
+
+    with pytest.raises(ValueError, match="filter requires a lambda"):
+        resolve_syntatic_sugar(ast.parse("filter(predicate, e.jets)"))
 
 
 def test_resolve_all_generator_with_if_clause_to_query_count_comparison():

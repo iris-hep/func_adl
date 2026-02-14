@@ -218,6 +218,50 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 values=sequence.elts,
             )
 
+        def _resolve_filter_map_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate builtin ``filter`` and ``map`` calls to query operators."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value in [filter, map]:
+                    func_name = call_node.func.value.__name__
+
+            if func_name not in ["filter", "map"]:
+                return None
+
+            if len(call_node.keywords) > 0:
+                raise ValueError(
+                    f"{func_name} only supports positional arguments"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            if len(call_node.args) != 2:
+                raise ValueError(
+                    f"{func_name} requires exactly two arguments (func, seq)"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            transform_arg, sequence_arg = call_node.args
+            if not isinstance(transform_arg, ast.Lambda):
+                raise ValueError(
+                    f"{func_name} requires a lambda in this context"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            return ast.Call(
+                func=ast.Attribute(
+                    attr="Where" if func_name == "filter" else "Select",
+                    value=sequence_arg,
+                    ctx=ast.Load(),
+                ),
+                args=[transform_arg],
+                keywords=[],
+            )
+
         def resolve_generator(
             self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
@@ -460,6 +504,12 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     return self.convert_call_to_dict(a, node, arg_names)
 
             if isinstance(a, ast.Call):
+                filter_map_call = self._resolve_filter_map_call(a, source_node)
+                if filter_map_call is not None:
+                    # Revisit the lowered call so nested sugar transformations can
+                    # still run on the rewritten expression tree.
+                    a = self.visit(filter_map_call)
+
                 any_all_call = self._resolve_any_all_call(a, source_node)
                 if any_all_call is not None:
                     return any_all_call
