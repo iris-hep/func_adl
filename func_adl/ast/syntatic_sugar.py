@@ -246,7 +246,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
         def visit_Compare(self, node: ast.Compare) -> Any:
             """Expand membership tests of an expression against a constant list
-            or tuple into a series of ``or`` comparisons.
+            or tuple/set into a series of comparisons.
 
             ``x in [1, 2]`` becomes ``x == 1 or x == 2``.
             """
@@ -256,18 +256,18 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             if not isinstance(a, ast.Compare):
                 return a
 
-            if len(a.ops) != 1 or not isinstance(a.ops[0], ast.In):
+            if len(a.ops) != 1 or not isinstance(a.ops[0], (ast.In, ast.NotIn)):
                 return a
 
             left = a.left
             right = a.comparators[0]
 
             def const_list(t: ast.AST) -> Optional[List[ast.Constant]]:
-                if isinstance(t, (ast.List, ast.Tuple)):
+                if isinstance(t, (ast.List, ast.Tuple, ast.Set)):
                     if all(isinstance(e, ast.Constant) for e in t.elts):
                         return list(t.elts)  # type: ignore
                     raise ValueError(
-                        "All elements in comparison list/tuple must be constants"
+                        "All elements in comparison list/tuple/set must be constants"
                         f" - {ast.unparse(t)}"
                     )
                 return None
@@ -276,15 +276,16 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             expr = left
             if elements is None:
                 raise ValueError(
-                    f"Right side of 'in' must be a list or tuple - {ast.unparse(node)}"
+                    f"Right side of 'in' must be a list, tuple, or set - {ast.unparse(node)}"
                 )
 
+            is_in = isinstance(a.ops[0], ast.In)
             return ast.BoolOp(
-                op=ast.Or(),
+                op=ast.Or() if is_in else ast.And(),
                 values=[
                     ast.Compare(
                         left=copy.deepcopy(expr),
-                        ops=[ast.Eq()],
+                        ops=[ast.Eq() if is_in else ast.NotEq()],
                         comparators=[copy.deepcopy(e)],
                     )
                     for e in elements

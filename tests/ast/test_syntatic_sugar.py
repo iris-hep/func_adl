@@ -279,6 +279,22 @@ def test_resolve_compare_tuple_in():
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
 
 
+def test_resolve_compare_set_in():
+    a = ast.parse("p.absPdgId() in {35, 51}")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("p.absPdgId() == 35 or p.absPdgId() == 51")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_compare_set_not_in():
+    a = ast.parse("p.absPdgId() not in {35, 51}")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("p.absPdgId() != 35 and p.absPdgId() != 51")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
 def test_resolve_compare_list_non_constant():
     a = ast.parse("p.absPdgId() in [x, 51]")
     with pytest.raises(ValueError, match="All elements"):
