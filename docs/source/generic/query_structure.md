@@ -43,6 +43,10 @@ expressions:
 - List comprehensions over literal iterables are expanded directly. For example,
   `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
+- builtin `filter(func, seq)` and `map(func, seq)` are lowered to
+  `seq.Where(func)` and `seq.Select(func)`.
 
 This means patterns like `any(expr(x) for x in LITERAL_LIST)` can be simplified in-query,
-as long as the iterable is a literal (or a captured literal constant).
+as long as the iterable is a literal (or a captured literal constant). Likewise,
+`filter(lambda j: j.pt() > 30, jets)` and `map(lambda j: j.pt(), jets)` can be
+written in query lambdas and translated to the corresponding query operators.

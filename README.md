@@ -62,12 +62,19 @@ There are several python expressions and idioms that are translated behind your 
 | Named Tuple<br>(typed) | `class my_data(NamedTuple):`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 |List Membership|`p.absPdgId() in [35, 51]`|`p.absPdgId() == 35 or p.absPdgId() == 51`|
 | `any`/`all` | `any([e.pt() > 10, abs(e.eta()) < 2.5])` | `e.pt() > 10 or abs(e.eta()) < 2.5` |
+| `filter` | `filter(lambda j: j.pt() > 30, jets)` | `jets.Where(lambda j: j.pt() > 30)` |
+| `map` | `map(lambda j: j.pt(), jets)` | `jets.Select(lambda j: j.pt())` |
 
 Note: Everything that goes for a list comprehension also goes for a generator expression.
 
 For `any`/`all`, generator/list comprehensions over a literal (or captured literal constant)
 are first expanded to a literal list and then reduced as usual. For example,
 `any(f(a) for a in [1, 2])` is treated like `any([f(1), f(2)])`.
+
+For `filter`/`map`, only the builtin two-argument form is supported in syntatic sugar:
+`filter(func, seq)` and `map(func, seq)`. Keyword arguments are rejected with a
+contextual error message so the unsupported expression is easy to identify.
+
 
 ## Extensibility
 
