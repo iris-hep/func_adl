@@ -39,7 +39,9 @@ Due to the flexible nature of FuncADL there are multiple ways to structure each 
 Inside query lambdas, FuncADL also rewrites a few common Python forms into query-friendly
 expressions:
 
-- List/generator comprehensions over streams are lowered to `.Where(...)`/`.Select(...)`.
+- List/generator comprehensions over streams are lowered to query operators.
+  Multi-generator forms (`for ... for ...`) flatten outer levels via `.SelectMany(...)`
+  so the stream shape matches Python iteration semantics.
 - List comprehensions over literal iterables are expanded directly. For example,
   `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.

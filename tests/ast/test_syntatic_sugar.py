@@ -63,7 +63,30 @@ def test_resolve_2generator():
     a_new = resolve_syntatic_sugar(a)
 
     assert ast.dump(
-        ast.parse("jets.Select(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
+        ast.parse("jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
+    ) == ast.dump(a_new)
+
+
+def test_resolve_2generator_list_comp_flattened_shape():
+    a = ast.parse("[j.pt()+e.pt() for j in jets for e in electrons]")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse("jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
+    ) == ast.dump(a_new)
+
+
+def test_resolve_3generator_list_comp_flattened_shape():
+    a = ast.parse("[j.pt()+e.pt()+m.pt() for j in jets for e in electrons for m in muons]")
+    a_new = resolve_syntatic_sugar(a)
+
+    # Outer generators are lowered with SelectMany so the final shape is a
+    # single flattened stream that matches Python comprehension semantics.
+    assert ast.dump(
+        ast.parse(
+            "jets.SelectMany(lambda j: electrons.SelectMany(lambda e: "
+            "muons.Select(lambda m: j.pt()+e.pt()+m.pt())))"
+        )
     ) == ast.dump(a_new)
 
 

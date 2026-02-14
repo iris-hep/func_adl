@@ -15,6 +15,12 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
     * Generator expressions are turned into `Select` statements
     * A data class is converted into a dictionary.
 
+    Multi-generator comprehensions are lowered to a flattened stream shape to
+    preserve Python iteration semantics. For example:
+
+    * `(j.pt()+e.pt() for j in jets for e in electrons)`
+      -> `jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))`
+
     Args:
         a (ast.AST): The AST to scan for syntatic sugar
 
@@ -364,7 +370,8 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 ast.AST: The reformed ast (untouched if no expression detected)
             """
             a = node
-            for c in reversed(generators):
+            generator_count: int = len(generators)
+            for index, c in enumerate(reversed(generators)):
                 target = c.target
                 if not isinstance(target, ast.Name):
                     # Keep original comprehension for unsupported lowering cases.
@@ -383,8 +390,13 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     )
 
                 lambda_function = lambda_build(target.id, lambda_body)
+                use_select_many = generator_count > 1 and index > 0
                 a = ast.Call(
-                    func=ast.Attribute(attr="Select", value=source_collection, ctx=ast.Load()),
+                    func=ast.Attribute(
+                        attr="SelectMany" if use_select_many else "Select",
+                        value=source_collection,
+                        ctx=ast.Load(),
+                    ),
                     args=[lambda_function],
                     keywords=[],
                 )

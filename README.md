@@ -57,6 +57,7 @@ There are several python expressions and idioms that are translated behind your 
 --- | --- | --- |
 |List Comprehension | `[j.pt() for j in jets]` | `jets.Select(lambda j: j.pt())` |
 |List Comprehension | `[j.pt() for j in jets if abs(j.eta()) < 2.4]` | `jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt())` |
+|Multi-generator comprehension|`[j.pt() + e.pt() for j in jets for e in electrons]`|`jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt() + e.pt()))`|
 |Literal List Comprehension|`[i for i in [1, 2, 3]]`|`[1, 2, 3]`|
 | Data Classes<br>(typed) | `@dataclass`<br>`class my_data:`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 | Named Tuple<br>(typed) | `class my_data(NamedTuple):`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
@@ -68,6 +69,9 @@ There are several python expressions and idioms that are translated behind your 
 | `min`/`max` | `max(j.pt() for j in jets if abs(j.eta()) < 2.4)` | `Max(jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt()))` |
 
 Note: Everything that goes for a list comprehension also goes for a generator expression.
+
+For multi-generator comprehensions (`for ... for ...`), lowering always preserves Python
+iteration semantics by flattening one level with `SelectMany` at outer generator levels.
 
 For `any`/`all`, generator/list comprehensions over a literal (or captured literal constant)
 are first expanded to a literal list and then reduced as usual. For example,
