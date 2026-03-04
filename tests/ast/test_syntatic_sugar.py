@@ -67,6 +67,27 @@ def test_resolve_2generator():
     ) == ast.dump(a_new)
 
 
+def test_resolve_literal_set_comp():
+    a = ast.parse("{i * 2 for i in [1, 2, 3]}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(ast.parse("{1 * 2, 2 * 2, 3 * 2}")) == ast.dump(a_new)
+
+
+def test_resolve_set_comp_non_literal_iterable_error():
+    a = ast.parse("{j.pt() for j in jets}")
+
+    with pytest.raises(ValueError, match="Set comprehension requires literal iterables"):
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_set_comp_empty_literal_iterable():
+    a = ast.parse("{j for j in []}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.unparse(a_new) == ast.unparse(ast.parse("set()"))
+
+
 def test_resolve_bad_iterator():
     a = ast.parse("[j.pt() for idx,j in enumerate(jets)]")
     a_new = resolve_syntatic_sugar(a)

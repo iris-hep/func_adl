@@ -43,6 +43,23 @@ expressions:
 - List comprehensions over literal iterables are expanded directly. For example,
   `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
+- Set comprehensions over literal iterables are expanded directly to a set value.
 
 This means patterns like `any(expr(x) for x in LITERAL_LIST)` can be simplified in-query,
 as long as the iterable is a literal (or a captured literal constant).
+
+For set comprehensions, only literal iterables are supported. For example,
+`{i * 2 for i in [1, 2, 3]}` is lowered before execution to a set literal equivalent.
+If the result is empty, the lowered AST is `set()` (Python AST has no empty set literal
+syntax node).
+
+If the iterable is not literal (for example `{j.pt() for j in jets}`), FuncADL raises
+a `ValueError` because the generic query representation does not define a stream-level
+set-construction operator that all backends can execute consistently.
+
+### What is sent to the backend
+
+When `.value()` is called, FuncADL sends the transformed AST query to the backend
+executor. For supported set comprehensions, the backend receives regular AST nodes
+(`ast.Set` or `set()` call) rather than an `ast.SetComp`. This keeps the wire/query
+representation explicit and backend-agnostic.

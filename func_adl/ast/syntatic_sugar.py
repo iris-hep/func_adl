@@ -289,6 +289,22 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
             return a
 
+        def visit_SetComp(self, node: ast.SetComp) -> Any:
+            "Translate a set comprehension into a literal set when possible."
+            a = self.generic_visit(node)
+
+            if isinstance(a, ast.SetComp):
+                if expanded := self._inline_literal_comprehension(a.elt, a.generators, node):
+                    return ast.Set(elts=expanded)
+                if expanded == []:
+                    return ast.Call(func=ast.Name(id="set", ctx=ast.Load()), args=[], keywords=[])
+                raise ValueError(
+                    "Set comprehension requires literal iterables so it can be represented"
+                    f" as a set literal - {ast.unparse(node)}"
+                )
+
+            return a
+
         def visit_Compare(self, node: ast.Compare) -> Any:
             """Expand membership tests of an expression against a constant list
             or tuple/set into a series of comparisons.
