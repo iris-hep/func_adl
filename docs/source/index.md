@@ -35,5 +35,6 @@ xAOD/select
 xAOD/where
 xAOD/metadata
 xAOD/calibration
+xAOD/functions
 
 ```
