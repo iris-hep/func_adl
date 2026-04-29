@@ -92,7 +92,7 @@ The eta plot above shows that the Jet eta does not match using both methods. The
 
 ## Skimming Events
 
-To skim events .Where() needs to be used on the event level of the query. This takes place before the first .Select(). To demonstrate this this example builds a query where jets with pt > 30 GeV are selected from events where there is at least 1 jet of 100 GeV.
+To skim events .Where() needs to be used on the event level of the query. This takes place before the first .Select(). To demonstrate this, this example builds a query where jets with pt > 30 GeV are selected from events where there is at least 1 jet of 100 GeV.
 
 ```{eval-rst}
 .. testsetup::
@@ -119,19 +119,6 @@ To skim events .Where() needs to be used on the event level of the query. This t
         data = get_data(jets_per_event, physlite_ds)
     assert data.pt[0][0] == 118.1983671875
 
-```
-
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                    .Where(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 100)).Count() > 0)
-                    .Select(lambda e: e.Jets())
-                    .Select(lambda jets: {
-                            'pt': jets.Where(lambda j: j.pt() / 1000 > 30).Select(lambda j: j.pt() / 1000),
-                        })
-                 )
-
-jet_data = get_data(jets_per_event, physlite_ds)
 ```
 
 Comparing the results from the first set of examples, it can be seen that there are much fewer jets, which is expected from looking at fewer events.
