@@ -17,9 +17,21 @@ release = "3.5.0"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "myst_parser",
+   "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
-    "sphinx_copybutton",
+    "code_include.extension",
+    "myst_parser",
+    "sphinx_design",
+    "sphinxcontrib.autodoc_pydantic",
+    "sphinx_tabs.tabs",
+    "sphinx_copybutton",    
+    "enum_tools.autoenum",
+]
+
+myst_enable_extensions = [
+    "colon_fence",
 ]
 
 templates_path = ["_templates"]
