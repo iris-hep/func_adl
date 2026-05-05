@@ -30,7 +30,6 @@ generic/query_structure
 :caption: xAOD FuncADL
 
 xAOD/getting_started
-xAOD/getting_setup
 xAOD/select
 xAOD/where
 xAOD/metadata

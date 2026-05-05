@@ -1,16 +1,23 @@
 # Specialty Functions
 
-As shown in the [metadata](metadata.md) part of the documentation, functions using C++ code can be added to allow for more advanced code to be run.
+:::{admonition} You Will Learn:
+:class: note
+- What built-in specialty functions FuncADL provides
+- How to use the Trigger Decision Tool (TDT) with `tdt_chain_fired()` to filter events by trigger chain
+- How to use the Trigger Matching Tool (TMT) with `tmt_match_object()` to match offline objects to trigger objects
+:::
 
-There are some functions that are used so regularly that they have been added to the library by default so users don't have to create them if they need to use them. These functions are outlined on this page.
+As shown in the [metadata](metadata.md) section of the documentation, functions using C++ code can be added to run more advanced logic.
+
+Some functions are used so regularly that they are included in the library by default, so users do not have to recreate them. These functions are outlined on this page.
 
 ## Trigger Functions
 
-There are a couple of functions that allow the user to get trigger decisions more easily.
+Several functions provide easier access to trigger decisions.
 
 ### Decision Tool - Chain Fired
 
-The Trigger Decision Tool (TDT) provides access to trigger decisions and whether a chain was fired for a specific event. A true or false value indicating whether the trigger has fired can be obtained using the `tdt_chain_fired()` function. The following example uses this function to filter events where the chain was fired.
+The Trigger Decision Tool (TDT) provides access to trigger decisions, including whether a chain fired for a given event. The `tdt_chain_fired()` function returns a true or false value indicating whether the trigger fired. The following example uses this function to filter events where the chain fired.
 
 ```python
 jets_per_event = (query
@@ -26,7 +33,7 @@ jets_per_event = (query
 
 ### Matching Tool - Matched Object
 
-The Trigger Matching Tool (TMT) can be used in conjunction with `tdt_chain_fired()` to determine whether an offline object matches an online object that passed the trigger. This is done using the `tmt_match_object()` function, which takes the chain name, offline object, and ΔR threshold as arguments.
+The Trigger Matching Tool (TMT) is used in conjunction with `tdt_chain_fired()` to determine whether an offline object matches an online object that passed the trigger. The `tmt_match_object()` function performs this match, taking the chain name, offline object, and ΔR threshold as arguments.
 
 ```python
 jets_per_event = (query

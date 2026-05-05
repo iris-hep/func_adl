@@ -1,5 +1,13 @@
 # Using .Select()
 
+:::{admonition} You Will Learn:
+:class: note
+- What can be selected using `Select()`
+- How to get physics objects
+- How to get special properties of objects
+- Using `SelectMany()`
+:::
+
 The foundation to building any query is the .Select() function. Without it no data will be returned! The examples on this page are designed showcase all the different uses of the .Select() function.
 
 ## Objects that can be selected
