@@ -628,13 +628,11 @@ def test_dictionary_bad_key():
 def test_dictionary_Zip_key():
     "Check that type follow from a dictionary through a Zip works"
 
-    s = ast_lambda(
-        """({
+    s = ast_lambda("""({
         'jet_pt':  e.Jets().Select(lambda j: j.pt()),
         'jet_eta': e.Jets().Select(lambda j: j.eta())}
         .Zip()
-        .Select(lambda j: j.pt()))"""
-    )
+        .Select(lambda j: j.pt()))""")
     objs = ObjectStream[Event](ast.Name(id="e", ctx=ast.Load()))
 
     new_objs, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)

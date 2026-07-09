@@ -40,6 +40,36 @@ object. There is a one-to-one correspondence between the input objects and outpu
         - The function can be a `lambda`, the name of a one-line function, a string that
         contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
+### OrderBy
+
+Sort the stream by a key selector in ascending order.
+
+    Arguments:
+        key_selector: A key selector lambda.
+
+    Returns:
+        A new ObjectStream with the same item type, but with the ordering intent recorded.
+
+    Notes:
+        - The function can be a `lambda`, the name of a one-line function, a string that
+          contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+        - Backends are responsible for lowering the recorded `OrderBy()` call into an actual sort.
+
+### OrderByDescending
+
+Sort the stream by a key selector in descending order.
+
+    Arguments:
+        key_selector: A key selector lambda.
+
+    Returns:
+        A new ObjectStream with the same item type, but with the ordering intent recorded.
+
+    Notes:
+        - The function can be a `lambda`, the name of a one-line function, a string that
+          contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+        - Backends are responsible for lowering the recorded `OrderByDescending()` call into an actual sort.
+
 <!-- ### SelectMany vs Select
 
     TODO: Add an example that illustrates the difference between these two things.

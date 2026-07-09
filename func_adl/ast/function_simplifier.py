@@ -163,7 +163,7 @@ class simplify_chained_calls(FuncADLNodeTransformer):
         seq.SelectMany(x: f(x).Select(y: g(y)))
         => SelectMany(seq, x: Select(f(x), y: g(y)))
         """
-        (_, args) = unpack_Call(parent)
+        _, args = unpack_Call(parent)
         assert args is not None
         source = args[0]
         func_f = args[1]
