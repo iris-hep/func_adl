@@ -160,9 +160,6 @@ class ObjectStream(Generic[T]):
         r"""
         Order the stream by a key selector.
 
-        This only records the query intent. Backends are responsible for lowering the
-        normalized ``OrderBy`` call into an actual sort.
-
         Arguments:
             key_selector: The key selector lambda.
             known_types: Internal use only - for passing captured variables from above in.
@@ -188,9 +185,6 @@ class ObjectStream(Generic[T]):
     ) -> ObjectStream[T]:
         r"""
         Order the stream by a key selector in descending order.
-
-        This only records the query intent. Backends are responsible for lowering the
-        normalized ``OrderByDescending`` call into an actual sort.
 
         Arguments:
             key_selector: The key selector lambda.

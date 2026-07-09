@@ -48,12 +48,11 @@ Sort the stream by a key selector in ascending order.
         key_selector: A key selector lambda.
 
     Returns:
-        A new ObjectStream with the same item type, but with the ordering intent recorded.
+        A new ObjectStream with the same item type.
 
     Notes:
         - The function can be a `lambda`, the name of a one-line function, a string that
           contains a lambda definition, or a python `ast` of type `ast.Lambda`.
-        - Backends are responsible for lowering the recorded `OrderBy()` call into an actual sort.
 
 ### OrderByDescending
 
@@ -63,12 +62,11 @@ Sort the stream by a key selector in descending order.
         key_selector: A key selector lambda.
 
     Returns:
-        A new ObjectStream with the same item type, but with the ordering intent recorded.
+        A new ObjectStream with the same item type.
 
     Notes:
         - The function can be a `lambda`, the name of a one-line function, a string that
           contains a lambda definition, or a python `ast` of type `ast.Lambda`.
-        - Backends are responsible for lowering the recorded `OrderByDescending()` call into an actual sort.
 
 <!-- ### SelectMany vs Select
 
