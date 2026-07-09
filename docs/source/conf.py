@@ -21,7 +21,7 @@ html_title = f"FuncADL v{release} <br> User Guide"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-   "sphinx.ext.napoleon",
+    "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
@@ -30,7 +30,7 @@ extensions = [
     "sphinx_design",
     "sphinxcontrib.autodoc_pydantic",
     "sphinx_tabs.tabs",
-    "sphinx_copybutton",    
+    "sphinx_copybutton",
     "enum_tools.autoenum",
 ]
 

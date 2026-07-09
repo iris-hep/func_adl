@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir -e .[test]
+          pip install --no-cache-dir -e .[test] "virtualenv<20.26"
           pip list
       - name: Lint with Flake8
         run: |
