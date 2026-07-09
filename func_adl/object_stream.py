@@ -152,6 +152,66 @@ class ObjectStream(Generic[T]):
             rtn_type,
         )
 
+    def OrderBy(
+        self,
+        key_selector: Union[str, ast.Lambda, Callable[[T], Any]],
+        known_types: Dict[str, Any] = {},
+    ) -> ObjectStream[T]:
+        r"""
+        Order the stream by a key selector.
+
+        This only records the query intent. Backends are responsible for lowering the
+        normalized ``OrderBy`` call into an actual sort.
+
+        Arguments:
+            key_selector: The key selector lambda.
+            known_types: Internal use only - for passing captured variables from above in.
+
+        Returns:
+            A new ObjectStream with the same item type.
+        """
+        from func_adl.type_based_replacement import remap_from_lambda
+
+        n_stream, n_ast, _ = remap_from_lambda(
+            self, _local_simplification(parse_as_ast(key_selector, "OrderBy")), known_types
+        )
+        check_ast(n_ast)
+        return self.clone_with_new_ast(
+            function_call("OrderBy", [n_stream.query_ast, n_ast]),
+            self.item_type,
+        )
+
+    def OrderByDescending(
+        self,
+        key_selector: Union[str, ast.Lambda, Callable[[T], Any]],
+        known_types: Dict[str, Any] = {},
+    ) -> ObjectStream[T]:
+        r"""
+        Order the stream by a key selector in descending order.
+
+        This only records the query intent. Backends are responsible for lowering the
+        normalized ``OrderByDescending`` call into an actual sort.
+
+        Arguments:
+            key_selector: The key selector lambda.
+            known_types: Internal use only - for passing captured variables from above in.
+
+        Returns:
+            A new ObjectStream with the same item type.
+        """
+        from func_adl.type_based_replacement import remap_from_lambda
+
+        n_stream, n_ast, _ = remap_from_lambda(
+            self,
+            _local_simplification(parse_as_ast(key_selector, "OrderByDescending")),
+            known_types,
+        )
+        check_ast(n_ast)
+        return self.clone_with_new_ast(
+            function_call("OrderByDescending", [n_stream.query_ast, n_ast]),
+            self.item_type,
+        )
+
     def Where(
         self, filter: Union[str, ast.Lambda, Callable[[T], bool]], known_types: Dict[str, Any] = {}
     ) -> ObjectStream[T]:
