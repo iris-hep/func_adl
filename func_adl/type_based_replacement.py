@@ -746,7 +746,7 @@ def remap_by_types(
                 return r_node
             except Exception as e:
                 raise ValueError(
-                    f"Error processing function call {node} on "
+                    f"Error processing function call {ast.unparse(node)} on "
                     f"function {func_info.function.__name__} ({str(e)})"
                 ) from e
 
