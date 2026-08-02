@@ -1,8 +1,7 @@
 import ast
 import copy
+from ast import unparse
 from typing import cast
-
-from astunparse import unparse
 
 from func_adl.ast.function_simplifier import FuncADLIndexError, simplify_chained_calls
 from tests.util_debug_ast import normalize_ast
@@ -39,29 +38,29 @@ def util_process(ast_in, ast_out):
 
 def test_lambda_copy_simple():
     a, new_a = util_run_parse("lambda a: a")
-    assert unparse(new_a).strip() == "(lambda arg_0: arg_0)"
+    assert unparse(new_a).strip() == "lambda arg_0: arg_0"
     assert ast.dump(new_a) != ast.dump(a)
 
 
 def test_lambda_copy_no_arg():
     a, new_a = util_run_parse("lambda: 1+1")
-    assert unparse(new_a).strip() == "(lambda : (1 + 1))"
+    assert unparse(new_a).strip() == "lambda: 1 + 1"
     assert a is not new_a
 
 
 def test_lambda_copy_nested():
     a, new_a = util_run_parse("lambda a: (lambda b: b)(a)")
-    assert unparse(new_a).strip() == "(lambda arg_0: (lambda b: b)(arg_0))"
+    assert unparse(new_a).strip() == "lambda arg_0: (lambda b: b)(arg_0)"
 
 
 def test_lambda_copy_nested_same_arg_name():
     a, new_a = util_run_parse("lambda a: (lambda a: a)(a)")
-    assert unparse(new_a).strip() == "(lambda arg_0: (lambda a: a)(arg_0))"
+    assert unparse(new_a).strip() == "lambda arg_0: (lambda a: a)(arg_0)"
 
 
 def test_lambda_copy_nested_captured():
     a, new_a = util_run_parse("lambda b: (lambda a: a+b)")
-    assert unparse(new_a).strip() == "(lambda arg_0: (lambda a: (a + arg_0)))"
+    assert unparse(new_a).strip() == "lambda arg_0: lambda a: a + arg_0"
 
 
 ################
