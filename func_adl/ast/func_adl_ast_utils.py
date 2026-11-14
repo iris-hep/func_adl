@@ -88,6 +88,8 @@ default_list_of_functions = [
     "Where",
     "OrderBy",
     "OrderByDescending",
+    "ThenBy",
+    "ThenByDescending",
     "First",
     "ResultTTree",
     "ResultAwkwardArray",

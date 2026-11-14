@@ -2,6 +2,8 @@
 import ast
 from typing import cast
 
+import pytest
+
 from func_adl.ast.func_adl_ast_utils import (
     FuncADLNodeTransformer,
     FuncADLNodeVisitor,
@@ -228,6 +230,13 @@ def test_extension_functions_select_extension_in_lambda_too():
 
     transform = change_extension_functions_to_calls(source)
     assert ast.dump(transform) == ast.dump(expected)
+
+
+@pytest.mark.parametrize("operation", ["ThenBy", "ThenByDescending"])
+def test_extension_functions_then_by(operation):
+    source = ast.parse(f"jets.OrderBy(lambda j: j.pt()).{operation}(lambda j: j.eta())")
+    expected = ast.parse(f"{operation}(OrderBy(jets, lambda j: j.pt()), lambda j: j.eta())")
+    assert ast.dump(change_extension_functions_to_calls(source)) == ast.dump(expected)
 
 
 def test_extension_functions_order_by_extension():

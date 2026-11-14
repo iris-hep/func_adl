@@ -166,6 +166,34 @@ def test_order_by_preserves_key_selector_lambda():
     assert ast.dump(r) == ast.dump(expected.body[0].value)
 
 
+@pytest.mark.parametrize("operation", ["ThenBy", "ThenByDescending"])
+def test_then_by_normalized_chain(operation):
+    ordered = my_event().OrderByDescending("lambda e: e.primary")
+    result = getattr(ordered, operation)("lambda e: e.secondary").ThenBy("lambda e: e.third")
+    expected = (
+        ast.parse(
+            f"ThenBy({operation}(OrderByDescending(EventDataset(), lambda e: e.primary), "
+            "lambda e: e.secondary), lambda e: e.third)"
+        )
+        .body[0]
+        .value
+    )
+    assert ast.dump(result.query_ast) == ast.dump(expected)
+    assert result.item_type == ordered.item_type
+
+
+@pytest.mark.parametrize("operation", ["ThenBy", "ThenByDescending"])
+def test_then_by_requires_ordering(operation):
+    with pytest.raises(ValueError, match="immediately follow an ordering"):
+        getattr(my_event(), operation)("lambda e: e.key")
+    with pytest.raises(ValueError, match="immediately follow an ordering"):
+        getattr(my_event().OrderBy("lambda e: e.key").Where("lambda e: True"), operation)(
+            "lambda e: e.key"
+        )
+    with pytest.raises(ValueError):
+        getattr(my_event().OrderBy("lambda e: e.key"), operation)("10")
+
+
 def test_order_by_rejects_non_lambda_expression():
     with pytest.raises(Exception):
         my_event().OrderBy("10")
