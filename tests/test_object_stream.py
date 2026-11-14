@@ -106,6 +106,46 @@ def test_simple_query_lambda():
     assert isinstance(r, ast.AST)
 
 
+def test_order_by_normalizes_ast():
+    r = my_event().Select(lambda e: e).OrderBy(lambda e: e.pT()).query_ast
+    expected = ast.parse("OrderBy(Select(EventDataset(), lambda e: e), lambda e: e.pT())")
+    assert ast.dump(r) == ast.dump(expected.body[0].value)
+
+
+def test_order_by_descending_normalizes_ast():
+    r = my_event().Select(lambda e: e).OrderByDescending(lambda e: e.pT()).query_ast
+    expected = ast.parse(
+        "OrderByDescending(Select(EventDataset(), lambda e: e), lambda e: e.pT())"
+    )
+    assert ast.dump(r) == ast.dump(expected.body[0].value)
+
+
+def test_order_by_composes_with_where_and_select():
+    r = (
+        my_event()
+        .Where(lambda e: e.met > 10)
+        .OrderBy(lambda e: e.met)
+        .Select(lambda e: e)
+        .query_ast
+    )
+    expected = ast.parse(
+        "Select(OrderBy(Where(EventDataset(), lambda e: e.met > 10), lambda e: e.met), "
+        "lambda e: e)"
+    )
+    assert ast.dump(r) == ast.dump(expected.body[0].value)
+
+
+def test_order_by_preserves_key_selector_lambda():
+    r = my_event().OrderBy(lambda e: e.jets().Count()).query_ast
+    expected = ast.parse("OrderBy(EventDataset(), lambda e: e.jets().Count())")
+    assert ast.dump(r) == ast.dump(expected.body[0].value)
+
+
+def test_order_by_rejects_non_lambda_expression():
+    with pytest.raises(Exception):
+        my_event().OrderBy("10")
+
+
 def test_metadata():
     r = (
         my_event()

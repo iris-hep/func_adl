@@ -40,6 +40,34 @@ object. There is a one-to-one correspondence between the input objects and outpu
         - The function can be a `lambda`, the name of a one-line function, a string that
         contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
+### OrderBy
+
+Sort the stream by a key selector in ascending order.
+
+    Arguments:
+        key_selector: A key selector lambda.
+
+    Returns:
+        A new ObjectStream with the same item type.
+
+    Notes:
+        - The function can be a `lambda`, the name of a one-line function, a string that
+          contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+
+### OrderByDescending
+
+Sort the stream by a key selector in descending order.
+
+    Arguments:
+        key_selector: A key selector lambda.
+
+    Returns:
+        A new ObjectStream with the same item type.
+
+    Notes:
+        - The function can be a `lambda`, the name of a one-line function, a string that
+          contains a lambda definition, or a python `ast` of type `ast.Lambda`.
+
 <!-- ### SelectMany vs Select
 
     TODO: Add an example that illustrates the difference between these two things.

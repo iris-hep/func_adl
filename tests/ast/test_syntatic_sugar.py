@@ -30,11 +30,77 @@ def test_resolve_generator():
     assert ast.dump(ast.parse("jets.Select(lambda j: j.pt())")) == ast.dump(a_new)
 
 
+def test_resolve_dictcomp():
+    a = ast.parse("{j.id(): j.pt() for j in jets}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse("jets.Select(lambda j: {'key': j.id(), 'value': j.pt()})")
+    ) == ast.dump(a_new)
+
+
+def test_resolve_dictcomp_if():
+    a = ast.parse("{j.id(): j.pt() for j in jets if j.pt() > 100}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse(
+            "jets.Where(lambda j: j.pt() > 100).Select(lambda j: {'key': j.id(), 'value': j.pt()})"
+        )
+    ) == ast.dump(a_new)
+
+
+def test_resolve_literal_dict_comp():
+    a = ast.parse("{i: i * 2 for i in [1, 2, 3]}")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(ast.parse("{1: 1 * 2, 2: 2 * 2, 3: 3 * 2}")) == ast.dump(a_new)
+
+
 def test_resolve_literal_list_comp():
     a = ast.parse("[i for i in [1, 2, 3]]")
     a_new = resolve_syntatic_sugar(a)
 
     assert ast.dump(ast.parse("[1, 2, 3]")) == ast.dump(a_new)
+
+
+@pytest.mark.parametrize(
+    "expression, expected",
+    [
+        ("{i * 2 for i in [1, 2, 3]}", "{1 * 2, 2 * 2, 3 * 2}"),
+        ("{i for i in (1, 1, 2)}", "{1, 1, 2}"),
+        ("{a + b for a, b in [(1, 2), (3, 4)]}", "{1 + 2, 3 + 4}"),
+        ("{i + j for i in [1, 2] for j in [3, 4]}", "{1 + 3, 1 + 4, 2 + 3, 2 + 4}"),
+        ("{i for i in [1, 2] if True}", "{1, 2}"),
+        ("{i for i in []}", "set()"),
+        ("{i for i in [1] if False}", "set()"),
+        ("x in {i for i in [1, 2]}", "x == 1 or x == 2"),
+        ("x not in {i for i in [1, 2]}", "x != 1 and x != 2"),
+        ("x in {i for i in []}", "False"),
+        ("x not in {i for i in [1] if False}", "True"),
+    ],
+)
+def test_resolve_literal_set_comp(expression, expected):
+    result = resolve_syntatic_sugar(ast.parse(expression, mode="eval"))
+    assert ast.dump(result) == ast.dump(ast.parse(expected, mode="eval"))
+    # Validate executable ASTs and Python set semantics, including deduplication.
+    compiled = compile(ast.fix_missing_locations(result), "<set comprehension>", "eval")
+    assert eval(compiled, {"x": 2}) == eval(expression, {"x": 2})
+
+
+@pytest.mark.parametrize("expression", ["{j.pt() for j in jets}", "{i for i in {1, 2}}"])
+def test_resolve_set_comp_non_literal_iterable_error(expression):
+    with pytest.raises(ValueError, match="Set comprehension requires literal") as error:
+        resolve_syntatic_sugar(ast.parse(expression))
+    assert ast.unparse(ast.parse(expression)) in str(error.value)
+
+
+def test_resolve_set_comp_captured_literal():
+    values = [1, 2]
+    result = parse_as_ast(lambda e: {i for i in values})
+    result = resolve_syntatic_sugar(result)
+    assert not any(isinstance(n, ast.SetComp) for n in ast.walk(result))
+    assert any(isinstance(n, ast.Set) for n in ast.walk(result))
 
 
 def test_resolve_listcomp_if():
@@ -63,38 +129,65 @@ def test_resolve_2generator():
     a_new = resolve_syntatic_sugar(a)
 
     assert ast.dump(
-        ast.parse("jets.Select(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
+        ast.parse("jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
     ) == ast.dump(a_new)
 
 
-def test_resolve_literal_set_comp():
-    a = ast.parse("{i * 2 for i in [1, 2, 3]}")
+def test_resolve_2generator_list_comp_flattened_shape():
+    a = ast.parse("[j.pt()+e.pt() for j in jets for e in electrons]")
     a_new = resolve_syntatic_sugar(a)
 
-    assert ast.dump(ast.parse("{1 * 2, 2 * 2, 3 * 2}")) == ast.dump(a_new)
+    assert ast.dump(
+        ast.parse("jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))")
+    ) == ast.dump(a_new)
 
 
-def test_resolve_set_comp_non_literal_iterable_error():
-    a = ast.parse("{j.pt() for j in jets}")
-
-    with pytest.raises(ValueError, match="Set comprehension requires literal iterables"):
-        resolve_syntatic_sugar(a)
-
-
-def test_resolve_set_comp_empty_literal_iterable():
-    a = ast.parse("{j for j in []}")
+def test_resolve_3generator_list_comp_flattened_shape():
+    a = ast.parse("[j.pt()+e.pt()+m.pt() for j in jets for e in electrons for m in muons]")
     a_new = resolve_syntatic_sugar(a)
 
-    assert ast.unparse(a_new) == ast.unparse(ast.parse("set()"))
+    # Outer generators are lowered with SelectMany so the final shape is a
+    # single flattened stream that matches Python comprehension semantics.
+    assert ast.dump(
+        ast.parse(
+            "jets.SelectMany(lambda j: electrons.SelectMany(lambda e: "
+            "muons.Select(lambda m: j.pt()+e.pt()+m.pt())))"
+        )
+    ) == ast.dump(a_new)
 
 
-def test_resolve_bad_iterator():
-    a = ast.parse("[j.pt() for idx,j in enumerate(jets)]")
+def test_resolve_tuple_target():
+    a = ast.parse("[a+b for a,b in pairs]")
     a_new = resolve_syntatic_sugar(a)
 
-    # Unsupported lowering (tuple target with non-literal source) should be
-    # preserved for downstream processing.
-    assert ast.unparse(a_new) == ast.unparse(a)
+    assert ast.dump(
+        ast.parse("pairs.Select(lambda __fa_tmp_0: __fa_tmp_0[0] + __fa_tmp_0[1])")
+    ) == ast.dump(a_new)
+
+
+def test_resolve_tuple_target_nested_with_if():
+    a = ast.parse("[a + c for (a, (b, c)) in triples if b > 0 if c < 10]")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse(
+            "triples.Where(lambda __fa_tmp_0: __fa_tmp_0[1][0] > 0)"
+            ".Where(lambda __fa_tmp_0: __fa_tmp_0[1][1] < 10)"
+            ".Select(lambda __fa_tmp_0: __fa_tmp_0[0] + __fa_tmp_0[1][1])"
+        )
+    ) == ast.dump(a_new)
+
+
+def test_resolve_tuple_target_from_enumerate_with_if():
+    a = ast.parse("[idx + j.pt() for idx, j in enumerate(jets) if idx > 0]")
+    a_new = resolve_syntatic_sugar(a)
+
+    assert ast.dump(
+        ast.parse(
+            "enumerate(jets).Where(lambda __fa_tmp_0: __fa_tmp_0[0] > 0)"
+            ".Select(lambda __fa_tmp_0: __fa_tmp_0[0] + __fa_tmp_0[1].pt())"
+        )
+    ) == ast.dump(a_new)
 
 
 def test_resolve_no_async():
@@ -109,6 +202,14 @@ def test_resolve_no_async():
 class LocalJet:
     def pt(self) -> float:
         return 0.0
+
+
+def keep_high_pt(j: LocalJet) -> bool:
+    return j.pt() > 10
+
+
+def jet_pt(j: LocalJet) -> float:
+    return j.pt()
 
 
 def test_resolve_dataclass_no_args():
@@ -181,7 +282,7 @@ def test_resolve_dataclass_too_many_args():
 
     with pytest.raises(ValueError):
         a = parse_as_ast(
-            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(  # type: ignore
+            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(
                 lambda j: j.pt()
             )  # type: ignore
         ).body
@@ -250,7 +351,7 @@ def test_resolve_named_tuple_too_many_args():
 
     with pytest.raises(ValueError):
         a = parse_as_ast(
-            lambda e: nt_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(  # type: ignore
+            lambda e: nt_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(
                 lambda j: j.pt()
             )  # type: ignore
         ).body
@@ -468,6 +569,67 @@ def test_resolve_any_generator_to_query_count_comparison():
     assert ast.unparse(a_resolved) == ast.unparse(a_expected)
 
 
+def test_resolve_filter_lambda_to_where():
+    a = ast.parse("filter(lambda j: j.pt() > 10, e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Where(lambda j: j.pt() > 10)")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_map_lambda_to_select():
+    a = ast.parse("map(lambda j: j.pt(), e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Select(lambda j: j.pt())")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_filter_captured_callable_to_where():
+    a = parse_as_ast(lambda e: filter(keep_high_pt, e.jets))
+    a_resolved = resolve_syntatic_sugar(a)
+
+    assert isinstance(a_resolved, ast.Lambda)
+    assert isinstance(a_resolved.body, ast.Call)
+    assert isinstance(a_resolved.body.func, ast.Attribute)
+    assert a_resolved.body.func.attr == "Where"
+    assert isinstance(a_resolved.body.args[0], ast.Lambda)
+    all_name_ids = {n.id for n in ast.walk(a_resolved) if isinstance(n, ast.Name)}
+    assert "keep_high_pt" not in all_name_ids
+
+
+def test_resolve_map_captured_callable_to_select():
+    a = parse_as_ast(lambda e: map(jet_pt, e.jets))
+    a_resolved = resolve_syntatic_sugar(a)
+
+    assert isinstance(a_resolved, ast.Lambda)
+    assert isinstance(a_resolved.body, ast.Call)
+    assert isinstance(a_resolved.body.func, ast.Attribute)
+    assert a_resolved.body.func.attr == "Select"
+    assert isinstance(a_resolved.body.args[0], ast.Lambda)
+    all_name_ids = {n.id for n in ast.walk(a_resolved) if isinstance(n, ast.Name)}
+    assert "jet_pt" not in all_name_ids
+
+
+def test_resolve_map_lambda_body_still_applies_any_all_sugar():
+    a = ast.parse("map(lambda j: any([j.pt() > 10, j.eta() < 2.4]), e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("e.jets.Select(lambda j: j.pt() > 10 or j.eta() < 2.4)")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_filter_map_rejects_invalid_signatures():
+    with pytest.raises(ValueError, match="filter requires exactly two arguments"):
+        resolve_syntatic_sugar(ast.parse("filter(lambda j: j.pt() > 10)"))
+
+    with pytest.raises(ValueError, match="map only supports positional arguments"):
+        resolve_syntatic_sugar(ast.parse("map(func=lambda j: j.pt(), seq=e.jets)"))
+
+    with pytest.raises(ValueError, match="filter requires a lambda"):
+        resolve_syntatic_sugar(ast.parse("filter(predicate, e.jets)"))
+
+
 def test_resolve_all_generator_with_if_clause_to_query_count_comparison():
     a = ast.parse("all(j.pt() > 10 for j in e.jets if j.eta() < 2.4)")
     a_resolved = resolve_syntatic_sugar(a)
@@ -489,6 +651,60 @@ def test_resolve_any_all_generator_empty_sequence_semantics():
 
     assert ast.unparse(a_any_resolved) == ast.unparse(a_any_expected)
     assert ast.unparse(a_all_resolved) == ast.unparse(a_all_expected)
+
+
+def test_resolve_sum_generator_to_query_sum_call():
+    a = ast.parse("sum(j.pt() for j in jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Sum(jets.Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_sum_list_comprehension_to_query_sum_call():
+    a = ast.parse("sum([j.pt() for j in jets])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Sum(jets.Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_any_call_keeps_nested_sum_rewrite():
+    a = ast.parse("any([sum(j.pt() for j in jets) > 0, e.met() > 20])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Sum(jets.Select(lambda j: j.pt())) > 0 or e.met() > 20")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_min_generator_to_min_call():
+    a = ast.parse("min(j.pt() for j in e.jets)")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Min(e.jets.Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_max_list_comprehension_to_max_call():
+    a = ast.parse("max([j.pt() for j in e.jets if j.eta() < 2.4])")
+    a_resolved = resolve_syntatic_sugar(a)
+
+    a_expected = ast.parse("Max(e.jets.Where(lambda j: j.eta() < 2.4).Select(lambda j: j.pt()))")
+    assert ast.unparse(a_resolved) == ast.unparse(a_expected)
+
+
+def test_resolve_min_comprehension_invalid_signature():
+    a = ast.parse("min((j.pt() for j in e.jets), default=0)")
+
+    with pytest.raises(ValueError, match="requires exactly one positional argument"):
+        resolve_syntatic_sugar(a)
+
+
+def test_resolve_max_comprehension_invalid_signature_extra_positional():
+    a = ast.parse("max((j.pt() for j in e.jets), 0)")
+
+    with pytest.raises(ValueError, match="requires exactly one positional argument"):
+        resolve_syntatic_sugar(a)
 
 
 def test_resolve_nested_captured_function_in_list_comp():

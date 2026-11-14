@@ -86,6 +86,8 @@ default_list_of_functions = [
     "Select",
     "SelectMany",
     "Where",
+    "OrderBy",
+    "OrderByDescending",
     "First",
     "ResultTTree",
     "ResultAwkwardArray",

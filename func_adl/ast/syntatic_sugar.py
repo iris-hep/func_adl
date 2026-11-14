@@ -13,7 +13,15 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
     * List comprehensions are turned into `Select` statements
     * Generator expressions are turned into `Select` statements
+    * Dictionary comprehensions are turned into `Select` statements that
+      emit key/value records.
     * A data class is converted into a dictionary.
+
+    Multi-generator comprehensions are lowered to a flattened stream shape to
+    preserve Python iteration semantics. For example:
+
+    * `(j.pt()+e.pt() for j in jets for e in electrons)`
+      -> `jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt()+e.pt()))`
 
     Args:
         a (ast.AST): The AST to scan for syntatic sugar
@@ -57,6 +65,37 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     if child_bindings is None:
                         return None
                     bindings.update(child_bindings)
+                return bindings
+
+            raise ValueError(
+                f"Comprehension variable must be a name or tuple/list, but found {target}"
+                f" - {ast.unparse(node)}"
+            )
+
+        def _target_bindings_from_value(
+            self, target: ast.AST, value: ast.expr, node: ast.AST
+        ) -> Dict[str, ast.expr]:
+            """Build bindings for comprehension targets, using indexing for non-literals."""
+
+            # Reuse literal destructuring where possible to preserve exact tuple/list nodes.
+            literal_bindings = self._target_bindings(target, value, node)
+            if literal_bindings is not None:
+                return literal_bindings
+
+            if isinstance(target, ast.Name):
+                return {target.id: copy.deepcopy(value)}
+
+            if isinstance(target, (ast.Tuple, ast.List)):
+                bindings: Dict[str, ast.expr] = {}
+                for index, target_elt in enumerate(target.elts):
+                    element_value = ast.Subscript(
+                        value=copy.deepcopy(value),
+                        slice=ast.Constant(value=index),
+                        ctx=ast.Load(),
+                    )
+                    bindings.update(
+                        self._target_bindings_from_value(target_elt, element_value, node)
+                    )
                 return bindings
 
             raise ValueError(
@@ -218,6 +257,136 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 values=sequence.elts,
             )
 
+        def _resolve_filter_map_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate builtin ``filter`` and ``map`` calls to query operators."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value in [filter, map]:
+                    func_name = call_node.func.value.__name__
+
+            if func_name not in ["filter", "map"]:
+                return None
+
+            if len(call_node.keywords) > 0:
+                raise ValueError(
+                    f"{func_name} only supports positional arguments"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            if len(call_node.args) != 2:
+                raise ValueError(
+                    f"{func_name} requires exactly two arguments (func, seq)"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            transform_arg, sequence_arg = call_node.args
+            if not isinstance(transform_arg, ast.Lambda):
+                raise ValueError(
+                    f"{func_name} requires a lambda in this context"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            return ast.Call(
+                func=ast.Attribute(
+                    attr="Where" if func_name == "filter" else "Select",
+                    value=sequence_arg,
+                    ctx=ast.Load(),
+                ),
+                args=[transform_arg],
+                keywords=[],
+            )
+
+        def _resolve_sum_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate ``sum`` on list/generator comprehensions into ``Sum`` aggregate calls."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value is sum:
+                    func_name = call_node.func.value.__name__
+
+            if func_name != "sum":
+                return None
+
+            source_sequence: Optional[ast.expr] = None
+            if isinstance(source_node, ast.Call) and len(source_node.args) == 1:
+                source_sequence = source_node.args[0]
+
+            has_comprehension_source = isinstance(
+                source_sequence, (ast.ListComp, ast.GeneratorExp)
+            )
+            if not has_comprehension_source:
+                return None
+
+            if len(call_node.args) != 1 or len(call_node.keywords) > 0:
+                raise ValueError(
+                    "sum requires exactly one positional argument when used with a comprehension"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            lowered_sequence = call_node.args[0]
+            if isinstance(lowered_sequence, (ast.ListComp, ast.GeneratorExp)):
+                raise ValueError(
+                    "Unable to lower sum comprehension into a Select call"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            return ast.Call(
+                func=ast.Name(id="Sum", ctx=ast.Load()),
+                args=[lowered_sequence],
+                keywords=[],
+            )
+
+        def _resolve_min_max_call(
+            self, call_node: ast.Call, source_node: ast.AST
+        ) -> Optional[ast.AST]:
+            """Translate built-in ``min``/``max`` calls on comprehensions to ``Min``/``Max``."""
+
+            func_name: Optional[str] = None
+            if isinstance(call_node.func, ast.Name):
+                func_name = call_node.func.id
+            elif isinstance(call_node.func, ast.Constant) and callable(call_node.func.value):
+                if call_node.func.value in [min, max]:
+                    func_name = call_node.func.value.__name__
+
+            if func_name not in ["min", "max"]:
+                return None
+
+            if not isinstance(source_node, ast.Call):
+                return None
+
+            source_has_comprehension = any(
+                isinstance(arg, (ast.ListComp, ast.GeneratorExp)) for arg in source_node.args
+            )
+            if not source_has_comprehension:
+                return None
+
+            if len(call_node.args) != 1 or len(call_node.keywords) > 0:
+                raise ValueError(
+                    f"{func_name} requires exactly one positional argument when"
+                    f" called with a comprehension - {ast.unparse(source_node)}"
+                )
+
+            if not isinstance(source_node.args[0], (ast.ListComp, ast.GeneratorExp)):
+                raise ValueError(
+                    f"{func_name} comprehension argument must be first"
+                    f" - {ast.unparse(source_node)}"
+                )
+
+            return ast.Call(
+                func=ast.Name(id=func_name.capitalize(), ctx=ast.Load()),
+                args=[call_node.args[0]],
+                keywords=[],
+            )
+
         def resolve_generator(
             self, lambda_body: ast.expr, generators: List[ast.comprehension], node: ast.AST
         ) -> ast.AST:
@@ -234,27 +403,50 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 ast.AST: The reformed ast (untouched if no expression detected)
             """
             a = node
-            for c in reversed(generators):
+            generator_count: int = len(generators)
+            temp_counter = 0
+            for index, c in enumerate(reversed(generators)):
                 target = c.target
-                if not isinstance(target, ast.Name):
-                    # Keep original comprehension for unsupported lowering cases.
-                    return node
                 if c.is_async:
                     raise ValueError(f"Comprehension can't be async - {ast.unparse(node)}.")
                 source_collection = c.iter
 
+                if isinstance(target, ast.Name):
+                    lambda_arg_name = target.id
+                elif isinstance(target, (ast.Tuple, ast.List)):
+                    lambda_arg_name = f"__fa_tmp_{temp_counter}"
+                    temp_counter += 1
+                else:
+                    raise ValueError(
+                        "Comprehension variable must be a name or tuple/list, "
+                        f"but found {target} - {ast.unparse(node)}"
+                    )
+
+                target_bindings = self._target_bindings_from_value(
+                    target,
+                    ast.Name(id=lambda_arg_name, ctx=ast.Load()),
+                    node,
+                )
+
                 # Turn the if clauses into Where statements
                 for a_if in c.ifs:
-                    where_function = lambda_build(target.id, a_if)
+                    where_body = self._substitute_names(a_if, target_bindings)
+                    where_function = lambda_build(lambda_arg_name, where_body)
                     source_collection = ast.Call(
                         func=ast.Attribute(attr="Where", value=source_collection, ctx=ast.Load()),
                         args=[where_function],
                         keywords=[],
                     )
 
-                lambda_function = lambda_build(target.id, lambda_body)
+                rewritten_lambda_body = self._substitute_names(lambda_body, target_bindings)
+                lambda_function = lambda_build(lambda_arg_name, rewritten_lambda_body)
+                use_select_many = generator_count > 1 and index > 0
                 a = ast.Call(
-                    func=ast.Attribute(attr="Select", value=source_collection, ctx=ast.Load()),
+                    func=ast.Attribute(
+                        attr="SelectMany" if use_select_many else "Select",
+                        value=source_collection,
+                        ctx=ast.Load(),
+                    ),
                     args=[lambda_function],
                     keywords=[],
                 )
@@ -290,18 +482,44 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             return a
 
         def visit_SetComp(self, node: ast.SetComp) -> Any:
-            "Translate a set comprehension into a literal set when possible."
+            """Expand set comprehensions over literal list/tuple iterables."""
+            a = self.generic_visit(node)
+            if isinstance(a, ast.SetComp):
+                expanded = self._inline_literal_comprehension(a.elt, a.generators, node)
+                if expanded is None:
+                    raise ValueError(
+                        "Set comprehension requires literal list/tuple iterables"
+                        f" - {ast.unparse(node)}"
+                    )
+                if not expanded:
+                    return ast.Call(func=ast.Name(id="set", ctx=ast.Load()), args=[], keywords=[])
+                return ast.Set(elts=expanded)
+            return a
+
+        def visit_DictComp(self, node: ast.DictComp) -> Any:
+            """Translate a dictionary comprehension into a stream of key/value records.
+
+            Literal comprehensions are inlined to a literal dictionary when
+            possible.
+            """
+
             a = self.generic_visit(node)
 
-            if isinstance(a, ast.SetComp):
-                if expanded := self._inline_literal_comprehension(a.elt, a.generators, node):
-                    return ast.Set(elts=expanded)
-                if expanded == []:
-                    return ast.Call(func=ast.Name(id="set", ctx=ast.Load()), args=[], keywords=[])
-                raise ValueError(
-                    "Set comprehension requires literal iterables so it can be represented"
-                    f" as a set literal - {ast.unparse(node)}"
+            if isinstance(a, ast.DictComp):
+                if (
+                    expanded := self._inline_literal_comprehension(a.key, a.generators, node)
+                ) is not None:
+                    expanded_values = self._inline_literal_comprehension(
+                        a.value, a.generators, node
+                    )
+                    assert expanded_values is not None
+                    return ast.Dict(keys=expanded, values=expanded_values)
+
+                kv_record = ast.Dict(
+                    keys=[ast.Constant(value="key"), ast.Constant(value="value")],
+                    values=[a.key, a.value],
                 )
+                a = self.resolve_generator(kv_record, a.generators, node)
 
             return a
 
@@ -324,6 +542,14 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             right = a.comparators[0]
 
             def const_list(t: ast.AST) -> Optional[List[ast.Constant]]:
+                if (
+                    isinstance(t, ast.Call)
+                    and isinstance(t.func, ast.Name)
+                    and t.func.id == "set"
+                    and not t.args
+                    and not t.keywords
+                ):
+                    return []
                 if isinstance(t, (ast.List, ast.Tuple, ast.Set)):
                     if all(isinstance(e, ast.Constant) for e in t.elts):
                         return list(t.elts)  # type: ignore
@@ -341,6 +567,8 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 )
 
             is_in = isinstance(a.ops[0], ast.In)
+            if not elements:
+                return ast.Constant(value=not is_in)
             return ast.BoolOp(
                 op=ast.Or() if is_in else ast.And(),
                 values=[
@@ -476,9 +704,24 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                     return self.convert_call_to_dict(a, node, arg_names)
 
             if isinstance(a, ast.Call):
+                filter_map_call = self._resolve_filter_map_call(a, source_node)
+                if filter_map_call is not None:
+                    # Revisit the lowered call so nested sugar transformations can
+                    # still run on the rewritten expression tree.
+                    a = self.visit(filter_map_call)
+
                 any_all_call = self._resolve_any_all_call(a, source_node)
                 if any_all_call is not None:
                     return any_all_call
+
+                sum_call = self._resolve_sum_call(a, source_node)
+                if sum_call is not None:
+                    return sum_call
+
+                min_max_call = self._resolve_min_max_call(a, source_node)
+                if min_max_call is not None:
+                    return min_max_call
+
             return a
 
     return syntax_transformer().visit(a)

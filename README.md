@@ -57,40 +57,57 @@ There are several python expressions and idioms that are translated behind your 
 --- | --- | --- |
 |List Comprehension | `[j.pt() for j in jets]` | `jets.Select(lambda j: j.pt())` |
 |List Comprehension | `[j.pt() for j in jets if abs(j.eta()) < 2.4]` | `jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt())` |
+|Multi-generator comprehension|`[j.pt() + e.pt() for j in jets for e in electrons]`|`jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt() + e.pt()))`|
+|Destructuring List Comprehension|`[a+b for a,b in pairs]`|`pairs.Select(lambda tmp: tmp[0] + tmp[1])`|
 |Literal List Comprehension|`[i for i in [1, 2, 3]]`|`[1, 2, 3]`|
 |Literal Set Comprehension|`{i for i in [1, 2, 3]}`|`{1, 2, 3}`|
+|Dictionary Comprehension|`{j.id(): j.pt() for j in jets}`|`jets.Select(lambda j: {'key': j.id(), 'value': j.pt()})`|
+|Dictionary Comprehension (with filter)|`{j.id(): j.pt() for j in jets if j.pt() > 100}`|`jets.Where(lambda j: j.pt() > 100).Select(lambda j: {'key': j.id(), 'value': j.pt()})`|
+|Literal Dictionary Comprehension|`{i: i * 2 for i in [1, 2, 3]}`|`{1: 1 * 2, 2: 2 * 2, 3: 3 * 2}`|
 | Data Classes<br>(typed) | `@dataclass`<br>`class my_data:`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 | Named Tuple<br>(typed) | `class my_data(NamedTuple):`<br>`x: ObjectStream[Jets]`<br><br>`Select(lambda e: my_data(x=e.Jets()).x)` | `Select(lambda e: {'x': e.Jets()}.x)` |
 |List Membership|`p.absPdgId() in [35, 51]`|`p.absPdgId() == 35 or p.absPdgId() == 51`|
 | `any`/`all` | `any([e.pt() > 10, abs(e.eta()) < 2.5])` | `e.pt() > 10 or abs(e.eta()) < 2.5` |
+| `filter` | `filter(lambda j: j.pt() > 30, jets)` | `jets.Where(lambda j: j.pt() > 30)` |
+| `map` | `map(lambda j: j.pt(), jets)` | `jets.Select(lambda j: j.pt())` |
+| `sum` over comprehension | `sum(j.pt() for j in jets)` | `Sum(jets.Select(lambda j: j.pt()))` |
+| `min`/`max` | `max(j.pt() for j in jets if abs(j.eta()) < 2.4)` | `Max(jets.Where(lambda j: abs(j.eta()) < 2.4).Select(lambda j: j.pt()))` |
 
 Note: Everything that goes for a list comprehension also goes for a generator expression.
+
+For multi-generator comprehensions (`for ... for ...`), lowering always preserves Python
+iteration semantics by flattening one level with `SelectMany` at outer generator levels.
 
 For `any`/`all`, generator/list comprehensions over a literal (or captured literal constant)
 are first expanded to a literal list and then reduced as usual. For example,
 `any(f(a) for a in [1, 2])` is treated like `any([f(1), f(2)])`.
 
-Set comprehensions are supported only when all iterables in the comprehension are
-literal (or captured literal constants). In that case, FuncADL expands the
-comprehension at transformation time and emits a literal set expression in the AST.
-For an empty result, Python's AST represents this as `set()` instead of `{}` (which
-is a dictionary literal), so FuncADL sends `set()` in that case.
+For `filter`/`map`, only the builtin two-argument form is supported in syntatic sugar:
+`filter(func, seq)` and `map(func, seq)`. Keyword arguments are rejected with a
+contextual error message so the unsupported expression is easy to identify.
 
-If a set comprehension iterates over a non-literal stream (for example
-`{j.pt() for j in jets}`), FuncADL raises a `ValueError` rather than guessing a
-backend-specific representation.
+`sum` with a single list/generator comprehension argument is rewritten to `Sum(...)`
+after the comprehension is lowered to `Select(...)`, e.g.
+`sum(j.pt() for j in jets)` becomes `Sum(jets.Select(lambda j: j.pt()))`.
 
-### What goes over the func_adl wire for sets
+For `min`/`max`, when the single argument is a list/generator comprehension, FuncADL first
+lowers that comprehension to query operators and then wraps the result in `Min(...)`/`Max(...)`
+so aggregate simplification can process it.
 
-When `.value()` is called, FuncADL sends the transformed query AST to the backend.
-For sets, the AST seen by the backend is:
+Set comprehensions expand over literal lists/tuples, including captured literal
+lists/tuples. For example, `{i * 2 for i in [1, 2]}` becomes `{1 * 2, 2 * 2}`.
+The existing literal-comprehension restrictions apply: filters must resolve to
+boolean constants, and dependent or non-literal iterables are unsupported.
+Unsupported set iterables raise a `ValueError` that includes the expression.
 
-- `ast.Set(...)` for non-empty literal set comprehensions
-- `ast.Call(func=Name('set'), ...)` for an empty set comprehension
-
-So by the time the query is serialized/sent to a backend, there is no `SetComp`
-node left for supported cases; it has already been lowered to ordinary AST nodes
-that explicitly represent a set value.
+The transformed query AST contains `ast.Set` for a non-empty expansion and a
+`set()` call for an empty expansion; it contains no supported `SetComp` nodes.
+These describe set values, whose execution requires backend support. In particular,
+the xAOD backend does not currently support standalone set values, and Qastle
+does not serialize `ast.Set` nodes. Membership
+against constant set elements is lowered further to comparisons before reaching
+the backend; membership against an empty set becomes `False` (`True` for `not in`).
+Arithmetic elements remain expressions and are not constant-folded for membership.
 
 ## Extensibility
 

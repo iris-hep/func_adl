@@ -1,21 +1,29 @@
 # Using .MetaData()
 
-Some analyses require more complex logic than what .Select() and .Where() can provide. In such cases, the .MetaData() operator allows C++ code to be injected directly into the query, executing as if it were written natively in the EventLoop code. Use of .MetaData() and the following examples is recommended only when specific analysis tasks cannot be achieved with .Select() or .Where(). 
+:::{admonition} You Will Learn:
+:class: note
+- When to use `MetaData()` instead of `Select()` or `Where()`
+- How to inject custom C++ functions into a FuncADL query
+- How to use the `@func_adl_callable` decorator to link a Python stub to a C++ function
+- How to wrap non-functional C++ methods (such as those returning values by reference)
+:::
+
+Some analyses require more complex logic than `Select()` and `Where()` can provide. In such cases, the `MetaData()` operator allows C++ code to be injected directly into the query, executing as if it were written natively in the EventLoop code. Use `MetaData()` and the examples that follow only when specific analysis tasks cannot be achieved with `Select()` or `Where()`.
 
 This section is not intended for a first pass through the documentation.
 
 ## When to Use .MetaData()
 
-Some values in an analysis are unable to be acquired using the functional style of FuncADL. Some of these cases are as follows:
+Some values in an analysis cannot be acquired using the functional style of FuncADL. Common cases include:
 
-- An example of this is when the value needed is returned by reference/pointer and not returned by the function. This is a time that the .MetaData() operator is needed.
-- Adding a selection tool
+- The value needed is returned by reference or pointer rather than by the function's return value. This is a case where the `MetaData()` operator is needed.
+- Adding a selection tool.
 
 ## Adding a Basic C++ Function
 
-This example demonstrates how to use FuncADL to inject and run C++ code by implementing a simple function that squares input values. Although squaring a number can easily be done with the .Select() operator, this example uses it to illustrate the basic process of executing C++ code within FuncADL.
+This example demonstrates how to use FuncADL to inject and run C++ code by implementing a simple function that squares input values. Although squaring a number can easily be done with the `Select()` operator, this example uses it to illustrate the basic process of executing C++ code within FuncADL.
 
-The added complexity of injecting a C++ function arises because the .MetaData() operator cannot be used inline like .Select() or .Where() in previous examples. This is due to the need to create a callable function that can be invoked within the FuncADL query. Showing the end result can help illustrate this process:
+The added complexity of injecting a C++ function arises because the `MetaData()` operator cannot be used inline like `Select()` or `Where()`. A callable function must be created so that it can be invoked within the FuncADL query. The end result helps illustrate this process:
 
 ```python
 squared_numbers = (query
@@ -25,9 +33,9 @@ squared_numbers = (query
 )
 ```
 
-In this example, the function square() must exist in Python for the query to run without errors. To achieve this, a dummy function is created and linked to a function containing the .MetaData() operator. Both functions must be set up before creating the query.
+In this example, the function `square()` must exist in Python for the query to run without errors. To satisfy this, a dummy function is created and linked to a function containing the `MetaData()` operator. Both functions must be set up before creating the query.
 
-The first step to setting up these functions is that several additional imports are required, and a type is defined for later use.
+Setting up these functions requires several additional imports, and a type is defined for later use.
 
 ```python
 import ast
@@ -36,7 +44,7 @@ from typing import Tuple, TypeVar
 T = TypeVar("T")
 ```
 
-Next, the dummy function is created and linked to the function that injects .MetaData() into the query using the `@func_adl_callable` decorator. The `square_callable` function will be defined in the following part.
+Next, the dummy function is created and linked to the function that injects `MetaData()` into the query using the `@func_adl_callable` decorator. The `square_callable` function is defined in the next step.
 
 ```python
 @func_adl_callable(square_callable)
@@ -52,7 +60,7 @@ def square(x: int) -> int:
     ...
 ```
 
-Next, a function is defined to add the C++ function to the query. This must be done inside a function rather than directly in the query so that Python can recognize the previously defined function. The function takes the ObjectStream to which .MetaData() is applied, along with an ast.Call object, which is passed through unchanged.
+Next, a function is defined to add the C++ function to the query. This must be done inside a function rather than directly in the query so that Python can recognize the previously defined function. The function takes the `ObjectStream` to which `MetaData()` is applied, along with an `ast.Call` object, which is passed through unchanged.
 
 ```python
 def square_callable(
@@ -74,13 +82,13 @@ def square_callable(
     return new_s, a
 ```
 
-Next, the .MetaData() operator is called on the current ObjectStream, adding the metadata to the stream. In this case, the metadata being added is the C++ function. When adding a C++ function, the function name, code body, arguments, and return type must be specified.
+The `MetaData()` operator is called on the current `ObjectStream`, adding the metadata to the stream. In this case, the metadata being added is the C++ function. When adding a C++ function, the function name, code body, arguments, and return type must all be specified.
 
-In this example, the input integer is named x. It is multiplied by itself to produce the squared value, which is assigned to the variable result. The metadata sets result as the output, with a return type of int. It is essential that the dummy function and the C++ function share the same name; otherwise, an error will occur.
+In this example, the input integer is named `x`. It is multiplied by itself to produce the squared value, which is assigned to the variable `result`. The metadata sets `result` as the output, with a return type of `int`. The dummy function and the C++ function must share the same name; otherwise, an error occurs.
 
 With these two functions defined, the target query can now be executed.
 
-This call gives this result for a dataset with 1410 events:
+This call gives the following result for a dataset with 1410 events:
 
 ```python
 [{squared: 4},
@@ -96,11 +104,11 @@ type: 1410 * {
 
 ## Adding a C++ Function from an Analysis
 
-The code implemented using the .MetaData() operator is analysis-specific and is therefore not detailed in this documentation. However, an example from an analysis can illustrate how similar code might be structured.
+The code implemented using the `MetaData()` operator is analysis-specific and is therefore not detailed in this documentation. However, an example from an analysis can illustrate how similar code might be structured.
 
-In the example analysis, track summary values are required. The summaryValue() function returns a boolean indicating whether the value exists and provides the value via a reference argument. Because the function does not return the value directly, it cannot be used by FuncADL on its own. A C++ function using .MetaData() is required to access this information.
+In the example analysis, track summary values are required. The `summaryValue()` function returns a boolean indicating whether the value exists and provides the value via a reference argument. Because the function does not return the value directly, it cannot be used by FuncADL on its own. A C++ function using `MetaData()` is required to access this information.
 
-The following code sets up the function that will be called in the FuncADL query:
+The following code sets up the function that is called in the FuncADL query:
 
 ```python
 
@@ -160,7 +168,7 @@ def track_summary_value(trk: TrackParticle_v1, value_selector: xAOD.SummaryType)
 
 ```
 
-The code to then run this example is as follows:
+The code to run this example is as follows:
 
 ```python
 track_values = (query

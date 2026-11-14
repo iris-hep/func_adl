@@ -173,10 +173,8 @@ def test_lambda_replace_simple_expression():
 
 
 def test_rewrite_oneliner():
-    a = ast.parse(
-        """def oneline(a):
-        return a+1"""
-    )
+    a = ast.parse("""def oneline(a):
+        return a+1""")
 
     b = a.body[0]
     assert isinstance(b, ast.FunctionDef)
@@ -189,11 +187,9 @@ def test_rewrite_oneliner():
 
 
 def test_rewrite_twoliner():
-    a = ast.parse(
-        """def oneline(a):
+    a = ast.parse("""def oneline(a):
         t = a+1
-        return t"""
-    )
+        return t""")
 
     b = a.body[0]
     assert isinstance(b, ast.FunctionDef)
@@ -204,10 +200,8 @@ def test_rewrite_twoliner():
 
 
 def test_rewrite_noret():
-    a = ast.parse(
-        """def oneline(a):
-        a+1"""
-    )
+    a = ast.parse("""def oneline(a):
+        a+1""")
 
     b = a.body[0]
     assert isinstance(b, ast.FunctionDef)

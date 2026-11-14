@@ -1,0 +1,23 @@
+name: Trigger ServiceX Website Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+    paths:
+      - "docs/**"
+  pull_request:
+    paths:
+      - "docs/**"
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch publishWebsite workflow
+        run: |
+          gh workflow run publishWebsite.yml \
+            --repo ssl-hep/ServiceX_Website \
+            --ref main
+        env:
+          GH_TOKEN: ${{ secrets.SERVICEX_WEBSITE_PAT }}

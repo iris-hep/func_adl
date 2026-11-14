@@ -1,14 +1,21 @@
 # Using .Where()
 
-As discussed on the query structure page the location of .Where() function changes at what level in the data it is applying the cut. The examples on this page are designed in order to build a strong understanding of using .Where() in xAOD queries. 
+:::{admonition} You Will Learn:
+:class: note
+- How `Where()` filters data at different levels of a query
+- How the position of `Where()` relative to `Select()` changes the result
+- How to skim events using `Where()` at the event level
+:::
 
-## Applying pt Cuts 
+As discussed on the query structure page, the location of the `Where()` function determines the level in the data at which the cut applies. The examples on this page build a strong understanding of using `Where()` in xAOD queries.
 
-There are multiple places .Where() can be called to apply a pt cut. The location of .Where() in the query can change the resulting data. This difference is because of the location of .Where() relative to the .Select() functions. The difference is illustrated in the two examples below.
+## Applying pt Cuts
+
+A `Where()` call can apply a pt cut at multiple positions in a query, and the position changes the resulting data. The difference comes from the location of `Where()` relative to the `Select()` functions. The two examples below illustrate this difference.
 
 ### Apply to All Values
 
-The following code applies the pt cut before any of the values are selected from the jets. This means that pt, eta, and phi all will only be from jets with 30 GeV or higher.
+The following code applies the pt cut before any values are selected from the jets. As a result, pt, eta, and phi all come only from jets with 30 GeV or higher.
 
 ```{eval-rst}
 .. testsetup::
@@ -40,7 +47,7 @@ The following code applies the pt cut before any of the values are selected from
 
 ### Apply only to pt Values
 
-The following code applies the pt cut only before the pt .Select() operator. This means that only pt values will be from only cut jets, eta and phi will be from all jets.
+The following code applies the pt cut only before the pt `Select()` operator. As a result, only the pt values come from cut jets, while eta and phi come from all jets.
 
 ```{eval-rst}
 .. testsetup::
@@ -72,7 +79,7 @@ The following code applies the pt cut only before the pt .Select() operator. Thi
 
 ### Comparison
 
-Plotting the Jet pt and Jet eta will demonstrate the difference in these methods.
+Plotting the Jet pt and Jet eta demonstrates the difference between these methods.
 
 ```{figure} img/where_1.png
 :alt: Plot of Jet pt, Shows Values are Same
@@ -80,7 +87,7 @@ Plotting the Jet pt and Jet eta will demonstrate the difference in these methods
 :align: center
 ```
 
-The plot above shows that the Jet pt data is identical from both methods of applying the cut. This is what is expected.
+The plot above shows that the Jet pt data is identical between both methods of applying the cut, as expected.
 
 ```{figure} img/where_2.png
 :alt: Plot of Jet Eta, Shows Values Differ
@@ -88,11 +95,11 @@ The plot above shows that the Jet pt data is identical from both methods of appl
 :align: center
 ```
 
-The eta plot above shows that the Jet eta does not match using both methods. The plot makes it clear that the eta values are not getting trimmed when the .Where() is not called before the eta .Select().
+The eta plot above shows that the Jet eta values differ between the two methods. The eta values are not trimmed when `Where()` is not called before the eta `Select()`.
 
 ## Skimming Events
 
-To skim events .Where() needs to be used on the event level of the query. This takes place before the first .Select(). To demonstrate this this example builds a query where jets with pt > 30 GeV are selected from events where there is at least 1 jet of 100 GeV.
+Skimming events requires using `Where()` at the event level of the query, which takes place before the first `Select()`. The example below builds a query that selects jets with pt > 30 GeV from events containing at least one jet of 100 GeV.
 
 ```{eval-rst}
 .. testsetup::
@@ -121,20 +128,7 @@ To skim events .Where() needs to be used on the event level of the query. This t
 
 ```
 
-```python
-query = FuncADLQueryPHYSLITE()
-jets_per_event = (query
-                    .Where(lambda e: e.Jets().Where(lambda j: (j.pt() / 1000 > 100)).Count() > 0)
-                    .Select(lambda e: e.Jets())
-                    .Select(lambda jets: {
-                            'pt': jets.Where(lambda j: j.pt() / 1000 > 30).Select(lambda j: j.pt() / 1000),
-                        })
-                 )
-
-jet_data = get_data(jets_per_event, physlite_ds)
-```
-
-Comparing the results from the first set of examples, it can be seen that there are much fewer jets, which is expected from looking at fewer events.
+Comparing the results to the first set of examples shows far fewer jets, which is expected when looking at fewer events.
 
 ```{figure} img/where_3.png
 :alt: Plot of Jet pt, Shows event skimming

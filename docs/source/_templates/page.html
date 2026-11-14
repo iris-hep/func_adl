@@ -37,6 +37,19 @@
                     return new bootstrap.Dropdown(dropdownToggleEl);
                 });
             }
+
+            // Load Pagefind search UI
+            const pfLink = document.createElement('link');
+            pfLink.rel = 'stylesheet';
+            pfLink.href = '/pagefind/pagefind-ui.css';
+            document.head.appendChild(pfLink);
+
+            const pfScript = document.createElement('script');
+            pfScript.src = '/pagefind/pagefind-ui.js';
+            pfScript.onload = () => {
+                new PagefindUI({ element: '#search', showImages: false });
+            };
+            document.head.appendChild(pfScript);
         });
 </script>
 

@@ -228,3 +228,19 @@ def test_extension_functions_select_extension_in_lambda_too():
 
     transform = change_extension_functions_to_calls(source)
     assert ast.dump(transform) == ast.dump(expected)
+
+
+def test_extension_functions_order_by_extension():
+    source = ast.parse("jets.OrderBy(lambda b: b.pt())")
+    expected = ast.parse("OrderBy(jets, lambda b: b.pt())")
+
+    transform = change_extension_functions_to_calls(source)
+    assert ast.dump(transform) == ast.dump(expected)
+
+
+def test_extension_functions_order_by_descending_extension():
+    source = ast.parse("jets.OrderByDescending(lambda b: b.pt())")
+    expected = ast.parse("OrderByDescending(jets, lambda b: b.pt())")
+
+    transform = change_extension_functions_to_calls(source)
+    assert ast.dump(transform) == ast.dump(expected)

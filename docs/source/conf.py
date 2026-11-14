@@ -6,20 +6,36 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+from importlib.metadata import version as _pkg_version
+
+release = _pkg_version("func_adl")
+
 project = "FuncADL"
 copyright = (
     "2025 Institute for Research and " "Innovation in Software for High Energy Physics (IRIS-HEP)"
 )
 author = "Institute for Research and Innovation in Software for High Energy Physics (IRIS-HEP)"
-release = "3.5.0"
+html_title = f"FuncADL v{release} <br> User Guide"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "myst_parser",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
+    "code_include.extension",
+    "myst_parser",
+    "sphinx_design",
+    "sphinxcontrib.autodoc_pydantic",
+    "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "enum_tools.autoenum",
+]
+
+myst_enable_extensions = [
+    "colon_fence",
 ]
 
 templates_path = ["_templates"]

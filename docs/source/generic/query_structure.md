@@ -39,27 +39,49 @@ Due to the flexible nature of FuncADL there are multiple ways to structure each 
 Inside query lambdas, FuncADL also rewrites a few common Python forms into query-friendly
 expressions:
 
-- List/generator comprehensions over streams are lowered to `.Where(...)`/`.Select(...)`.
+- List/generator comprehensions over streams are lowered to query operators.
+  Multi-generator forms (`for ... for ...`) flatten outer levels via `.SelectMany(...)`
+  so the stream shape matches Python iteration semantics.
+- Comprehensions with tuple/list destructuring targets are supported. For non-literal
+  iterables, destructured names are rewritten as indexed access on an internal temporary
+  value (for example, `[a+b for a,b in pairs]` behaves like `pairs.Select(lambda tmp: tmp[0] + tmp[1])`).
 - List comprehensions over literal iterables are expanded directly. For example,
   `[i for i in [1, 2, 3]]` becomes `[1, 2, 3]`.
+- Dictionary comprehensions over streams are lowered to `.Select(...)` of
+  key/value records (e.g. `{'key': ..., 'value': ...}`), including `.Where(...)`
+  when comprehension `if` filters are present.
+- Dictionary comprehensions over literal iterables are expanded directly into
+  dictionary literals.
+- Set comprehensions over literal lists/tuples (including captured literal
+  lists/tuples) expand to `ast.Set` nodes, or a `set()` call for an empty expansion.
+  Filters must resolve to boolean constants, as with other literal comprehensions.
+  Non-literal or dependent iterables are unsupported and raise contextual errors.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
-- Set comprehensions over literal iterables are expanded directly to a set value.
+- builtin `filter(func, seq)` and `map(func, seq)` are lowered to
+  `seq.Where(func)` and `seq.Select(func)`.
+- `sum` with a single list/generator comprehension argument is lowered to `Sum(Select(...))`.
+- `min`/`max` with a single list/generator-comprehension argument are lowered to
+  `Min(...)`/`Max(...)` after the comprehension itself is lowered.
 
 This means patterns like `any(expr(x) for x in LITERAL_LIST)` can be simplified in-query,
-as long as the iterable is a literal (or a captured literal constant).
+as long as the iterable is a literal (or a captured literal constant). Likewise,
+`filter(lambda j: j.pt() > 30, jets)` and `map(lambda j: j.pt(), jets)` can be
+written in query lambdas and translated to the corresponding query operators.
 
-For set comprehensions, only literal iterables are supported. For example,
-`{i * 2 for i in [1, 2, 3]}` is lowered before execution to a set literal equivalent.
-If the result is empty, the lowered AST is `set()` (Python AST has no empty set literal
-syntax node).
+Similarly, aggregate expressions such as `sum(j.pt() for j in jets)` are translated into
+query-style aggregate calls (`Sum(jets.Select(lambda j: j.pt()))`) that downstream
+aggregate lowering can process. The same applies to `min`/`max`: expressions like
+`max(expr(x) for x in stream if pred(x))` are rewritten to the aggregate form
+`Max(stream.Where(lambda x: pred(x)).Select(lambda x: expr(x)))`.
 
-If the iterable is not literal (for example `{j.pt() for j in jets}`), FuncADL raises
-a `ValueError` because the generic query representation does not define a stream-level
-set-construction operator that all backends can execute consistently.
+For example, `{i * 2 for i in [1, 2]}` expands to `{1 * 2, 2 * 2}`. Expansion
+substitutes expressions; it does not evaluate arithmetic or remove duplicates.
+The resulting set value retains Python set semantics when executed by a backend
+that supports sets. The xAOD backend currently requires a follow-on change to
+execute standalone set values; Qastle also rejects `ast.Set` during serialization.
+This syntax transformation alone does not add either capability.
 
-### What is sent to the backend
-
-When `.value()` is called, FuncADL sends the transformed AST query to the backend
-executor. For supported set comprehensions, the backend receives regular AST nodes
-(`ast.Set` or `set()` call) rather than an `ast.SetComp`. This keeps the wire/query
-representation explicit and backend-agnostic.
+Membership against constant set elements is rewritten to comparisons, so
+`x in {i for i in [1, 2]}` becomes `x == 1 or x == 2` and needs no backend set
+support. Empty membership becomes `False`, or `True` for `not in`. Membership
+against arithmetic expressions remains subject to the constant-element restriction.
