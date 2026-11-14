@@ -67,13 +67,16 @@ def test_resolve_literal_list_comp():
 @pytest.mark.parametrize(
     "expression, expected",
     [
-        ("{i * 2 for i in [1, 2, 3]}", "{1 * 2, 2 * 2, 3 * 2}"),
-        ("{i for i in (1, 1, 2)}", "{1, 1, 2}"),
-        ("{a + b for a, b in [(1, 2), (3, 4)]}", "{1 + 2, 3 + 4}"),
-        ("{i + j for i in [1, 2] for j in [3, 4]}", "{1 + 3, 1 + 4, 2 + 3, 2 + 4}"),
-        ("{i for i in [1, 2] if True}", "{1, 2}"),
-        ("{i for i in []}", "set()"),
-        ("{i for i in [1] if False}", "set()"),
+        ("x in {i * 2 for i in [1, 2, 3]}", "x == 2 or x == 4 or x == 6"),
+        ("x in {i for i in (1, 1, 2)}", "x == 1 or x == 1 or x == 2"),
+        ("x in {a + b for a, b in [(1, 2), (3, 4)]}", "x == 3 or x == 7"),
+        (
+            "x in {i + j for i in [1, 2] for j in [3, 4]}",
+            "x == 4 or x == 5 or x == 5 or x == 6",
+        ),
+        ("x in {i for i in [1, 2] if True}", "x == 1 or x == 2"),
+        ("x in {2 * 3, -(1 + 2)}", "x == 6 or x == -3"),
+        ("x not in {2 * 3, 2 ** 3}", "x != 6 and x != 8"),
         ("x in {i for i in [1, 2]}", "x == 1 or x == 2"),
         ("x not in {i for i in [1, 2]}", "x != 1 and x != 2"),
         ("x in {i for i in []}", "False"),
@@ -82,7 +85,7 @@ def test_resolve_literal_list_comp():
 )
 def test_resolve_literal_set_comp(expression, expected):
     result = resolve_syntatic_sugar(ast.parse(expression, mode="eval"))
-    assert ast.dump(result) == ast.dump(ast.parse(expected, mode="eval"))
+    assert ast.unparse(result) == ast.unparse(ast.parse(expected, mode="eval"))
     # Validate executable ASTs and Python set semantics, including deduplication.
     compiled = compile(ast.fix_missing_locations(result), "<set comprehension>", "eval")
     assert eval(compiled, {"x": 2}) == eval(expression, {"x": 2})
@@ -97,10 +100,30 @@ def test_resolve_set_comp_non_literal_iterable_error(expression):
 
 def test_resolve_set_comp_captured_literal():
     values = [1, 2]
-    result = parse_as_ast(lambda e: {i for i in values})
+    result = parse_as_ast(lambda e: e in {i * 2 for i in values})
     result = resolve_syntatic_sugar(result)
-    assert not any(isinstance(n, ast.SetComp) for n in ast.walk(result))
-    assert any(isinstance(n, ast.Set) for n in ast.walk(result))
+    assert ast.dump(result) == ast.dump(ast.parse("lambda e: e == 2 or e == 4").body[0].value)
+
+
+@pytest.mark.parametrize(
+    "expression",
+    ["{i * 2 for i in [1, 2]}", "{i for i in []}", "{'values': {1, 2}}", "set()"],
+)
+def test_standalone_set_error_has_source(expression):
+    with pytest.raises(ValueError, match="Set values are only supported") as error:
+        resolve_syntatic_sugar(ast.parse(expression))
+    assert ast.unparse(ast.parse(expression)) in str(error.value)
+
+
+def test_membership_does_not_evaluate_calls():
+    with pytest.raises(ValueError, match="constant arithmetic expressions") as error:
+        resolve_syntatic_sugar(ast.parse("x in {dangerous()}"))
+    assert "dangerous()" in str(error.value)
+
+
+def test_membership_arithmetic_error_has_source():
+    with pytest.raises(ValueError, match="1 / 0"):
+        resolve_syntatic_sugar(ast.parse("x in {1 / 0}"))
 
 
 def test_resolve_listcomp_if():

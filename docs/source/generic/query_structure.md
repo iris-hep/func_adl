@@ -52,8 +52,8 @@ expressions:
   when comprehension `if` filters are present.
 - Dictionary comprehensions over literal iterables are expanded directly into
   dictionary literals.
-- Set comprehensions over literal lists/tuples (including captured literal
-  lists/tuples) expand to `ast.Set` nodes, or a `set()` call for an empty expansion.
+- Set comprehensions in `in`/`not in` comparisons over literal lists/tuples
+  (including captured literal lists/tuples) expand to comparisons.
   Filters must resolve to boolean constants, as with other literal comprehensions.
   Non-literal or dependent iterables are unsupported and raise contextual errors.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
@@ -74,14 +74,7 @@ aggregate lowering can process. The same applies to `min`/`max`: expressions lik
 `max(expr(x) for x in stream if pred(x))` are rewritten to the aggregate form
 `Max(stream.Where(lambda x: pred(x)).Select(lambda x: expr(x)))`.
 
-For example, `{i * 2 for i in [1, 2]}` expands to `{1 * 2, 2 * 2}`. Expansion
-substitutes expressions; it does not evaluate arithmetic or remove duplicates.
-The resulting set value retains Python set semantics when executed by a backend
-that supports sets. The xAOD backend currently requires a follow-on change to
-execute standalone set values; Qastle also rejects `ast.Set` during serialization.
-This syntax transformation alone does not add either capability.
-
-Membership against constant set elements is rewritten to comparisons, so
-`x in {i for i in [1, 2]}` becomes `x == 1 or x == 2` and needs no backend set
-support. Empty membership becomes `False`, or `True` for `not in`. Membership
-against arithmetic expressions remains subject to the constant-element restriction.
+For example, `x in {i * 2 for i in [1, 2]}` becomes `x == 2 or x == 4`.
+Constant arithmetic is evaluated before the comparison is expanded. Empty membership
+becomes `False`, or `True` for `not in`. Standalone set values are rejected with
+a `ValueError` that includes the source expression.

@@ -68,6 +68,31 @@ def test_simple_query():
     assert isinstance(r, ast.AST)
 
 
+@pytest.mark.parametrize(
+    "expression, expected",
+    [
+        (
+            "j.index() in {i * 2 for i in [1, 2, 3]}",
+            "j.index() == 2 or j.index() == 4 or j.index() == 6",
+        ),
+        ("j.index() not in {2 * 3, 8}", "j.index() != 6 and j.index() != 8"),
+        ("j.index() in {i for i in []}", "False"),
+    ],
+)
+def test_set_membership_prepared_for_executor(expression, expected):
+    result = my_event().Where(f"lambda j: {expression}").clean_ast()
+    expected_ast = ast.parse(f"Where(EventDataset(), lambda j: {expected})").body[0].value
+    assert ast.dump(result) == ast.dump(expected_ast)
+    assert not any(isinstance(n, (ast.Set, ast.SetComp, ast.BinOp)) for n in ast.walk(result))
+
+
+@pytest.mark.parametrize("expression", ["{i for i in [1, 2]}", "set()", "{1, 2}"])
+def test_standalone_set_rejected_during_query_construction(expression):
+    with pytest.raises(ValueError, match="Set values are only supported") as error:
+        my_event().Select(f"lambda e: {expression}")
+    assert expression in str(error.value)
+
+
 def test_simple_query_one_line():
     """Make sure we parse 2 functions on one line correctly"""
     r = my_event().Select(lambda e: e.met).Where(lambda e: e > 10).query_ast
