@@ -77,6 +77,7 @@ def test_resolve_literal_list_comp():
         ("x in {i for i in [1, 2] if True}", "x == 1 or x == 2"),
         ("x in {2 * 3, -(1 + 2)}", "x == 6 or x == -3"),
         ("x not in {2 * 3, 2 ** 3}", "x != 6 and x != 8"),
+        ("x in {~1, 8 >> 1, 9 // 2, 7 % 3}", "x == -2 or x == 4 or x == 4 or x == 1"),
         ("x in {i for i in [1, 2]}", "x == 1 or x == 2"),
         ("x not in {i for i in [1, 2]}", "x != 1 and x != 2"),
         ("x in {i for i in []}", "False"),
@@ -91,11 +92,22 @@ def test_resolve_literal_set_comp(expression, expected):
     assert eval(compiled, {"x": 2}) == eval(expression, {"x": 2})
 
 
-@pytest.mark.parametrize("expression", ["{j.pt() for j in jets}", "{i for i in {1, 2}}"])
+@pytest.mark.parametrize(
+    "expression", ["x in {j.pt() for j in jets}", "x in {i for i in range(3)}"]
+)
 def test_resolve_set_comp_non_literal_iterable_error(expression):
     with pytest.raises(ValueError, match="Set comprehension requires literal") as error:
         resolve_syntatic_sugar(ast.parse(expression))
-    assert ast.unparse(ast.parse(expression)) in str(error.value)
+    source = ast.parse(expression).body[0].value.comparators[0]
+    assert ast.unparse(source) in str(error.value)
+
+
+def test_membership_python_literal_types():
+    result = resolve_syntatic_sugar(ast.parse("x in {1 + 2j, b'ab' * 2}", mode="eval"))
+    assert [comparison.comparators[0].value for comparison in result.body.values] == [
+        1 + 2j,
+        b"abab",
+    ]
 
 
 def test_resolve_set_comp_captured_literal():
@@ -107,7 +119,15 @@ def test_resolve_set_comp_captured_literal():
 
 @pytest.mark.parametrize(
     "expression",
-    ["{i * 2 for i in [1, 2]}", "{i for i in []}", "{'values': {1, 2}}", "set()"],
+    [
+        "{i * 2 for i in [1, 2]}",
+        "{i for i in []}",
+        "{'values': {1, 2}}",
+        "set()",
+        "(x in {1, 2}, {3, 4})",
+        "x in [{1, 2}]",
+        "x in {i for i in {1, 2}}",
+    ],
 )
 def test_standalone_set_error_has_source(expression):
     with pytest.raises(ValueError, match="Set values are only supported") as error:
@@ -115,10 +135,13 @@ def test_standalone_set_error_has_source(expression):
     assert ast.unparse(ast.parse(expression)) in str(error.value)
 
 
-def test_membership_does_not_evaluate_calls():
+@pytest.mark.parametrize(
+    "expression", ["x in {dangerous()}", "x in {obj.value}", "x in {unknown}"]
+)
+def test_membership_does_not_evaluate_calls(expression):
     with pytest.raises(ValueError, match="constant arithmetic expressions") as error:
-        resolve_syntatic_sugar(ast.parse("x in {dangerous()}"))
-    assert "dangerous()" in str(error.value)
+        resolve_syntatic_sugar(ast.parse(expression))
+    assert ast.unparse(ast.parse(expression).body[0].value.comparators[0]) in str(error.value)
 
 
 def test_membership_arithmetic_error_has_source():

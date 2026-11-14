@@ -1,7 +1,6 @@
 import ast
 import copy
 import inspect
-import operator
 from dataclasses import is_dataclass
 from itertools import product
 from typing import Any, Dict, List, Optional, Tuple
@@ -31,44 +30,51 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
         ast.AST: The resolved syntax
     """
 
-    original = copy.deepcopy(a)
-
     class syntax_transformer(ast.NodeTransformer):
+        def __init__(self):
+            self._membership_source: Optional[ast.AST] = None
+
         def _constant_element(self, node: ast.expr) -> ast.Constant:
-            """Evaluate literal arithmetic without executing calls or query expressions."""
-            binary_ops = {
-                ast.Add: operator.add,
-                ast.Sub: operator.sub,
-                ast.Mult: operator.mul,
-                ast.Div: operator.truediv,
-                ast.FloorDiv: operator.floordiv,
-                ast.Mod: operator.mod,
-                ast.Pow: operator.pow,
-                ast.LShift: operator.lshift,
-                ast.RShift: operator.rshift,
-                ast.BitOr: operator.or_,
-                ast.BitXor: operator.xor,
-                ast.BitAnd: operator.and_,
-            }
-            unary_ops = {
-                ast.UAdd: operator.pos,
-                ast.USub: operator.neg,
-                ast.Invert: operator.invert,
-            }
-            if isinstance(node, ast.Constant):
-                return node
-            if isinstance(node, ast.BinOp) and type(node.op) in binary_ops:
-                return ast.Constant(
-                    value=binary_ops[type(node.op)](
-                        self._constant_element(node.left).value,
-                        self._constant_element(node.right).value,
-                    )
+            """Use Python's evaluators for literals and constant arithmetic."""
+            scalar_types = (str, bytes, int, float, complex, bool, type(None))
+
+            class arithmetic_validator(ast.NodeVisitor):
+                def generic_visit(self, part: ast.AST):
+                    if not isinstance(
+                        part, (ast.Constant, ast.BinOp, ast.UnaryOp, ast.operator, ast.unaryop)
+                    ):
+                        raise ValueError(
+                            f"Not a constant arithmetic expression - {ast.unparse(node)}"
+                        )
+                    if isinstance(part, ast.Constant) and type(part.value) not in scalar_types:
+                        raise ValueError(f"Not a scalar literal - {ast.unparse(node)}")
+                    super().generic_visit(part)
+
+            try:
+                value = ast.literal_eval(node)
+            except (ValueError, TypeError):
+                # literal_eval does not evaluate 2 * 3. Validate a closed expression
+                # before asking Python to compile/evaluate arithmetic; no calls,
+                # names, attributes or captured objects are permitted here.
+                arithmetic_validator().visit(node)
+                expression = ast.fix_missing_locations(ast.Expression(body=node))
+                value = eval(
+                    compile(expression, "<membership constant>", "eval"), {"__builtins__": {}}
                 )
-            if isinstance(node, ast.UnaryOp) and type(node.op) in unary_ops:
-                return ast.Constant(
-                    value=unary_ops[type(node.op)](self._constant_element(node.operand).value)
+            if type(value) not in scalar_types:
+                raise ValueError(f"Not a scalar literal - {ast.unparse(node)}")
+            return ast.Constant(value=value)
+
+        def _check_set_context(self, node: ast.AST):
+            if node is not self._membership_source:
+                raise ValueError(
+                    "Set values are only supported in 'in' or 'not in' comparisons;"
+                    f" a set would be sent to the backend - {ast.unparse(a)}"
                 )
-            raise ValueError(f"Not a constant arithmetic expression - {ast.unparse(node)}")
+
+        def visit_Set(self, node: ast.Set) -> Any:
+            self._check_set_context(node)
+            return self.generic_visit(node)
 
         def _extract_literal_iterable(self, node: ast.AST) -> Optional[List[ast.expr]]:
             """Return literal iterable elements if ``node`` is a list/tuple literal."""
@@ -522,6 +528,7 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
         def visit_SetComp(self, node: ast.SetComp) -> Any:
             """Expand set comprehensions over literal list/tuple iterables."""
+            self._check_set_context(node)
             a = self.generic_visit(node)
             if isinstance(a, ast.SetComp):
                 expanded = self._inline_literal_comprehension(a.elt, a.generators, node)
@@ -569,13 +576,17 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             ``x in [1, 2]`` becomes ``x == 1 or x == 2``.
             """
 
-            a = self.generic_visit(node)
+            if len(node.ops) != 1 or not isinstance(node.ops[0], (ast.In, ast.NotIn)):
+                return self.generic_visit(node)
 
-            if not isinstance(a, ast.Compare):
-                return a
-
-            if len(a.ops) != 1 or not isinstance(a.ops[0], (ast.In, ast.NotIn)):
-                return a
+            a = copy.copy(node)
+            a.left = self.visit(node.left)
+            previous_source = self._membership_source
+            self._membership_source = node.comparators[0]
+            try:
+                a.comparators = [self.visit(node.comparators[0])]
+            finally:
+                self._membership_source = previous_source
 
             left = a.left
             right = a.comparators[0]
@@ -724,6 +735,10 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             Returns:
                 Any: The transformed node if it matches the criteria, otherwise the original node.
             """
+            if (isinstance(node.func, ast.Name) and node.func.id == "set") or (
+                isinstance(node.func, ast.Constant) and node.func.value is set
+            ):
+                self._check_set_context(node)
             source_node = copy.deepcopy(node)
             a = self.generic_visit(node)
 
@@ -764,15 +779,4 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
             return a
 
-    result = syntax_transformer().visit(a)
-    for node in ast.walk(result):
-        is_set_call = isinstance(node, ast.Call) and (
-            (isinstance(node.func, ast.Name) and node.func.id == "set")
-            or (isinstance(node.func, ast.Constant) and node.func.value is set)
-        )
-        if isinstance(node, ast.Set) or is_set_call:
-            raise ValueError(
-                "Set values are only supported in 'in' or 'not in' comparisons;"
-                f" a set would be sent to the backend - {ast.unparse(original)}"
-            )
-    return result
+    return syntax_transformer().visit(a)
