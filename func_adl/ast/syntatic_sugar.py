@@ -1,6 +1,7 @@
 import ast
 import copy
 import inspect
+import operator
 from dataclasses import is_dataclass
 from itertools import product
 from typing import Any, Dict, List, Optional, Tuple
@@ -31,6 +32,61 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
     """
 
     class syntax_transformer(ast.NodeTransformer):
+        _binary_ops = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+            ast.LShift: operator.lshift,
+            ast.RShift: operator.rshift,
+            ast.BitOr: operator.or_,
+            ast.BitXor: operator.xor,
+            ast.BitAnd: operator.and_,
+        }
+        _unary_ops = {
+            ast.UAdd: operator.pos,
+            ast.USub: operator.neg,
+            ast.Invert: operator.invert,
+            ast.Not: operator.not_,
+        }
+
+        def __init__(self):
+            self._membership_source: Optional[ast.AST] = None
+
+        def _constant_element(self, node: ast.expr) -> ast.Constant:
+            """Evaluate explicitly supported operators over builtin scalar literals."""
+            scalar_types = (str, bytes, int, float, complex, bool, type(None))
+            if isinstance(node, ast.Constant):
+                value = node.value
+            elif isinstance(node, ast.BinOp) and type(node.op) in self._binary_ops:
+                value = self._binary_ops[type(node.op)](
+                    self._constant_element(node.left).value,
+                    self._constant_element(node.right).value,
+                )
+            elif isinstance(node, ast.UnaryOp) and type(node.op) in self._unary_ops:
+                value = self._unary_ops[type(node.op)](self._constant_element(node.operand).value)
+            else:
+                raise ValueError(f"Not a constant arithmetic expression - {ast.unparse(node)}")
+            # Exact types also prevent captured objects/subclasses from invoking
+            # user-defined operator methods during recursive evaluation.
+            if type(value) not in scalar_types:
+                raise ValueError(f"Not a scalar literal - {ast.unparse(node)}")
+            return ast.Constant(value=value)
+
+        def _check_set_context(self, node: ast.AST):
+            if node is not self._membership_source:
+                raise ValueError(
+                    "Set values are only supported in 'in' or 'not in' comparisons;"
+                    f" a set would be sent to the backend - {ast.unparse(a)}"
+                )
+
+        def visit_Set(self, node: ast.Set) -> Any:
+            self._check_set_context(node)
+            return self.generic_visit(node)
+
         def _extract_literal_iterable(self, node: ast.AST) -> Optional[List[ast.expr]]:
             """Return literal iterable elements if ``node`` is a list/tuple literal."""
 
@@ -481,6 +537,22 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
 
             return a
 
+        def visit_SetComp(self, node: ast.SetComp) -> Any:
+            """Expand set comprehensions over literal list/tuple iterables."""
+            self._check_set_context(node)
+            a = self.generic_visit(node)
+            if isinstance(a, ast.SetComp):
+                expanded = self._inline_literal_comprehension(a.elt, a.generators, node)
+                if expanded is None:
+                    raise ValueError(
+                        "Set comprehension requires literal list/tuple iterables"
+                        f" - {ast.unparse(node)}"
+                    )
+                if not expanded:
+                    return ast.Call(func=ast.Name(id="set", ctx=ast.Load()), args=[], keywords=[])
+                return ast.Set(elts=expanded)
+            return a
+
         def visit_DictComp(self, node: ast.DictComp) -> Any:
             """Translate a dictionary comprehension into a stream of key/value records.
 
@@ -515,25 +587,38 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             ``x in [1, 2]`` becomes ``x == 1 or x == 2``.
             """
 
-            a = self.generic_visit(node)
+            if len(node.ops) != 1 or not isinstance(node.ops[0], (ast.In, ast.NotIn)):
+                return self.generic_visit(node)
 
-            if not isinstance(a, ast.Compare):
-                return a
-
-            if len(a.ops) != 1 or not isinstance(a.ops[0], (ast.In, ast.NotIn)):
-                return a
+            a = copy.copy(node)
+            a.left = self.visit(node.left)
+            previous_source = self._membership_source
+            self._membership_source = node.comparators[0]
+            try:
+                a.comparators = [self.visit(node.comparators[0])]
+            finally:
+                self._membership_source = previous_source
 
             left = a.left
             right = a.comparators[0]
 
             def const_list(t: ast.AST) -> Optional[List[ast.Constant]]:
+                if (
+                    isinstance(t, ast.Call)
+                    and isinstance(t.func, ast.Name)
+                    and t.func.id == "set"
+                    and not t.args
+                    and not t.keywords
+                ):
+                    return []
                 if isinstance(t, (ast.List, ast.Tuple, ast.Set)):
-                    if all(isinstance(e, ast.Constant) for e in t.elts):
-                        return list(t.elts)  # type: ignore
-                    raise ValueError(
-                        "All elements in comparison list/tuple/set must be constants"
-                        f" - {ast.unparse(t)}"
-                    )
+                    try:
+                        return [self._constant_element(e) for e in t.elts]
+                    except (ValueError, TypeError, ArithmeticError) as error:
+                        raise ValueError(
+                            "All elements in comparison list/tuple/set must be constants"
+                            f" or constant arithmetic expressions - {ast.unparse(t)}: {error}"
+                        ) from error
                 return None
 
             elements = const_list(right)
@@ -544,6 +629,8 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
                 )
 
             is_in = isinstance(a.ops[0], ast.In)
+            if not elements:
+                return ast.Constant(value=not is_in)
             return ast.BoolOp(
                 op=ast.Or() if is_in else ast.And(),
                 values=[
@@ -659,6 +746,10 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
             Returns:
                 Any: The transformed node if it matches the criteria, otherwise the original node.
             """
+            if (isinstance(node.func, ast.Name) and node.func.id == "set") or (
+                isinstance(node.func, ast.Constant) and node.func.value is set
+            ):
+                self._check_set_context(node)
             source_node = copy.deepcopy(node)
             a = self.generic_visit(node)
 

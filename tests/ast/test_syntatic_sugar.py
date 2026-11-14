@@ -64,6 +64,131 @@ def test_resolve_literal_list_comp():
     assert ast.dump(ast.parse("[1, 2, 3]")) == ast.dump(a_new)
 
 
+@pytest.mark.parametrize(
+    "expression, expected",
+    [
+        ("x in {i * 2 for i in [1, 2, 3]}", "x == 2 or x == 4 or x == 6"),
+        ("x in {i for i in (1, 1, 2)}", "x == 1 or x == 1 or x == 2"),
+        ("x in {a + b for a, b in [(1, 2), (3, 4)]}", "x == 3 or x == 7"),
+        (
+            "x in {i + j for i in [1, 2] for j in [3, 4]}",
+            "x == 4 or x == 5 or x == 5 or x == 6",
+        ),
+        ("x in {i for i in [1, 2] if True}", "x == 1 or x == 2"),
+        ("x in {2 * 3, -(1 + 2)}", "x == 6 or x == -3"),
+        ("x not in {2 * 3, 2 ** 3}", "x != 6 and x != 8"),
+        ("x in {~1, 8 >> 1, 9 // 2, 7 % 3}", "x == -2 or x == 4 or x == 4 or x == 1"),
+        ("x in {i for i in [1, 2]}", "x == 1 or x == 2"),
+        ("x not in {i for i in [1, 2]}", "x != 1 and x != 2"),
+        ("x in {i for i in []}", "False"),
+        ("x not in {i for i in [1] if False}", "True"),
+    ],
+)
+def test_resolve_literal_set_comp(expression, expected):
+    result = resolve_syntatic_sugar(ast.parse(expression, mode="eval"))
+    assert ast.unparse(result) == ast.unparse(ast.parse(expected, mode="eval"))
+    # Validate executable ASTs and Python set semantics, including deduplication.
+    compiled = compile(ast.fix_missing_locations(result), "<set comprehension>", "eval")
+    assert eval(compiled, {"x": 2}) == eval(expression, {"x": 2})
+
+
+@pytest.mark.parametrize(
+    "expression", ["x in {j.pt() for j in jets}", "x in {i for i in range(3)}"]
+)
+def test_resolve_set_comp_non_literal_iterable_error(expression):
+    with pytest.raises(ValueError, match="Set comprehension requires literal") as error:
+        resolve_syntatic_sugar(ast.parse(expression))
+    source = ast.parse(expression).body[0].value.comparators[0]
+    assert ast.unparse(source) in str(error.value)
+
+
+def test_membership_python_literal_types():
+    result = resolve_syntatic_sugar(ast.parse("x in {1 + 2j, b'ab' * 2}", mode="eval"))
+    assert [comparison.comparators[0].value for comparison in result.body.values] == [
+        1 + 2j,
+        b"abab",
+    ]
+
+
+def test_resolve_set_comp_captured_literal():
+    values = [1, 2]
+    result = parse_as_ast(lambda e: e in {i * 2 for i in values})
+    result = resolve_syntatic_sugar(result)
+    assert ast.dump(result) == ast.dump(ast.parse("lambda e: e == 2 or e == 4").body[0].value)
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "{i * 2 for i in [1, 2]}",
+        "{i for i in []}",
+        "{'values': {1, 2}}",
+        "set()",
+        "(x in {1, 2}, {3, 4})",
+        "x in [{1, 2}]",
+        "x in {i for i in {1, 2}}",
+    ],
+)
+def test_standalone_set_error_has_source(expression):
+    with pytest.raises(ValueError, match="Set values are only supported") as error:
+        resolve_syntatic_sugar(ast.parse(expression))
+    assert ast.unparse(ast.parse(expression)) in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "expression", ["x in {dangerous()}", "x in {obj.value}", "x in {unknown}", "x in {values[0]}"]
+)
+def test_membership_does_not_evaluate_calls(expression):
+    with pytest.raises(ValueError, match="constant arithmetic expressions") as error:
+        resolve_syntatic_sugar(ast.parse(expression))
+    assert ast.unparse(ast.parse(expression).body[0].value.comparators[0]) in str(error.value)
+
+
+def test_membership_arithmetic_error_has_source():
+    with pytest.raises(ValueError, match="1 / 0"):
+        resolve_syntatic_sugar(ast.parse("x in {1 / 0}"))
+
+
+@pytest.mark.parametrize(
+    "element, expected",
+    [
+        ("2 + 3", 5),
+        ("2 - 3", -1),
+        ("2 * 3", 6),
+        ("3 / 2", 1.5),
+        ("3 // 2", 1),
+        ("3 % 2", 1),
+        ("2 ** 3", 8),
+        ("1 << 2", 4),
+        ("4 >> 1", 2),
+        ("1 | 2", 3),
+        ("3 ^ 1", 2),
+        ("3 & 1", 1),
+        ("+2", 2),
+        ("-2", -2),
+        ("~2", -3),
+        ("not True", False),
+    ],
+)
+def test_membership_constant_operators(element, expected):
+    result = resolve_syntatic_sugar(ast.parse(f"x in {{{element}}}", mode="eval"))
+    constant = result.body.values[0].comparators[0]
+    assert isinstance(constant, ast.Constant)
+    assert constant.value == expected
+    assert type(constant.value) is type(expected)
+
+
+def test_membership_rejects_captured_operator_overloads():
+    class captured_int(int):
+        def __add__(self, other):
+            pytest.fail("A captured object's operator must not be executed")
+
+    source = ast.parse("x in {1 + 2}", mode="eval")
+    source.body.comparators[0].elts[0].left.value = captured_int(1)
+    with pytest.raises(ValueError, match="Not a scalar literal"):
+        resolve_syntatic_sugar(source)
+
+
 def test_resolve_listcomp_if():
     a = ast.parse("[j.pt() for j in jets if j.pt() > 100]")
     a_new = resolve_syntatic_sugar(a)
@@ -243,7 +368,7 @@ def test_resolve_dataclass_too_many_args():
 
     with pytest.raises(ValueError):
         a = parse_as_ast(
-            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(  # type: ignore
+            lambda e: dc_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(
                 lambda j: j.pt()
             )  # type: ignore
         ).body
@@ -312,7 +437,7 @@ def test_resolve_named_tuple_too_many_args():
 
     with pytest.raises(ValueError):
         a = parse_as_ast(
-            lambda e: nt_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(  # type: ignore
+            lambda e: nt_1(e.Jets(), e.Electrons(), e.Muons(), e.Jets()).x.Select(
                 lambda j: j.pt()
             )  # type: ignore
         ).body

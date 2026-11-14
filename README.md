@@ -60,6 +60,7 @@ There are several python expressions and idioms that are translated behind your 
 |Multi-generator comprehension|`[j.pt() + e.pt() for j in jets for e in electrons]`|`jets.SelectMany(lambda j: electrons.Select(lambda e: j.pt() + e.pt()))`|
 |Destructuring List Comprehension|`[a+b for a,b in pairs]`|`pairs.Select(lambda tmp: tmp[0] + tmp[1])`|
 |Literal List Comprehension|`[i for i in [1, 2, 3]]`|`[1, 2, 3]`|
+|Set Comprehension Membership|`x in {i * 2 for i in [1, 2]}`|`x == 2 or x == 4`|
 |Dictionary Comprehension|`{j.id(): j.pt() for j in jets}`|`jets.Select(lambda j: {'key': j.id(), 'value': j.pt()})`|
 |Dictionary Comprehension (with filter)|`{j.id(): j.pt() for j in jets if j.pt() > 100}`|`jets.Where(lambda j: j.pt() > 100).Select(lambda j: {'key': j.id(), 'value': j.pt()})`|
 |Literal Dictionary Comprehension|`{i: i * 2 for i in [1, 2, 3]}`|`{1: 1 * 2, 2: 2 * 2, 3: 3 * 2}`|
@@ -92,6 +93,12 @@ after the comprehension is lowered to `Select(...)`, e.g.
 For `min`/`max`, when the single argument is a list/generator comprehension, FuncADL first
 lowers that comprehension to query operators and then wraps the result in `Min(...)`/`Max(...)`
 so aggregate simplification can process it.
+
+Set comprehensions can be used in `in`/`not in` comparisons over literal or captured
+literal lists/tuples. Constant arithmetic is evaluated before expanding the comparison:
+`x in {i * 2 for i in [1, 2]}` becomes `x == 2 or x == 4`. Filters must resolve to
+boolean constants. Unsupported iterables and standalone set values raise a `ValueError`
+that includes the expression.
 
 ## Extensibility
 

@@ -52,6 +52,10 @@ expressions:
   when comprehension `if` filters are present.
 - Dictionary comprehensions over literal iterables are expanded directly into
   dictionary literals.
+- Set comprehensions in `in`/`not in` comparisons over literal lists/tuples
+  (including captured literal lists/tuples) expand to comparisons.
+  Filters must resolve to boolean constants, as with other literal comprehensions.
+  Non-literal or dependent iterables are unsupported and raise contextual errors.
 - `any`/`all` over literal lists/tuples are reduced to boolean `or`/`and` expressions.
 - builtin `filter(func, seq)` and `map(func, seq)` are lowered to
   `seq.Where(func)` and `seq.Select(func)`.
@@ -69,3 +73,8 @@ query-style aggregate calls (`Sum(jets.Select(lambda j: j.pt()))`) that downstre
 aggregate lowering can process. The same applies to `min`/`max`: expressions like
 `max(expr(x) for x in stream if pred(x))` are rewritten to the aggregate form
 `Max(stream.Where(lambda x: pred(x)).Select(lambda x: expr(x)))`.
+
+For example, `x in {i * 2 for i in [1, 2]}` becomes `x == 2 or x == 4`.
+Constant arithmetic is evaluated before the comparison is expanded. Empty membership
+becomes `False`, or `True` for `not in`. Standalone set values are rejected with
+a `ValueError` that includes the source expression.
