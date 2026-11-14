@@ -1,6 +1,7 @@
 import ast
 import copy
 import inspect
+import operator
 from dataclasses import is_dataclass
 from itertools import product
 from typing import Any, Dict, List, Optional, Tuple
@@ -31,36 +32,46 @@ def resolve_syntatic_sugar(a: ast.AST) -> ast.AST:
     """
 
     class syntax_transformer(ast.NodeTransformer):
+        _binary_ops = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+            ast.LShift: operator.lshift,
+            ast.RShift: operator.rshift,
+            ast.BitOr: operator.or_,
+            ast.BitXor: operator.xor,
+            ast.BitAnd: operator.and_,
+        }
+        _unary_ops = {
+            ast.UAdd: operator.pos,
+            ast.USub: operator.neg,
+            ast.Invert: operator.invert,
+            ast.Not: operator.not_,
+        }
+
         def __init__(self):
             self._membership_source: Optional[ast.AST] = None
 
         def _constant_element(self, node: ast.expr) -> ast.Constant:
-            """Use Python's evaluators for literals and constant arithmetic."""
+            """Evaluate explicitly supported operators over builtin scalar literals."""
             scalar_types = (str, bytes, int, float, complex, bool, type(None))
-
-            class arithmetic_validator(ast.NodeVisitor):
-                def generic_visit(self, part: ast.AST):
-                    if not isinstance(
-                        part, (ast.Constant, ast.BinOp, ast.UnaryOp, ast.operator, ast.unaryop)
-                    ):
-                        raise ValueError(
-                            f"Not a constant arithmetic expression - {ast.unparse(node)}"
-                        )
-                    if isinstance(part, ast.Constant) and type(part.value) not in scalar_types:
-                        raise ValueError(f"Not a scalar literal - {ast.unparse(node)}")
-                    super().generic_visit(part)
-
-            try:
-                value = ast.literal_eval(node)
-            except (ValueError, TypeError):
-                # literal_eval does not evaluate 2 * 3. Validate a closed expression
-                # before asking Python to compile/evaluate arithmetic; no calls,
-                # names, attributes or captured objects are permitted here.
-                arithmetic_validator().visit(node)
-                expression = ast.fix_missing_locations(ast.Expression(body=node))
-                value = eval(
-                    compile(expression, "<membership constant>", "eval"), {"__builtins__": {}}
+            if isinstance(node, ast.Constant):
+                value = node.value
+            elif isinstance(node, ast.BinOp) and type(node.op) in self._binary_ops:
+                value = self._binary_ops[type(node.op)](
+                    self._constant_element(node.left).value,
+                    self._constant_element(node.right).value,
                 )
+            elif isinstance(node, ast.UnaryOp) and type(node.op) in self._unary_ops:
+                value = self._unary_ops[type(node.op)](self._constant_element(node.operand).value)
+            else:
+                raise ValueError(f"Not a constant arithmetic expression - {ast.unparse(node)}")
+            # Exact types also prevent captured objects/subclasses from invoking
+            # user-defined operator methods during recursive evaluation.
             if type(value) not in scalar_types:
                 raise ValueError(f"Not a scalar literal - {ast.unparse(node)}")
             return ast.Constant(value=value)

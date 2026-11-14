@@ -136,7 +136,7 @@ def test_standalone_set_error_has_source(expression):
 
 
 @pytest.mark.parametrize(
-    "expression", ["x in {dangerous()}", "x in {obj.value}", "x in {unknown}"]
+    "expression", ["x in {dangerous()}", "x in {obj.value}", "x in {unknown}", "x in {values[0]}"]
 )
 def test_membership_does_not_evaluate_calls(expression):
     with pytest.raises(ValueError, match="constant arithmetic expressions") as error:
@@ -147,6 +147,46 @@ def test_membership_does_not_evaluate_calls(expression):
 def test_membership_arithmetic_error_has_source():
     with pytest.raises(ValueError, match="1 / 0"):
         resolve_syntatic_sugar(ast.parse("x in {1 / 0}"))
+
+
+@pytest.mark.parametrize(
+    "element, expected",
+    [
+        ("2 + 3", 5),
+        ("2 - 3", -1),
+        ("2 * 3", 6),
+        ("3 / 2", 1.5),
+        ("3 // 2", 1),
+        ("3 % 2", 1),
+        ("2 ** 3", 8),
+        ("1 << 2", 4),
+        ("4 >> 1", 2),
+        ("1 | 2", 3),
+        ("3 ^ 1", 2),
+        ("3 & 1", 1),
+        ("+2", 2),
+        ("-2", -2),
+        ("~2", -3),
+        ("not True", False),
+    ],
+)
+def test_membership_constant_operators(element, expected):
+    result = resolve_syntatic_sugar(ast.parse(f"x in {{{element}}}", mode="eval"))
+    constant = result.body.values[0].comparators[0]
+    assert isinstance(constant, ast.Constant)
+    assert constant.value == expected
+    assert type(constant.value) is type(expected)
+
+
+def test_membership_rejects_captured_operator_overloads():
+    class captured_int(int):
+        def __add__(self, other):
+            pytest.fail("A captured object's operator must not be executed")
+
+    source = ast.parse("x in {1 + 2}", mode="eval")
+    source.body.comparators[0].elts[0].left.value = captured_int(1)
+    with pytest.raises(ValueError, match="Not a scalar literal"):
+        resolve_syntatic_sugar(source)
 
 
 def test_resolve_listcomp_if():
