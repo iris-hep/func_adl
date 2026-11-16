@@ -52,6 +52,20 @@ class my_event_with_type(EventDataset[dd_event]):
         return a
 
 
+@pytest.mark.parametrize("operation", ["Skip", "Take"])
+@pytest.mark.parametrize("count", [-1, 0, 2])
+def test_slice_stream(operation, count):
+    source = my_event_with_type()
+    result = getattr(source, operation)(count)
+    assert isinstance(result, my_event_with_type)
+    assert result is not source
+    assert result.item_type is dd_event
+    assert isinstance(result.query_ast, ast.Call)
+    assert result.query_ast.func.id == operation
+    assert result.query_ast.args[0] is source.query_ast
+    assert ast.literal_eval(result.query_ast.args[1]) == count
+
+
 class MyTestException(Exception):
     def __init__(self, msg):
         Exception.__init__(self, msg)
