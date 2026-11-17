@@ -230,6 +230,14 @@ class ObjectStreamInternalMethods(ObjectStream[StreamItem]):
     def First(self) -> StreamItem:
         return self.item_type  # type: ignore
 
+    def Last(self) -> StreamItem:
+        """Return the final item; supporting backends raise on an empty sequence."""
+        return self.item_type  # type: ignore
+
+    def Skip(self, n: int) -> Iterable[StreamItem]: ...  # noqa
+
+    def Take(self, n: int) -> Iterable[StreamItem]: ...  # noqa
+
     def Count(self) -> int: ...  # noqa
 
     # TODO: Add all other items that belong here

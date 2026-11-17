@@ -1,5 +1,6 @@
 # Test out the utility classes.
 import ast
+import pytest
 from typing import cast
 
 from func_adl.ast.func_adl_ast_utils import (
@@ -198,6 +199,24 @@ def test_node_visit_arguments_only_done_last():
 
 
 # Parsing exetnsion functions into calls
+@pytest.mark.parametrize(
+    "expression, normalized",
+    [
+        ("jets.Last().pt()", "Last(jets).pt()"),
+        ("jets.Skip(-1).Take(2)", "Take(Skip(jets, -1), 2)"),
+        (
+            "jets.Where(lambda j: j.pt() > 10).Skip(1).Take(2).Select(lambda j: j.pt())",
+            "Select(Take(Skip(Where(jets, lambda j: j.pt() > 10), 1), 2), lambda j: j.pt())",
+        ),
+        ("jets.Select(lambda j: j.pt()).Last()", "Last(Select(jets, lambda j: j.pt()))"),
+    ],
+)
+def test_extension_functions_last_skip_take(expression, normalized):
+    assert ast.dump(change_extension_functions_to_calls(ast.parse(expression))) == ast.dump(
+        ast.parse(normalized)
+    )
+
+
 def test_extension_functions_call():
     source = ast.parse("dude()")
     expected = ast.parse("dude()")

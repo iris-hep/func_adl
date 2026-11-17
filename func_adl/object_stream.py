@@ -152,6 +152,26 @@ class ObjectStream(Generic[T]):
             rtn_type,
         )
 
+    def Skip(self, n: int) -> ObjectStream[T]:
+        """Skip the first `n` items after upstream filters.
+
+        Backends supporting this operation accept literal integer counts, including
+        captured integers, and treat negative counts as zero.
+        """
+        return self.clone_with_new_ast(
+            function_call("Skip", [self.query_ast, as_ast(n)]), self.item_type
+        )
+
+    def Take(self, n: int) -> ObjectStream[T]:
+        """Take the first `n` items after upstream filters.
+
+        Backends supporting this operation accept literal integer counts, including
+        captured integers, and treat negative counts as zero.
+        """
+        return self.clone_with_new_ast(
+            function_call("Take", [self.query_ast, as_ast(n)]), self.item_type
+        )
+
     def OrderBy(
         self,
         key_selector: Union[str, ast.Lambda, Callable[[T], Any]],

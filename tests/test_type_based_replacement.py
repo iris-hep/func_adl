@@ -369,6 +369,47 @@ def test_collection_First(caplog):
     assert len(caplog.text) == 0
 
 
+@pytest.mark.parametrize(
+    "expression, expected_type",
+    [
+        ("e.Jets().Last()", Jet),
+        ("e.Jets().Last().pt()", float),
+        ("e.Jets().Select(lambda j: j.pt()).Last()", float),
+        ("e.Jets().Skip(1)", Iterable[Jet]),
+        ("e.Jets().Take(2)", Iterable[Jet]),
+        (
+            "e.Jets().Where(lambda j: j.pt() > 10).Skip(1).Take(2)" ".Select(lambda j: j.pt())",
+            Iterable[float],
+        ),
+        (
+            "e.Jets().Select(lambda j: j.pt()).Take(2).Skip(1).Where(lambda p: p > 10)",
+            Iterable[float],
+        ),
+    ],
+)
+def test_collection_last_skip_take(expression, expected_type, caplog):
+    stream = ObjectStream(ast.Name(id="events"), Event)
+    result = stream.Select(f"lambda e: {expression}")
+    assert result.item_type == expected_type
+    assert not caplog.text
+
+
+def test_collection_slice_captured_counts(caplog):
+    skip, take = -1, 2
+    stream = ObjectStream(ast.Name(id="events"), Event)
+    result = stream.Select(lambda e: e.Jets().Skip(skip).Take(take).Last().pt())
+    assert result.item_type == float
+    counts = {
+        node.func.attr: ast.literal_eval(node.args[0])
+        for node in ast.walk(result.query_ast)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in ("Skip", "Take")
+    }
+    assert counts == {"Skip": -1, "Take": 2}
+    assert not caplog.text
+
+
 def test_collection_len(caplog):
     "Make sure `len` is properly typed"
     s = ast_lambda("len(e.Jets('default'))")
@@ -437,15 +478,15 @@ def test_collection_Custom_Method_default(caplog):
         def __init__(self, a: ast.expr, item_type):
             super().__init__(a, item_type)
 
-        def Take(self, n: int = 5) -> ObjectStream[M]: ...  # noqa
+        def MyTake(self, n: int = 5) -> ObjectStream[M]: ...  # noqa
 
-    s = ast_lambda("e.Jets().Take()")
+    s = ast_lambda("e.Jets().MyTake()")
     objs = CustomCollection_default[Event](ast.Name(id="e", ctx=ast.Load()), Event)
 
     _, new_s, expr_type = remap_by_types(objs, {"e": Event}, s)
 
     assert expr_type == ObjectStream[Jet]
-    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default').Take(5)"))
+    assert ast.dump(new_s) == ast.dump(ast_lambda("e.Jets('default').MyTake(5)"))
 
     assert len(caplog.text) == 0
 
