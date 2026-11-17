@@ -347,6 +347,20 @@ def _fill_in_default_arguments(func: Callable, call: ast.Call) -> Tuple[ast.Call
         )
 
     sig = inspect.signature(func)
+    # Validate the call before moving keywords to positional arguments. Otherwise
+    # duplicate or unexpected keywords can survive until a later AST pass drops them.
+    keyword_args = {}
+    for keyword in call.keywords:
+        if keyword.arg is None or keyword.arg in keyword_args:
+            raise ValueError(f"Invalid keyword arguments in '{ast.unparse(call)}'")
+        keyword_args[keyword.arg] = keyword.value
+    try:
+        sig.replace(
+            parameters=[p for p in sig.parameters.values() if p.name != "self"]
+        ).bind_partial(*call.args, **keyword_args)
+    except TypeError as ex:
+        raise ValueError(f"Invalid arguments in '{ast.unparse(call)}': {ex}") from ex
+
     i_arg = 0
     arg_array = list(call.args)
     keywords = list(call.keywords)

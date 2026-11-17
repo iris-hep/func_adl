@@ -121,6 +121,19 @@ def change_extension_functions_to_calls(
                 return node
             if node.func.attr not in function_names:
                 return node
-            return function_call(node.func.attr, [node.func.value] + node.args)
+            args = node.args
+            if node.func.attr in ("Last", "Skip", "Take"):
+                expected = 0 if node.func.attr == "Last" else 1
+                if (
+                    len(args) + len(node.keywords) != expected
+                    or any(k.arg != "n" for k in node.keywords)
+                    or any(isinstance(arg, ast.Starred) for arg in args)
+                ):
+                    requirement = "no arguments" if expected == 0 else "one count argument 'n'"
+                    raise ValueError(
+                        f"{node.func.attr} requires {requirement} - {ast.unparse(node)}"
+                    )
+                args = args + [k.value for k in node.keywords]
+            return function_call(node.func.attr, [node.func.value] + args)
 
     return transform_calls().visit(a)

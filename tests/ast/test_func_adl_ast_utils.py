@@ -217,6 +217,37 @@ def test_extension_functions_last_skip_take(expression, normalized):
     )
 
 
+@pytest.mark.parametrize("operation", ["Skip", "Take"])
+def test_slice_keyword_count(operation):
+    source = ast.parse(f"jets.{operation}(n=2)")
+    expected = ast.parse(f"{operation}(jets, 2)")
+    assert ast.dump(change_extension_functions_to_calls(source)) == ast.dump(expected)
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "jets.Last(1)",
+        "jets.Last(n=1)",
+        "jets.Skip()",
+        "jets.Take()",
+        "jets.Skip(2, n=3)",
+        "jets.Take(2, n=3)",
+        "jets.Skip(n=2, n=3)",
+        "jets.Take(n=2, n=3)",
+        "jets.Skip(2, unexpected=3)",
+        "jets.Take(unexpected=2)",
+        "jets.Skip(1, 2)",
+        "jets.Take(*counts)",
+        "jets.Skip(**counts)",
+    ],
+)
+def test_sequence_invalid_arguments(expression):
+    with pytest.raises(ValueError) as error:
+        change_extension_functions_to_calls(ast.parse(expression))
+    assert expression in str(error.value)
+
+
 def test_extension_functions_call():
     source = ast.parse("dude()")
     expected = ast.parse("dude()")
