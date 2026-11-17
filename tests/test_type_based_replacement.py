@@ -8,6 +8,7 @@ from typing import Any, Callable, Iterable, Optional, Tuple, Type, TypeVar, Unio
 import pytest
 
 from func_adl import ObjectStream
+from func_adl.ast.func_adl_ast_utils import change_extension_functions_to_calls
 from func_adl.type_based_replacement import (
     func_adl_callable,
     func_adl_callback,
@@ -397,7 +398,7 @@ def test_collection_last_skip_take(expression, expected_type, caplog):
 def test_collection_slice_captured_counts(caplog):
     skip, take = -1, 2
     stream = ObjectStream(ast.Name(id="events"), Event)
-    result = stream.Select(lambda e: e.Jets().Skip(skip).Take(take).Last().pt())
+    result = stream.Select(lambda e: e.Jets().Skip(n=skip).Take(n=take).Last().pt())
     assert result.item_type == float
     counts = {
         node.func.attr: ast.literal_eval(node.args[0])
@@ -408,6 +409,48 @@ def test_collection_slice_captured_counts(caplog):
     }
     assert counts == {"Skip": -1, "Take": 2}
     assert not caplog.text
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        "Last(n=1)",
+        "Last(1)",
+        "Skip(2, n=3)",
+        "Take(2, n=3)",
+        "Skip(n=2, n=3)",
+        "Take(2, unexpected=3)",
+        "Skip(1, 2)",
+    ],
+)
+def test_collection_sequence_invalid_arguments(operation):
+    expression = f"e.Jets('default').{operation}"
+    stream = ObjectStream(ast.Name(id="events"), Event)
+    with pytest.raises(ValueError) as error:
+        stream.Select(f"lambda e: {expression}")
+    assert expression in str(error.value)
+
+
+@pytest.mark.parametrize("operation", ["Skip", "Take"])
+@pytest.mark.parametrize("typed", [False, True])
+@pytest.mark.parametrize("count", [-1, 0, 2])
+def test_captured_keyword_count_normalization(operation, typed, count):
+    stream = ObjectStream(ast.Name(id="events"), Event if typed else Any)
+    if operation == "Skip":
+        result = stream.Select(lambda e: e.Jets().Skip(n=count))
+    else:
+        result = stream.Select(lambda e: e.Jets().Take(n=count))
+    normalized = change_extension_functions_to_calls(result.query_ast)
+    calls = [
+        node
+        for node in ast.walk(normalized)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == operation
+    ]
+    assert len(calls) == 1
+    assert ast.literal_eval(calls[0].args[1]) == count
+    assert not calls[0].keywords
 
 
 def test_collection_len(caplog):
