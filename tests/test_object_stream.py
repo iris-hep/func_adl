@@ -357,7 +357,11 @@ def test_non_imported_function_call():
         .query_ast
     )  # NOQA
     assert isinstance(r, ast.AST)
-    assert "Attribute(value=Name(id='np', ctx=Load()), attr='cos', ctx=Load())" in ast.dump(r)
+    function = r.args[0].args[1].body.func
+    assert isinstance(function, ast.Attribute) and function.attr == "cos"
+    assert isinstance(function.value, ast.Name) and function.value.id == "np"
+    assert isinstance(function.ctx, ast.Load)
+    assert isinstance(function.value.ctx, ast.Load)
 
 
 def test_imported_function_call():
@@ -365,7 +369,11 @@ def test_imported_function_call():
 
     r = my_event().Select(lambda event: np.cos(event.MET_phi)).Where(lambda p: p > 0.0).query_ast
     assert isinstance(r, ast.AST)
-    assert "Attribute(value=Name(id='np', ctx=Load()), attr='cos', ctx=Load())" in ast.dump(r)
+    function = r.args[0].args[1].body.func
+    assert isinstance(function, ast.Attribute) and function.attr == "cos"
+    assert isinstance(function.value, ast.Name) and function.value.id == "np"
+    assert isinstance(function.ctx, ast.Load)
+    assert isinstance(function.value.ctx, ast.Load)
 
 
 def test_bad_where():
