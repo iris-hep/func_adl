@@ -4,15 +4,21 @@ on:
   release:
     types: [released, prereleased]
 
+permissions: {}
+
 jobs:
-  publish:
+  build:
+    permissions:
+      contents: read
     # Python 3.9 binaries are available on Ubuntu 24.04, but not 26.04.
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Install dependencies
@@ -25,8 +31,25 @@ jobs:
           version=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///')
           echo "__version__=\"$version\"" > func_adl/version.txt
           hatch build
-      - name: Publish a func_adl to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.13.0
+      - name: Store distributions
+        uses: actions/upload-artifact@v4
         with:
-          user: __token__
-          password: ${{ secrets.pypi_password_func_adl }}
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    # Must match the separately configured PyPI Trusted Publisher.
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Retrieve distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - name: Publish a func_adl to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.14.3
