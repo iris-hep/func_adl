@@ -43,9 +43,11 @@ def test_as_ast_string_var():
 
 
 def test_as_ast_list():
-    assert "List(elts=[Constant(value='one'), Constant(value='two')], ctx=Load())" == ast.dump(
-        as_ast(["one", "two"])
-    )
+    result = as_ast(["one", "two"])
+    assert isinstance(result, ast.List)
+    assert isinstance(result.ctx, ast.Load)
+    assert all(isinstance(element, ast.Constant) for element in result.elts)
+    assert [element.value for element in result.elts] == ["one", "two"]
 
 
 # Fucntion Calling

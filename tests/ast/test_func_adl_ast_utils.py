@@ -1,6 +1,5 @@
 # Test out the utility classes.
 import ast
-import pytest
 from typing import cast
 
 import pytest
