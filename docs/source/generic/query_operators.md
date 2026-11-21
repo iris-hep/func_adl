@@ -54,6 +54,15 @@ Sort the stream by a key selector in ascending order.
         - The function can be a `lambda`, the name of a one-line function, a string that
           contains a lambda definition, or a python `ast` of type `ast.Lambda`.
 
+### ThenBy and ThenByDescending
+
+Add an ascending or descending tie-break key immediately after `OrderBy`,
+`OrderByDescending`, or another `ThenBy` operation. For example,
+`jets.OrderBy(lambda j: j.eta()).ThenByDescending(lambda j: j.pt())` orders by eta
+first and by descending transverse momentum within equal-eta groups. Each key
+has its own direction; another `OrderBy` starts a new ordering instead.
+Backend support for these operators is required.
+
 ### OrderByDescending
 
 Sort the stream by a key selector in descending order.
