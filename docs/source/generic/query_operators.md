@@ -60,7 +60,14 @@ Add an ascending or descending tie-break key immediately after `OrderBy`,
 `OrderByDescending`, or another `ThenBy` operation. For example,
 `jets.OrderBy(lambda j: j.eta()).ThenByDescending(lambda j: j.pt())` orders by eta
 first and by descending transverse momentum within equal-eta groups. Each key
-has its own direction; another `OrderBy` starts a new ordering instead.
+has its own direction.
+
+Within an event, a second `OrderBy` or `OrderByDescending` sets a new primary key.
+The sort is stable, so items with equal keys keep their order from the previous
+sort, as in [LINQ to Objects](https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby).
+For example, `jets.OrderBy(lambda j: j.eta()).OrderByDescending(lambda j: j.pt())`
+orders by descending transverse momentum, with equal-`pt` jets still ordered by eta.
+
 Backend support for these operators is required.
 
 ### OrderByDescending
