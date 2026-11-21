@@ -226,6 +226,52 @@ class ObjectStream(Generic[T]):
             self.item_type,
         )
 
+    def _then_by(
+        self,
+        key_selector: Union[str, ast.Lambda, Callable[[T], Any]],
+        known_types: Dict[str, Any],
+        operation: str,
+    ) -> ObjectStream[T]:
+        from func_adl.type_based_replacement import remap_from_lambda
+
+        if not (
+            isinstance(self.query_ast, ast.Call)
+            and isinstance(self.query_ast.func, ast.Name)
+            and self.query_ast.func.id
+            in ["OrderBy", "OrderByDescending", "ThenBy", "ThenByDescending"]
+        ):
+            raise ValueError(
+                f"{operation} must immediately follow an ordering operation"
+                f" - {ast.unparse(self.query_ast)}"
+            )
+        try:
+            key_ast = parse_as_ast(key_selector, operation)
+        except Exception as error:
+            raise ValueError(
+                f"{operation} requires a lambda key selector - {key_selector!r}"
+            ) from error
+        n_stream, n_ast, _ = remap_from_lambda(self, _local_simplification(key_ast), known_types)
+        check_ast(n_ast)
+        return self.clone_with_new_ast(
+            function_call(operation, [n_stream.query_ast, n_ast]), self.item_type
+        )
+
+    def ThenBy(
+        self,
+        key_selector: Union[str, ast.Lambda, Callable[[T], Any]],
+        known_types: Dict[str, Any] = {},
+    ) -> ObjectStream[T]:
+        """Add an ascending tie-break key immediately after an ordering operation."""
+        return self._then_by(key_selector, known_types, "ThenBy")
+
+    def ThenByDescending(
+        self,
+        key_selector: Union[str, ast.Lambda, Callable[[T], Any]],
+        known_types: Dict[str, Any] = {},
+    ) -> ObjectStream[T]:
+        """Add a descending tie-break key immediately after an ordering operation."""
+        return self._then_by(key_selector, known_types, "ThenByDescending")
+
     def Where(
         self, filter: Union[str, ast.Lambda, Callable[[T], bool]], known_types: Dict[str, Any] = {}
     ) -> ObjectStream[T]:
